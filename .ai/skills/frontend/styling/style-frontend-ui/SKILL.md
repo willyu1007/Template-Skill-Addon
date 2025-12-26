@@ -1,0 +1,46 @@
+---
+name: style-frontend-ui
+description: Style frontend UI consistently using a single primary approach (theme tokens, reusable patterns, and predictable component styles).
+---
+
+# Style Frontend UI
+
+## Purpose
+Create consistent UI styling that is easy to maintain and scales with the codebase.
+
+## When to use
+Use this skill when you are:
+- Styling new components or pages
+- Refactoring inconsistent styles
+- Introducing theme tokens (spacing, colors, typography)
+- Standardizing layout utilities and responsive patterns
+
+## Inputs
+- UI kit or styling solution used by the codebase (CSS modules, styled components, theme system, etc.)
+- Design requirements (spacing scale, typography, breakpoints)
+- Accessibility constraints (contrast, focus states)
+
+## Outputs
+- A styling approach decision for the component/feature
+- Theme-token usage (where supported)
+- Reusable style primitives (layout components, utility classes)
+
+## Rules
+- Styling MUST follow a single primary approach for consistency.
+- Theme tokens SHOULD be used instead of hardcoded values where available.
+- Components MUST have accessible focus states and sufficient contrast.
+- Responsive behavior SHOULD be explicit and testable.
+
+## Step-by-step workflow
+1. Choose the styling method consistent with the codebase.
+2. Identify reusable style tokens (spacing, typography).
+3. Implement component styles with:
+   - predictable naming
+   - minimal duplication
+4. Verify:
+   - keyboard navigation and focus
+   - responsive layout for common breakpoints
+
+## Included assets
+- Templates: `./templates/` includes a style object pattern and token checklist.
+- Examples: `./examples/` includes a consistent component style pattern.

@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "project": {
+    "name": "my-product",
+    "description": "A web app that helps teams track work and ship faster.",
+    "domain": "work tracking",
+    "primaryUsers": [
+      "project manager",
+      "engineer",
+      "admin"
+    ]
+  },
+  "repo": {
+    "layout": "monorepo",
+    "language": "typescript",
+    "packageManager": "pnpm"
+  },
+  "capabilities": {
+    "frontend": {
+      "enabled": true,
+      "framework": "react"
+    },
+    "backend": {
+      "enabled": true,
+      "framework": "node"
+    },
+    "api": {
+      "style": "rest",
+      "auth": "jwt"
+    },
+    "database": {
+      "enabled": true,
+      "kind": "postgres",
+      "orm": "prisma",
+      "migrationStrategy": "migrations"
+    },
+    "bpmn": {
+      "enabled": false,
+      "storage": "none"
+    }
+  },
+  "quality": {
+    "testing": {
+      "enabled": true,
+      "levels": [
+        "unit",
+        "integration"
+      ]
+    },
+    "ci": {
+      "enabled": true,
+      "provider": "github-actions"
+    },
+    "devops": {
+      "containerize": true
+    }
+  },
+  "skills": {
+    "packs": [
+      "workflows",
+      "backend",
+      "frontend"
+    ]
+  },
+  "context": {
+    "enabled": false,
+    "mode": "contract",
+    "artifacts": [
+      "api",
+      "db",
+      "bpmn"
+    ]
+  }
+}

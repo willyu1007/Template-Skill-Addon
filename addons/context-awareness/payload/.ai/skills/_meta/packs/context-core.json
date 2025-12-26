@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "includePrefixes": [
+    "scaffold/context/",
+    "scaffold/project-config/",
+    "scaffold/packs/"
+  ],
+  "includeSkills": [],
+  "excludeSkills": []
+}

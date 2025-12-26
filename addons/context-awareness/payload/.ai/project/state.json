@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "stage": "prototype",
+  "context": {
+    "enabled": true,
+    "mode": "contract",
+    "notes": "contract = docs/context artifacts are authoritative; snapshot = artifacts are generated from code/tools."
+  },
+  "runtime": {
+    "database": {
+      "dsnEnv": "DATABASE_URL"
+    }
+  }
+}

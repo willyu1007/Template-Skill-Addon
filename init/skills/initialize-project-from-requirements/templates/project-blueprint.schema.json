@@ -1,0 +1,287 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Project Blueprint",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "version",
+    "project",
+    "repo"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "project": {
+      "type": "object",
+      "required": [
+        "name",
+        "description"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 5
+        },
+        "domain": {
+          "type": "string"
+        },
+        "primaryUsers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "repo": {
+      "type": "object",
+      "required": [
+        "layout"
+      ],
+      "properties": {
+        "layout": {
+          "type": "string",
+          "enum": [
+            "single",
+            "monorepo"
+          ]
+        },
+        "language": {
+          "type": "string",
+          "enum": [
+            "typescript",
+            "javascript",
+            "python",
+            "go",
+            "java",
+            "dotnet",
+            "other"
+          ]
+        },
+        "packageManager": {
+          "type": "string",
+          "enum": [
+            "npm",
+            "pnpm",
+            "yarn",
+            "pip",
+            "poetry",
+            "go",
+            "maven",
+            "gradle",
+            "dotnet",
+            "other"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "frontend": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "framework": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "backend": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "framework": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "api": {
+          "type": "object",
+          "properties": {
+            "style": {
+              "type": "string",
+              "enum": [
+                "rest",
+                "graphql",
+                "rpc",
+                "none"
+              ]
+            },
+            "auth": {
+              "type": "string",
+              "enum": [
+                "none",
+                "session",
+                "jwt",
+                "oauth2",
+                "api-key",
+                "other"
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "database": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "none",
+                "postgres",
+                "mysql",
+                "sqlite",
+                "mssql",
+                "mongodb",
+                "dynamodb",
+                "other"
+              ]
+            },
+            "orm": {
+              "type": "string"
+            },
+            "migrationStrategy": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "bpmn": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "storage": {
+              "type": "string",
+              "enum": [
+                "none",
+                "docs",
+                "bpmn-files"
+              ]
+            }
+          },
+          "additionalProperties": true
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "testing": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "ci": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "devops": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "skills": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "packs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "workflows",
+              "backend",
+              "frontend",
+              "ops",
+              "data",
+              "diagrams"
+            ]
+          }
+        },
+        "includeSkills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional. Explicit skill names to include (in addition to includePrefixes derived from packs)."
+        },
+        "excludeSkills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional. Explicit skill names to exclude."
+        },
+        "includeSkillNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "(Deprecated) Use skills.includeSkills instead."
+        },
+        "excludeSkillNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "(Deprecated) Use skills.excludeSkills instead."
+        },
+        "excludePrefixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "(Deprecated/unsupported) Not supported by sync manifest. Prefer skills.excludeSkills."
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Optional. Context awareness add-on configuration (addon template).",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "When true, Stage C installs the context-awareness add-on and enables the context-core pack."
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "contract",
+            "snapshot"
+          ],
+          "description": "Optional. Context mode hint for scripts/LLMs."
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional. Desired artifact types (api, db, bpmn)."
+        }
+      }
+    }
+  }
+}

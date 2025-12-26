@@ -1,0 +1,9 @@
+---
+name: update-dev-docs-for-handoff
+description: Update an existing dev-docs task bundle with progress, decisions, and verification notes to support handoff or context recovery.
+---
+
+# update-dev-docs-for-handoff (entry)
+
+Canonical source: `.ai/skills/workflows/dev-docs/update-dev-docs-for-handoff/`
+Open `.ai/skills/workflows/dev-docs/update-dev-docs-for-handoff/SKILL.md` and any supporting files referenced there (for example `reference.md`, `examples.md`, `scripts/`, `templates/`).
