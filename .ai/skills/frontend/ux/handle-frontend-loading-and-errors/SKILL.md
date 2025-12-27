@@ -35,7 +35,7 @@ Use this skill when you are:
 - Retry SHOULD be available when it is likely to succeed (transient failures).
 - Permission failures SHOULD be distinguished from generic errors when possible.
 
-## Step-by-step workflow
+## Steps
 1. Decide your data boundary:
    - explicit `isLoading/isError`
    - Suspense + error boundary
@@ -50,6 +50,24 @@ Use this skill when you are:
    - simulate slow network (loading visible)
    - simulate 404/no data (empty state)
    - simulate failure (error UI + retry)
+
+## Verification
+
+- [ ] Loading state is visible during data fetch (simulate slow network)
+- [ ] Empty state renders when no data is available
+- [ ] Error state renders with user-safe message on failure
+- [ ] Retry action works for transient failures
+- [ ] Permission errors are distinguished from generic errors
+- [ ] Error messages do not leak internal details
+
+## Boundaries
+
+- MUST NOT skip loading state for async operations
+- MUST NOT show raw error messages or stack traces to users
+- MUST NOT leave UI in undefined state during fetch
+- SHOULD NOT show retry for non-recoverable errors
+- SHOULD NOT use identical messages for all error types
+- SHOULD NOT block entire UI when a single component fails (use error boundaries)
 
 ## Included assets
 - Templates: `./templates/` provides loading, empty, and error boundary scaffolds.

@@ -43,7 +43,7 @@ dev/
 - Verification MUST be concrete (commands/checks, expected results).
 - Avoid embedding secrets or real credentials.
 
-## Workflow
+## Steps
 1. Create `dev/active/<task-name>/`.
 2. Write `00-overview.md`:
    - problem statement
@@ -65,6 +65,24 @@ dev/
    - test plan
    - manual checks
    - rollout/backout notes (if needed)
+
+## Verification
+
+- [ ] Task directory follows the standard layout (`00-overview.md`, `01-plan.md`, etc.)
+- [ ] Overview clearly states goals and non-goals
+- [ ] Plan includes milestones with acceptance criteria
+- [ ] Verification section has concrete commands/checks
+- [ ] No secrets or real credentials are embedded
+- [ ] Documentation is sufficient for handoff to another contributor
+
+## Boundaries
+
+- MUST NOT embed secrets or real credentials in docs
+- MUST NOT skip verification section (must be concrete and testable)
+- MUST NOT create plans without acceptance criteria
+- SHOULD NOT deviate from standard directory layout without justification
+- SHOULD NOT include implementation details in overview (keep it high-level)
+- SHOULD NOT skip non-goals (they clarify scope boundaries)
 
 ## Included assets
 - Templates: `./templates/` provides markdown templates for each file in the bundle.

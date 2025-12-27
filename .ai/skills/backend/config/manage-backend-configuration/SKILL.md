@@ -31,7 +31,7 @@ Use this skill when you are:
 - Secrets MUST NOT be logged and MUST NOT be checked into version control.
 - Defaults SHOULD be explicit and environment-specific overrides SHOULD be documented.
 
-## Recommended workflow
+## Steps
 1. Enumerate required settings (include type, required/optional, default).
 2. Implement schema validation and parsing.
 3. Expose a stable `config` object to the rest of the codebase.
@@ -39,6 +39,22 @@ Use this skill when you are:
 5. Add a small verification:
    - “fails fast” when missing
    - “loads” with a valid example
+
+## Verification
+
+- [ ] Config module loads successfully with valid environment variables
+- [ ] Application fails fast (at startup) when a required config is missing
+- [ ] Application fails fast when a config value has an invalid type/format
+- [ ] Secrets are not printed in logs or error messages
+- [ ] Config contract documentation is up to date with the code
+
+## Boundaries
+
+- MUST NOT log or print secrets (tokens, passwords, private keys)
+- MUST NOT commit secrets to version control (use `.env.example` with placeholders)
+- MUST NOT access `process.env` directly outside the config module
+- SHOULD NOT add optional config without explicit defaults
+- SHOULD NOT change config schema without updating the config contract documentation
 
 ## Included assets
 - Templates: `./templates/` includes a typed config module and schema validation.

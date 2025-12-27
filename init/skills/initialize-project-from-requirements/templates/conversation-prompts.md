@@ -114,29 +114,3 @@ Use this mapping to avoid "knowledge floating in chat":
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs --docs-root docs/project
 ```
-
-
-## C. Context awareness (optional add-on; ask only if needed)
-
-Ask these if the user wants the LLM to keep an up-to-date, machine-readable view of the project:
-
-1. **Enable context layer?**
-   - "Do you want an explicit `docs/context/` layer so the LLM can reason over API + DB + BPMN with strong grounding?"
-   - If **yes**, set `blueprint.context.enabled = true`.
-
-2. **Which context artifacts should exist on day 1?**
-   - API contract (OpenAPI)?
-   - Database schema snapshot (JSON / SQL / ORM introspection output)?
-   - Business processes (BPMN)?
-
-3. **Context mode**
-   - Contract-first (recommended): docs are the source of truth; implementation must follow.
-   - Snapshot: capture current system state as reference (requires more frequent updates).
-
-4. **Update policy**
-   - "Should updates be allowed only via scripts (recommended), with CI verification?"
-   - If yes: LLM MUST use `node .ai/scripts/contextctl.js ...` and `node .ai/scripts/projectctl.js ...` for updates.
-
-5. **CI enforcement**
-   - "Should CI fail when registry checksums drift or when context artifacts are edited manually?"
-   - If yes: add the provided CI snippet after the add-on is enabled.

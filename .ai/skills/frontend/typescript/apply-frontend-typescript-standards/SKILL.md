@@ -31,7 +31,7 @@ Use this skill when you are:
 - Narrowing MUST be explicit for `unknown` values.
 - Prefer discriminated unions for complex state machines.
 
-## Step-by-step workflow
+## Steps
 1. Define types at the boundary:
    - API DTOs
    - component props
@@ -43,6 +43,24 @@ Use this skill when you are:
 5. Verify:
    - TypeScript build passes
    - no new unsafe escapes introduced
+
+## Verification
+
+- [ ] TypeScript build passes with no errors
+- [ ] No new `any` types introduced without justification
+- [ ] Public module APIs are typed and exported correctly
+- [ ] `unknown` values are narrowed before use
+- [ ] Discriminated unions are used for complex state
+- [ ] Type assertions are avoided or justified
+
+## Boundaries
+
+- MUST NOT use `any` without explicit justification
+- MUST NOT use type assertions (`as`) to bypass type checking
+- MUST NOT export untyped public APIs
+- SHOULD NOT ignore TypeScript errors with `@ts-ignore`
+- SHOULD NOT use `!` (non-null assertion) without runtime guarantee
+- SHOULD NOT define complex types inline (extract to named types)
 
 ## Included assets
 - Examples: `./examples/` includes safe patterns for `unknown` and discriminated unions.

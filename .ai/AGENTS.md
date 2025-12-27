@@ -5,7 +5,7 @@
 - `.ai/` stores AI/LLM workflow source content: skills, commands, templates, and maintenance scripts.
 - AI/LLM MUST treat `.ai/skills/` as the Single Source of Truth (SSOT). `.codex/` and `.claude/` are synced wrappers/entry stubs and MUST NOT be edited directly.
 - AI/LLM MUST NOT traverse any `.ai/` subdirectories (no recursive listing/grepping). Context loading is allowed only via guided, path-driven progressive disclosure (see "Context Loading").
-- Documentation under `.ai/` MUST follow `docs/documentation-guidelines.md`.
+- Documentation under `.ai/` MUST follow `.ai/skills/standards/documentation-guidelines/SKILL.md`.
 
 ## Directory Overview
 

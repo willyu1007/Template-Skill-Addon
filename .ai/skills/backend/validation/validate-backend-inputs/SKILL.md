@@ -31,7 +31,7 @@ Use this skill when you are:
 - Validation failures MUST return consistent status codes and error shapes.
 - Validation logic SHOULD be centralized and reusable to avoid divergence.
 
-## Recommended workflow
+## Steps
 1. Define request DTO(s) and choose a schema library (or built-in validation).
 2. Implement schemas for:
    - params
@@ -54,6 +54,24 @@ Use this skill when you are:
 
 - **Discriminated unions**
   - Use when request shape varies by a `type` field.
+
+## Verification
+
+- [ ] Valid payloads pass validation and reach the service layer
+- [ ] Invalid payloads return consistent 400/422 with structured error details
+- [ ] All external inputs (params, query, body) are validated
+- [ ] Validation errors include field name and failure reason
+- [ ] Schemas match API documentation / OpenAPI spec
+- [ ] At least one valid and one invalid payload example exist
+
+## Boundaries
+
+- MUST NOT skip validation for any external input
+- MUST NOT call service layer with unvalidated data
+- MUST NOT expose internal validation library errors directly to clients
+- MUST NOT use free-form strings where enums are appropriate
+- SHOULD NOT duplicate validation logic across endpoints (centralize schemas)
+- SHOULD NOT validate business rules in the validation layer (delegate to services)
 
 ## Included assets
 - Templates: `./templates/` includes common schema patterns and a validation error formatter.

@@ -32,7 +32,7 @@ Use this skill when you are:
 - Components MUST render explicit loading/empty/error states when dependent on async data.
 - Components SHOULD avoid hidden side effects; prefer hooks.
 
-## Step-by-step workflow
+## Steps
 1. Define the component contract (props, callbacks, UI states).
 2. Decide whether it is:
    - presentational (props in, UI out)
@@ -48,6 +48,24 @@ Use this skill when you are:
    - primary interaction works
    - error state renders
 
+## Verification
+
+- [ ] Component renders with valid props
+- [ ] Component handles loading state (when applicable)
+- [ ] Component handles empty state (when applicable)
+- [ ] Component handles error state (when applicable)
+- [ ] Primary interaction triggers expected callback
+- [ ] Component is accessible (keyboard navigation, focus visible)
+
+## Boundaries
+
+- MUST NOT use implicit `any` for props
+- MUST NOT hide side effects in render (use hooks)
+- MUST NOT skip loading/empty/error states for async-dependent components
+- SHOULD NOT create large components (decompose into smaller units)
+- SHOULD NOT mix container and presentational concerns without clear boundaries
+- SHOULD NOT ignore accessibility (aria labels, focus management)
+
 ## Included assets
 - Templates: `./templates/` includes component scaffolds (presentational, container, list, modal).
-- Examples: `./examples/` includes a complete “profile-style” component example.
+- Examples: `./examples/` includes a complete "profile-style" component example.

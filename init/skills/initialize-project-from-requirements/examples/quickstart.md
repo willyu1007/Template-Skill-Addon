@@ -1,34 +1,81 @@
-# Example - Quick start (AI-assisted)
+# Quickstart (example)
 
-1. Ask your LLM to follow `init/AGENTS.md`.
-2. Review Stage A docs under `docs/project/`.
-3. Validate Stage A docs:
+Run these commands from repo root.
+
+---
+
+## 0) Initialize state
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs --docs-root docs/project
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js start --repo-root .
 ```
 
-4. Review Stage B blueprint at `docs/project/project-blueprint.json` and validate:
+---
+
+## 1) Stage A: validate docs → approve
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js validate   --blueprint docs/project/project-blueprint.json
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs \
+  --repo-root . \
+  --docs-root docs/project \
+  --strict
 ```
 
-5. Dry-run scaffold:
+After the user explicitly approves Stage A:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js scaffold   --blueprint docs/project/project-blueprint.json   --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage A --repo-root .
 ```
 
-6. Apply Stage C (scaffold + manifest + wrapper sync):
+---
+
+## 2) Stage B: validate blueprint → approve
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply   --blueprint docs/project/project-blueprint.json   --repo-root .   --providers codex,claude   --require-stage-a
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js validate \
+  --repo-root . \
+  --blueprint docs/project/project-blueprint.json
 ```
 
-7. Optional cleanup (remove init kit):
+Optional: show recommended packs:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js cleanup-init   --repo-root .   --apply   --i-understand
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js suggest-packs \
+  --repo-root . \
+  --blueprint docs/project/project-blueprint.json
+```
+
+After the user explicitly approves Stage B:
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage B --repo-root .
+```
+
+---
+
+## 3) Stage C: apply → approve
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply \
+  --repo-root . \
+  --blueprint docs/project/project-blueprint.json \
+  --providers both
+```
+
+After the user explicitly approves Stage C:
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage C --repo-root .
+```
+
+---
+
+## 4) Optional cleanup
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js cleanup-init \
+  --repo-root . \
+  --apply \
+  --i-understand
 ```
 

@@ -31,7 +31,7 @@ Use this skill when you are:
 - Components MUST have accessible focus states and sufficient contrast.
 - Responsive behavior SHOULD be explicit and testable.
 
-## Step-by-step workflow
+## Steps
 1. Choose the styling method consistent with the codebase.
 2. Identify reusable style tokens (spacing, typography).
 3. Implement component styles with:
@@ -40,6 +40,24 @@ Use this skill when you are:
 4. Verify:
    - keyboard navigation and focus
    - responsive layout for common breakpoints
+
+## Verification
+
+- [ ] Styles follow the project's primary styling approach
+- [ ] Theme tokens are used (no hardcoded colors/spacing where tokens exist)
+- [ ] Components have accessible focus states
+- [ ] Color contrast meets accessibility guidelines
+- [ ] Responsive layout works for common breakpoints
+- [ ] Keyboard navigation is visually clear
+
+## Boundaries
+
+- MUST NOT mix styling approaches within the same component
+- MUST NOT hardcode values when theme tokens are available
+- MUST NOT skip focus state styling
+- MUST NOT ignore color contrast requirements
+- SHOULD NOT duplicate style definitions (use shared utilities/tokens)
+- SHOULD NOT use magic numbers for spacing/sizing
 
 ## Included assets
 - Templates: `./templates/` includes a style object pattern and token checklist.

@@ -1,129 +1,176 @@
+# Skill: initialize-project-from-requirements
+
+本技能用于把“需求文档 → 项目蓝图 → 目录骨架/配置 → skills 同步”串起来，并在流程中记录可审计的初始化状态，确保每个阶段都有明确的“验证 + 用户批准”关口。
+
+目标：稳健、可重复、可回滚的初始化流程（而不是追求最快的增强）。
+
 ---
-name: initialize-project-from-requirements
-description: Use this only in repos that still include the init/ bootstrap kit to produce Stage A/B/C artifacts, update skill pack selection, and sync provider skill wrappers.
+
+## 输入
+
+### Stage A（需求文档，必需）
+位于 `docs/project/`（或你指定的 `--docs-root`）：
+
+- `docs/project/requirements.md`
+- `docs/project/non-functional-requirements.md`
+- `docs/project/domain-glossary.md`
+- `docs/project/risk-open-questions.md`
+
+### Stage B（蓝图，必需）
+- `docs/project/project-blueprint.json`
+
+### 可选：Add-on（Context Awareness）
+如果启用 `blueprint.addons.contextAwareness: true`（或 `blueprint.context.enabled: true`），则需要存在 add-on payload：
+
+- `<repoRoot>/<addonsRoot>/context-awareness/payload/`
+
+其中 `<addonsRoot>` 默认是 `addons/`，可通过 `apply --addons-root` 指定。
+
 ---
 
-# Initialize a Project From Requirements
+## 主要输出（落盘产物）
 
-## Purpose
+### Stage A
+- 需求文档（`docs/project/*`）
+- 初始化状态文件：`init/.init-state.json`
 
-Turn an early project idea into **verifiable, file-based** outputs:
+### Stage B
+- 蓝图：`docs/project/project-blueprint.json`
 
-- **Stage A (Requirements)**: four requirement documents under `docs/project/`
-- **Stage B (Blueprint)**: a machine-readable `docs/project/project-blueprint.json`
-- **Stage C (Scaffold + Skills)**: a minimal scaffold + skill pack manifest update + wrapper sync via `node .ai/scripts/sync-skills.js`
+### Stage C
+- 目录骨架（示例）：
+  - `src/` 或 `apps/` + `packages/`（由 `repo.layout` 决定）
+  - `docs/diagrams/`（如果启用 diagram 能力）
+  - `ops/`（如果启用 DevOps scaffold，见下文）
+- 配置文件（由 `scripts/scaffold-configs.js` 生成）：例如 `.gitignore`、lint/test/format 配置等（视蓝图而定）
+- Skills 选择（SSOT）：
+  - `.ai/skills/_meta/sync-manifest.json`（扁平 schema：`version/includePrefixes/includeSkills/excludeSkills`）
+  - Add-on 模式：若存在 `.ai/scripts/skillsctl.js`，则 pack 开关必须通过 skillsctl（scheme A）执行
+- Provider wrappers 生成/更新：
+  - `node .ai/scripts/sync-skills.js`（支持 `--providers`）
 
-This skill is designed to be **bootstrap-only**. After initialization, you may remove the `init/` kit.
+### 可选：Context Awareness Add-on 产物
+当启用 Context Awareness 并执行 `apply` 后，通常会出现：
 
-## When to use
+- `.ai/scripts/contextctl.js`
+- `.ai/scripts/projectctl.js`
+- `docs/context/`（上下文 registry、工作流等，视 add-on 实现而定）
 
-Use this when:
+---
 
-- The repo still contains an `init/` directory (bootstrap kit present).
-- The user needs a clear, reviewable project description before implementation starts.
-- You want deterministic initialization outputs (docs + blueprint + minimal scaffold + skills enabled).
+## 关键流程规则（必须遵守）
 
-Do NOT use this when:
+1. 所有阶段推进必须有“验证 + 用户批准”。
+   - 验证由脚本命令写入 `init/.init-state.json`
+   - 推进阶段必须显式执行 `approve` 命令（不允许手工编辑 state 文件来跳阶段）
+2. 严禁在未获用户批准的情况下跨阶段推进。
+3. Add-on（Context Awareness）按需安装：
+   - 仅当 `blueprint.addons.contextAwareness: true` 或 `blueprint.context.enabled: true` 时才会尝试从 `/addons/<addonId>/payload` 安装
+4. manifest schema 统一为“扁平 schema”。
+   - 不再使用 `collections.current` 之类结构
+5. 配置生成单一入口：`scripts/scaffold-configs.js` 是配置生成的单一事实来源（SSOT）。
 
-- The repo has already been initialized and `docs/project/project-blueprint.json` is stable.
-- The user is asking for implementation work unrelated to initialization.
-- You do not have permission to generate or modify repo files.
+---
 
-## Inputs
+## 标准工作流（从 repo root 执行）
 
-- Repo root path (or run from repo root).
-- Stage A docs root: `docs/project/` (created from templates in `templates/`)
-- Stage B blueprint: `docs/project/project-blueprint.json`
+下面所有命令路径都假设你在 repo root 运行。
 
-Optional inputs:
-
-- Provider set for wrapper sync: `both` (default), or `codex`, `claude`, `codex,claude`.
-
-## Outputs
-
-- Stage A docs (created/updated by the authoring process):
-  - `docs/project/requirements.md`
-  - `docs/project/non-functional-requirements.md`
-  - `docs/project/domain-glossary.md`
-  - `docs/project/risk-open-questions.md`
-- Stage B blueprint:
-  - `docs/project/project-blueprint.json`
-- Stage C scaffold (directories only; no framework code):
-  - `src/` or (`apps/`, `packages/`) depending on `repo.layout`
-- Skills enabled (SSOT):
-  - `.ai/skills/_meta/sync-manifest.json` updated (flat manifest)
-- Provider wrappers regenerated:
-  - via `node .ai/scripts/sync-skills.js`
-
-## Steps
-
-### Stage A: interview → requirement docs (verifiable)
-
-1. Use `templates/conversation-prompts.md` to run a structured requirements interview.
-2. Draft the four Stage A documents using templates under `templates/`.
-3. Validate Stage A docs:
-
+### 0) 初始化 state
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs --docs-root docs/project
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js start --repo-root .
 ```
 
-Use strict mode when you need a hard gate (CI / regulated workflows):
-
+### 1) Stage A：校验需求文档 → 用户批准
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs --docs-root docs/project --strict
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs \
+  --repo-root . \
+  --docs-root docs/project \
+  --strict
 ```
 
-### Stage B: requirements → blueprint (machine-readable)
-
-1. Create `docs/project/project-blueprint.json` based on the Stage A docs.
-2. Validate the blueprint:
-
+用户审阅 Stage A 文档并明确说“批准/approved”后，执行：
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js validate   --blueprint docs/project/project-blueprint.json
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage A --repo-root .
 ```
 
-3. Reconcile packs with capabilities (warn-only by default):
-
+### 2) Stage B：校验蓝图 → 用户批准
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js suggest-packs   --blueprint docs/project/project-blueprint.json   --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js validate \
+  --repo-root . \
+  --blueprint docs/project/project-blueprint.json
 ```
 
-If you want to **add missing recommended packs** into the blueprint (safe-add only):
-
+用户审阅蓝图并明确批准后，执行：
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js suggest-packs   --blueprint docs/project/project-blueprint.json   --repo-root .   --write
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage B --repo-root .
 ```
 
-### Stage C: scaffold + enable packs + sync wrappers
-
-1. Dry-run the scaffold plan:
-
+### 3) Stage C：落盘 scaffold/configs/packs/wrappers → 用户批准
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js scaffold   --blueprint docs/project/project-blueprint.json   --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply \
+  --repo-root . \
+  --blueprint docs/project/project-blueprint.json \
+  --providers both
 ```
 
-2. Apply scaffold + manifest update + wrapper sync:
-
+用户审阅落盘结果并明确批准后，执行：
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply   --blueprint docs/project/project-blueprint.json   --repo-root .   --providers codex,claude   --require-stage-a
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage C --repo-root .
 ```
 
-3. (Optional) Remove the bootstrap kit after success:
-
+### 4) 可选：清理 init 包
+当用户确认不再需要 init/ 引导套件：
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply   --blueprint docs/project/project-blueprint.json   --repo-root .   --providers codex,claude   --require-stage-a   --cleanup-init   --i-understand
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js cleanup-init \
+  --repo-root . \
+  --apply \
+  --i-understand
 ```
 
-## Boundaries
+---
 
-- Do not invent requirements. Resolve ambiguity with the user, or record it as TBD in `docs/project/risk-open-questions.md`.
-- Do not add provider-specific assumptions into Stage A docs or the blueprint.
-- Do not edit `.codex/skills/` or `.claude/skills/` directly. Only update SSOT in `.ai/skills/` and run `node .ai/scripts/sync-skills.js`. (This repo’s SSOT rule applies.) 
-- Scaffolding MUST NOT overwrite existing files; it should only create missing directories and small placeholder `README.md` files.
+## Add-on（Context Awareness）说明要点
 
-## Included assets
+### 如何生效
+蓝图满足任一条件即可触发 add-on 安装/初始化：
+- `blueprint.addons.contextAwareness: true`
+- `blueprint.context.enabled: true`
 
-- Templates: `templates/`
-- Examples: `examples/`
-- Script: `scripts/init-pipeline.js`
+此外可选：
+- `blueprint.context.mode: "contract" | "snapshot"`（默认 `contract`）
 
+### 关键脚本（Add-on 提供）
+- `.ai/scripts/contextctl.js`
+  - `init`：初始化 `docs/context/` 骨架（幂等）
+- `.ai/scripts/projectctl.js`
+  - `init`：初始化项目状态（幂等）
+  - `set-context-mode <contract|snapshot>`：设置模式
+- `.ai/scripts/skillsctl.js`（scheme A）
+  - `enable-pack <packId> --no-sync`：启用 pack（写 manifest）
+
+---
+
+## /addons 目录约定（如需）
+
+本 init pipeline 以“最小入侵”方式支持 add-on：
+
+- 默认认为 add-on 位于：`/addons/context-awareness/payload/`
+- `apply --addons-root <path>` 可改变 add-on 根目录（例如单体仓库的 `third_party/addons`）
+
+payload 将以“只拷贝缺失文件”的方式合并到 repo root（不覆盖已存在文件），用于降低破坏性。
+
+---
+
+## DevOps scaffold（参考 devops_extension_guide.md 第 5-7 章）
+
+当满足以下任一条件时，会在 Stage C scaffold 中额外创建 `ops/` 目录骨架：
+- `blueprint.quality.ci.enabled: true`
+- `blueprint.quality.devops.*` 相关字段开启
+- `blueprint.devops.enabled: true`（或其子开关）
+
+典型结构：
+- `ops/packaging/{services,jobs,apps,scripts,workdocs}/`
+- `ops/deploy/{http_services,workloads,clients,scripts,workdocs}/`
+
+这些内容默认是占位 scaffold（不绑定具体云厂商/CI 平台），以便后续按项目情况稳健扩展。

@@ -34,7 +34,7 @@ Use this skill when:
 - Use reputable secondary sources only when needed to interpret.
 - Treat low-quality sources as last resort and label them clearly.
 
-## Workflow
+## Steps
 1. Clarify the question and required freshness.
 2. Identify 3–5 primary sources as anchors.
 3. Extract facts and constraints; avoid assumptions.
@@ -43,6 +43,24 @@ Use this skill when:
    - what is true
    - what is uncertain
    - what to do next
+
+## Verification
+
+- [ ] Research question is clearly defined
+- [ ] At least 3 primary sources are identified
+- [ ] Facts are cross-checked across multiple sources
+- [ ] Citations are accurate and verifiable
+- [ ] Summary distinguishes facts from uncertainties
+- [ ] Recommendations are actionable and evidence-backed
+
+## Boundaries
+
+- MUST NOT fabricate or hallucinate sources and citations
+- MUST NOT present opinions as facts; always cite sources
+- MUST NOT rely solely on a single source for critical decisions
+- SHOULD NOT use outdated information without noting the recency risk
+- SHOULD NOT use low-quality sources (forums, outdated blogs) as primary evidence
+- SHOULD NOT skip cross-checking conflicting claims
 
 ## Included assets
 - Templates: `./templates/` includes a research brief and evidence table format.

@@ -1,6 +1,6 @@
 ---
 name: apply-backend-service-guidelines
-description: Apply consistent backend service patterns for HTTP APIs (routing, controllers, services, repositories, validation, config, error handling, testing).
+description: Apply cross-cutting backend service patterns across routing, services, repositories, validation, configuration, errors, and tests.
 ---
 
 # Backend Service Guidelines
@@ -16,6 +16,11 @@ Use this skill when you are:
 - Standardizing error handling, logging, and observability
 - Designing configuration loading and validation
 - Writing or fixing backend tests (unit and integration)
+
+
+Avoid using this skill when:
+- you are making a narrow, single-concern change (for example, only adjusting one validation rule) and you do not need a cross-layer consistency check
+- you are doing one-off debugging with a known root cause and you only need a small targeted fix
 
 ## Inputs
 You SHOULD have:
@@ -73,7 +78,7 @@ These rules prevent “everything everywhere” backends.
   - One representative validation failure
   - One representative authorization/permission failure (if applicable)
 
-## Step-by-step workflow
+## Steps
 1. **Clarify the API contract**
    - Define request schema and response schema.
    - Decide status codes for success and known failure modes.
@@ -105,10 +110,24 @@ These rules prevent “everything everywhere” backends.
    - Run the service locally or in CI.
    - Validate response shapes and database side effects (if any).
 
+## Verification
+
+- [ ] Routes delegate to controllers without business logic
+- [ ] Controllers validate inputs and map errors consistently
+- [ ] Services contain business rules and are HTTP-free
+- [ ] Repositories isolate data access (when used)
+- [ ] Error responses follow the standard shape
+- [ ] Unit tests cover core business rules
+- [ ] Integration tests cover at least one happy path per endpoint
+
 ## Boundaries
-- You MUST NOT hardcode project-specific paths, scripts, or environment layouts in shared skills.
-- You MUST NOT include credentials, secrets, or real tokens in examples.
-- You SHOULD NOT introduce new patterns if the codebase already has an established convention unless there is a clear benefit and migration plan.
+
+- MUST NOT hardcode project-specific paths, scripts, or environment layouts in shared skills
+- MUST NOT include credentials, secrets, or real tokens in examples
+- MUST NOT log secrets or sensitive data
+- SHOULD NOT introduce new patterns if the codebase already has an established convention unless there is a clear benefit and migration plan
+- SHOULD NOT skip validation for any external input
+- SHOULD NOT bypass error handling contract
 
 ## Included assets
 - Templates: see `./templates/` for controller/service/repository/error scaffolds.

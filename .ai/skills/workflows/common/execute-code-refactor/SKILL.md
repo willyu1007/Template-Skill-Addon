@@ -34,7 +34,7 @@ Use this skill when:
 - Behavior-changing refactors MUST be separated from structural refactors when possible.
 - Verification MUST be continuous (build/tests at checkpoints).
 
-## Workflow
+## Steps
 1. Define the refactor objective and boundaries.
 2. Inventory dependencies:
    - incoming imports (who depends on this file/module)
@@ -54,6 +54,24 @@ Use this skill when:
    - tests pass
    - no circular deps introduced
 
+## Verification
+
+- [ ] Build passes after each incremental step
+- [ ] All import sites are updated after moves/renames
+- [ ] No circular dependencies introduced
+- [ ] Tests pass after refactor completion
+- [ ] Behavior is unchanged (no functional regressions)
+- [ ] Refactor plan milestones are documented and tracked
+
+## Boundaries
+
+- MUST NOT move files without updating all import sites
+- MUST NOT mix behavior changes with structural refactors
+- MUST NOT skip verification after each incremental step
+- MUST NOT introduce circular dependencies
+- SHOULD NOT refactor large scopes in a single change (break into incremental steps)
+- SHOULD NOT bypass tests to expedite refactor completion
+
 ## Included assets
 - Templates: `./templates/` includes a refactor checklist and dependency mapping worksheet.
-- Examples: `./examples/` includes a “large component extraction” playbook.
+- Examples: `./examples/` includes a "large component extraction" playbook.

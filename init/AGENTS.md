@@ -1,133 +1,79 @@
-# Initialization Instructions (LLM)
+# Agent guidance for this init kit
 
-You are initializing a new project using this repository template.
+This repository includes an `init/` bootstrap kit that is intended to be executed in a **checkpointed** manner.
 
-## Conclusions (read first)
+Key principles:
 
-- You MUST follow a **3-stage, file-based** pipeline:
-  - **Stage A**: write requirement docs under `docs/project/` (DoD-driven).
-  - **Stage B**: write a machine-readable blueprint at `docs/project/project-blueprint.json`.
-  - **Stage C**: scaffold minimal structure + select skill packs by updating `.ai/skills/_meta/sync-manifest.json`, then run `node .ai/scripts/sync-skills.js`.
-- Add-on (optional): If the user wants **context awareness** (API/DB/BPMN grounding), set `project-blueprint.json` → `context.enabled = true`. Stage C will install the add-on payload and enable the `context-core` pack before syncing wrappers.
-- You MUST keep changes **verifiable**:
-  - Each stage ends with a checklist and a command that verifies outputs.
-- You MUST NOT edit generated wrapper stubs directly:
-  - Do not edit `.codex/skills/` or `.claude/skills/` by hand.
-  - Only edit SSOT in `.ai/skills/`, then run `node .ai/scripts/sync-skills.js`.
-- Add-on (optional): If the user wants **context awareness** (API/DB/BPMN grounding), set `project-blueprint.json` → `context.enabled = true`. Stage C will install the add-on payload and enable the `context-core` pack before syncing wrappers.
+- Do not skip stages.
+- Do not advance stages without explicit user approval.
+- Do not hand-edit `init/.init-state.json` to change stages; use the pipeline commands.
 
-## Inputs you MUST collect from the user
+---
 
-Use `init/skills/initialize-project-from-requirements/templates/conversation-prompts.md` as your question bank.
+## Canonical command entry point
 
-Minimum required inputs:
-
-- one-line project purpose
-- primary user roles
-- in-scope MUST requirements and out-of-scope (OUT)
-- top user journeys with acceptance criteria
-- constraints (compliance/security/platform/deadlines/integrations)
-- repo layout intent (`single` vs `monorepo`)
-- quality expectations (testing/CI/devops)
-
-If the user cannot decide, you MUST record TBD items in `docs/project/risk-open-questions.md` (owner + options + decision due).
-
-## Stage A - Requirements (write files)
-
-### Outputs
-
-Create/update these files under `docs/project/`:
-
-- `requirements.md`
-- `non-functional-requirements.md`
-- `domain-glossary.md`
-- `risk-open-questions.md`
-
-Start from templates under:
-- `init/skills/initialize-project-from-requirements/templates/`
-
-### Verification (required)
-
-Run:
+Run from repo root:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs --docs-root docs/project
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js <command> [options]
 ```
 
-If this repo uses a strict gate, run:
+---
+
+## Stage flow (validation + approval)
+
+### Stage A (requirements docs)
+1) Validate docs structure:
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs --repo-root . --docs-root docs/project --strict
+```
+
+2) After user approval:
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage A --repo-root .
+```
+
+### Stage B (blueprint)
+1) Validate blueprint:
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js validate --repo-root . --blueprint docs/project/project-blueprint.json
+```
+
+2) After user approval:
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage B --repo-root .
+```
+
+### Stage C (apply)
+Apply scaffold/configs/skill packs/wrapper sync:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs --docs-root docs/project --strict
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply --repo-root . --blueprint docs/project/project-blueprint.json --providers both
 ```
 
-Iterate with the user until Stage A passes.
+After user approval:
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage C --repo-root .
+```
 
-## Stage B - Blueprint (write file)
+---
 
-### Output
+## Add-on notes (context awareness)
 
-- `docs/project/project-blueprint.json`
+If the blueprint enables context awareness (`addons.contextAwareness: true` or `context.enabled: true`), `apply` will:
+- install missing files from `addons/context-awareness/payload/` (copy-if-missing; non-destructive)
+- run `.ai/scripts/contextctl.js init`
+- run `.ai/scripts/projectctl.js init` and `set-context-mode` (if projectctl exists)
 
-Start from:
-- `init/skills/initialize-project-from-requirements/templates/project-blueprint.example.json`
+See `ADDON_CONTEXT_AWARENESS.md` for details.
 
-### Verification (required)
+---
+
+## Cleanup
+
+Only after completion and user confirmation:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js validate   --blueprint docs/project/project-blueprint.json
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js cleanup-init --repo-root . --apply --i-understand
 ```
-
-### Pack suggestions (recommended)
-
-Run:
-
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js suggest-packs   --blueprint docs/project/project-blueprint.json   --repo-root .
-```
-
-- If recommended packs are missing, you SHOULD discuss with the user before changing `skills.packs`.
-- Only use `--write` if the user approves adding recommended packs.
-
-## Stage C - Scaffold + Skills (run commands)
-
-### Dry-run scaffold first (required)
-
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js scaffold   --blueprint docs/project/project-blueprint.json   --repo-root .
-```
-
-### Apply (writes changes + sync wrappers)
-
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply   --blueprint docs/project/project-blueprint.json   --repo-root .   --providers codex,claude   --require-stage-a
-```
-
-This will:
-- create missing scaffold directories (no overwrites),
-- update `.ai/skills/_meta/sync-manifest.json` (flat manifest),
-- run `node .ai/scripts/sync-skills.js` to regenerate wrappers.
-
-### Optional: remove init kit after success
-
-Only if the user asks to remove bootstrap artifacts:
-
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js cleanup-init   --repo-root .   --apply   --i-understand
-```
-
-## Prompt template (use internally)
-
-Goal:
-- Initialize the project with verifiable 3-stage outputs.
-
-Constraints (MUST / DON'T):
-- MUST output Stage A docs under `docs/project/`.
-- MUST output blueprint at `docs/project/project-blueprint.json`.
-- MUST update skills via `.ai/skills/_meta/sync-manifest.json` and run `node .ai/scripts/sync-skills.js`.
-- DON'T edit `.codex/skills/` or `.claude/skills/` directly.
-
-Acceptance criteria:
-- Stage A passes `check-docs` (strict if required).
-- Stage B blueprint validates.
-- Stage C wrappers regenerated and match selected packs.
 

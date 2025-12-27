@@ -33,7 +33,7 @@ Use this skill when:
   - one invalid payload example
 - A short recommended test order (highest risk first)
 
-## Workflow
+## Steps
 1. **Collect changed route candidates**
    - Use version control to list changed files in the route layer.
    - Include controller/service changes when they imply endpoint behavior changes.
@@ -64,6 +64,24 @@ Use this skill when:
 7. **Use the inventory to test**
    - Execute the happy path first for each endpoint.
    - Verify persistence side effects for write endpoints.
+
+## Verification
+
+- [ ] Route inventory includes all changed endpoints
+- [ ] Each endpoint has method, path, and auth requirement documented
+- [ ] Valid payload examples conform to expected request shapes
+- [ ] Invalid payload examples trigger expected validation errors
+- [ ] Route prefixes match actual deployed paths
+- [ ] Inventory is usable for smoke testing (no missing critical info)
+
+## Boundaries
+
+- MUST NOT include real credentials or secrets in payload examples
+- MUST NOT skip authentication requirements in the inventory
+- MUST NOT assume route prefixes without verifying configuration
+- SHOULD NOT generate inventory for unchanged routes (focus on changes)
+- SHOULD NOT omit error cases (include at least one invalid example per endpoint)
+- SHOULD NOT hand off inventory without verifying at least one endpoint works
 
 ## Included assets
 - Templates: `./templates/route-inventory.json` provides a JSON shape for endpoint records.

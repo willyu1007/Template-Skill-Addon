@@ -41,7 +41,7 @@ Use this skill when:
   - move deep details to references, examples, and templates
 - Avoid unnecessary cross-linking that forces readers to chase multiple files for basic understanding.
 
-## Workflow
+## Steps
 1. Gather context:
    - read existing docs
    - inspect relevant code paths
@@ -63,6 +63,24 @@ Use this skill when:
    - verify examples are coherent and do not include secrets
    - ensure requirements are explicit
    - ensure the doc matches current implementation
+
+## Verification
+
+- [ ] Documentation structure follows the defined outline
+- [ ] Examples are coherent and do not include secrets
+- [ ] Requirements are explicit (MUST/SHOULD/MAY)
+- [ ] Documentation matches current implementation
+- [ ] Progressive disclosure is applied (top-level docs are short)
+- [ ] Verification steps are included and actionable
+
+## Boundaries
+
+- MUST NOT include secrets, credentials, or internal-only URLs in documentation
+- MUST NOT create documentation that exceeds 500 lines without progressive disclosure
+- MUST NOT copy large code blocks verbatim; use references or minimal excerpts
+- SHOULD NOT mix multiple topics in a single document section
+- SHOULD NOT force readers to chase multiple files for basic understanding
+- SHOULD NOT skip verification steps in documentation
 
 ## Included assets
 - Templates: `./templates/` includes a documentation outline.

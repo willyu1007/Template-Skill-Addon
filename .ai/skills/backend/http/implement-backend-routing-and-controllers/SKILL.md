@@ -52,7 +52,7 @@ A route SHOULD:
 - Delegate to a controller method
 - Avoid inline logic beyond trivial parameter passing
 
-## Step-by-step workflow
+## Steps
 1. Define the endpoint contract (method, path, auth, request/response).
 2. Add route registration:
    - register middleware
@@ -67,11 +67,23 @@ A route SHOULD:
    - one validation failure
    - one auth/permission failure (if applicable)
 
-## Verification checklist
-- Route handler is short and delegates immediately.
-- Controller validates all external inputs.
-- Response payload matches the documented shape.
-- Errors map to consistent `4xx`/`5xx` with stable error codes.
+## Verification
+
+- [ ] Route handler is short and delegates immediately
+- [ ] Controller validates all external inputs
+- [ ] Response payload matches the documented shape
+- [ ] Errors map to consistent `4xx`/`5xx` with stable error codes
+- [ ] Happy-path request returns expected status and response
+- [ ] Validation failure returns structured error
+
+## Boundaries
+
+- MUST NOT embed business logic in routes
+- MUST NOT embed persistence queries in controllers
+- MUST NOT skip input validation for external data
+- MUST NOT return inconsistent error shapes across endpoints
+- SHOULD NOT create fat controllers (keep them thin, delegate to services)
+- SHOULD NOT bypass error mapping middleware
 
 ## Included assets
 - Templates: `./templates/` provides router and controller scaffolds.

@@ -33,7 +33,7 @@ Use this skill when you are:
 - Large lists SHOULD use virtualization.
 - Expensive computations SHOULD be memoized or moved off the critical render path.
 
-## Step-by-step workflow
+## Steps
 1. Measure:
    - profile render time
    - inspect network waterfall
@@ -46,6 +46,24 @@ Use this skill when you are:
    - virtualization for long lists
 4. Re-measure and confirm improvement.
 5. Add a regression guard (test or metric) where practical.
+
+## Verification
+
+- [ ] Performance issue is measured before and after optimization
+- [ ] Optimization reduces the identified bottleneck (render time, bundle size, etc.)
+- [ ] No functionality regression introduced
+- [ ] Code splitting loads correct chunks for routes
+- [ ] Virtualized lists render smoothly with large datasets
+- [ ] Memoization does not reduce code readability without measurable benefit
+
+## Boundaries
+
+- MUST NOT optimize without profiling evidence
+- MUST NOT add memoization that reduces readability without measurable gain
+- MUST NOT skip re-measurement after applying fixes
+- SHOULD NOT over-split bundles (too many small chunks can hurt performance)
+- SHOULD NOT virtualize small lists (adds complexity without benefit)
+- SHOULD NOT cache data indefinitely without invalidation strategy
 
 ## Included assets
 - Templates: `./templates/` includes a performance investigation checklist.

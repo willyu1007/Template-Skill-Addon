@@ -30,7 +30,7 @@ Use this skill when you are:
 - Shared components SHOULD be truly reusable; avoid dumping ground “common” folders.
 - Imports SHOULD prefer feature public exports over deep internal paths.
 
-## Step-by-step workflow
+## Steps
 1. Identify feature boundaries and shared dependencies.
 2. Choose a structure (feature-first is recommended for large apps).
 3. Define a feature public API (`index.ts` or equivalent).
@@ -41,6 +41,24 @@ Use this skill when you are:
    - build passes
    - routes/components still resolve
    - no broken exports
+
+## Verification
+
+- [ ] Build passes after reorganization
+- [ ] All routes and components resolve correctly
+- [ ] No circular dependencies introduced
+- [ ] Feature public exports work as expected
+- [ ] Imports use public APIs, not deep internal paths
+- [ ] Lint rules pass (if import rules are enforced)
+
+## Boundaries
+
+- MUST NOT create circular dependencies between features
+- MUST NOT import from deep internal paths across feature boundaries
+- MUST NOT dump unrelated utilities into a "common" folder
+- SHOULD NOT expose internal implementation details in feature public API
+- SHOULD NOT change file structure without updating imports
+- SHOULD NOT skip incremental migration (avoid big-bang refactors)
 
 ## Included assets
 - Examples: `./examples/` includes a feature module structure blueprint.

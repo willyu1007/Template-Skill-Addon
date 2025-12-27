@@ -1,65 +1,112 @@
-# Initialization Reference
+# Reference: robust init pipeline
 
-This template uses a **verifiable, 3-stage pipeline** so that initialization is observable, repeatable, and auditable.
+This document is the end-to-end reference for the `init/` bootstrap kit.
 
-## Conclusions
+---
 
-- **Stage A (Requirements)** produces **human-readable SSOT** under `docs/project/`.
-- **Stage B (Blueprint)** produces **machine-readable SSOT**: `docs/project/project-blueprint.json`.
-- **Stage C (Scaffold + Skills)** is deterministic and scriptable:
-  - scaffolds directories from the blueprint
-  - updates `.ai/skills/_meta/sync-manifest.json` (flat manifest used by `sync-skills.js`)
-  - regenerates provider wrappers via `node .ai/scripts/sync-skills.js`
-- In the **add-on template**, Stage C also supports an opt-in hook:
-  - if `blueprint.context.enabled === true`, it installs the **context-awareness add-on** from `addons/context-awareness/payload/`
-  - then enables the `context-core` pack using `node .ai/scripts/skillsctl.js enable-pack context-core --no-sync`
+## Stage model
 
-The init kit is bootstrap-only. You may remove `init/` after success (guarded by `init/.init-kit`).
+### Stage A – Requirements docs
+- Output location: `docs/project/`
+- Validation command: `check-docs`
+- Approval command: `approve --stage A`
 
-## Stage A
+### Stage B – Project blueprint
+- Output location: `docs/project/project-blueprint.json`
+- Validation command: `validate`
+- Approval command: `approve --stage B`
 
-Required outputs (recommended):
+### Stage C – Apply scaffold + configs + skills
+- Creates scaffold folders/files (idempotent; “write-if-missing” for docs)
+- Generates config files via **SSOT** script: `scripts/scaffold-configs.js`
+- Enables skill packs:
+  - **Add-on / scheme A**: if `.ai/scripts/skillsctl.js` exists, packs are enabled via skillsctl
+  - Fallback (basic repo): additive update of `.ai/skills/_meta/sync-manifest.json` includePrefixes
+- Syncs provider wrappers via `.ai/scripts/sync-skills.js`
+- Approval command: `approve --stage C`
 
-- `docs/project/requirements.md`
-- `docs/project/non-functional-requirements.md`
-- `docs/project/domain-glossary.md`
-- `docs/project/risk-open-questions.md`
+State file: `init/.init-state.json`
 
-Automation:
+---
 
-- `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs --docs-root docs/project --strict`
+## Commands
 
-## Stage B
+All commands are run from repo root:
 
-Required output:
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js <command> [options]
+```
 
-- `docs/project/project-blueprint.json`
+### status
+Show current progress:
 
-Validation:
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js status --repo-root .
+```
 
-- `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js validate --blueprint docs/project/project-blueprint.json`
+### advance
+Print the next checkpoint actions for the current stage (no state writes):
 
-Blueprint notes:
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js advance --repo-root .
+```
 
-- `blueprint.skills.packs` drives which skill families are enabled (by updating `includePrefixes` in the sync manifest).
-- Add-on only: set `blueprint.context.enabled = true` to install the context layer and context-management scripts.
+### approve
+Record explicit approval and advance the stage:
 
-## Stage C
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage A --repo-root . --note "approved by <name>"
+```
 
-Dry-run scaffold preview:
+### apply
+Run Stage C apply:
 
-- `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js scaffold --blueprint docs/project/project-blueprint.json`
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply \
+  --repo-root . \
+  --blueprint docs/project/project-blueprint.json \
+  --providers both \
+  --addons-root addons
+```
 
-Apply scaffold + skills (and sync wrappers):
+---
 
-- `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply --blueprint docs/project/project-blueprint.json --providers codex,claude --require-stage-a`
+## Add-on: context awareness
 
-## Cleanup
+Enable in blueprint using either:
+- `addons.contextAwareness: true`
+- `context.enabled: true`
 
-After initialization succeeds, you may remove the init kit:
+Optional:
+- `context.mode: "contract" | "snapshot"`
+
+Expected payload location:
+- `addons/context-awareness/payload/` (default)
+
+`apply` will install missing payload files (copy-if-missing), then run:
+- `node .ai/scripts/contextctl.js init --repo-root <repo>`
+- `node .ai/scripts/projectctl.js init --repo-root <repo>` (if present)
+- `node .ai/scripts/projectctl.js set-context-mode <mode> --repo-root <repo>` (if present)
+
+See `ADDON_CONTEXT_AWARENESS.md` for the full guide.
+
+---
+
+## DevOps scaffold
+
+If the blueprint indicates CI/DevOps needs, `scaffold` / `apply` will create an `ops/` convention scaffold, aligned with `devops_extension_guide.md` chapters 5–7.
+
+Typical structure:
+- `ops/packaging/{services,jobs,apps,scripts,workdocs}/`
+- `ops/deploy/{http_services,workloads,clients,scripts,workdocs}/`
+
+---
+
+## Cleanup policy
+
+`cleanup-init` is opt-in and guarded. It will refuse to apply without `--i-understand`.
 
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js cleanup-init --repo-root . --apply --i-understand
 ```
 
-This deletion is guarded by `init/.init-kit`.

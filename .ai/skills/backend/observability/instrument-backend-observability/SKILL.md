@@ -42,7 +42,7 @@ Use this skill when you are:
 - **Traffic**
   - request volume per endpoint
 
-## Step-by-step workflow
+## Steps
 1. Ensure a request/correlation ID exists for every request.
 2. Add structured logs at key boundaries:
    - request start/end (method, path, status, duration)
@@ -60,6 +60,24 @@ Use this skill when you are:
 6. Verify by simulating:
    - a known operational error
    - an unknown exception
+
+## Verification
+
+- [ ] All requests have a correlation/request ID in logs
+- [ ] Structured logs include method, path, status, and duration
+- [ ] Exceptions are captured with correlation ID and endpoint context
+- [ ] Sensitive data (tokens, passwords, PII) is not present in logs
+- [ ] Alerts fire for sustained 5xx rates (test with simulated errors)
+- [ ] Latency metrics are recorded per endpoint
+
+## Boundaries
+
+- MUST NOT log secrets, tokens, passwords, or raw PII
+- MUST NOT allow observability code to change business behavior
+- MUST NOT create high-cardinality metric labels (e.g., user IDs as labels)
+- SHOULD NOT log request/response bodies in production (except for debugging)
+- SHOULD NOT rely solely on logs for error tracking (use a dedicated tracker)
+- SHOULD NOT skip correlation ID propagation in async operations
 
 ## Included assets
 - Templates: `./templates/` includes recommended log fields and exception capture patterns.

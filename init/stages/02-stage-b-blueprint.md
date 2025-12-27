@@ -1,53 +1,65 @@
-# Stage B - Blueprint (machine-readable)
+# Stage B: Project blueprint
 
-## Goal
+Stage B produces and validates a **project blueprint** that will drive Stage C scaffolding, config generation, and skill pack selection.
 
-Convert Stage A documents into a JSON blueprint that can drive scaffolding and skill selection.
-
-## Output (file)
-
+Blueprint location:
 - `docs/project/project-blueprint.json`
 
-Start from:
+Reference templates:
 - `init/skills/initialize-project-from-requirements/templates/project-blueprint.example.json`
-
-Schema reference:
 - `init/skills/initialize-project-from-requirements/templates/project-blueprint.schema.json`
 
-## Steps
+---
 
-1. Encode only the decisions needed for scaffolding and skill selection.
-2. Keep implementation detail in Stage A docs (not in the blueprint).
-3. Select `skills.packs` (at minimum include `workflows`).
+## What must be true before leaving Stage B
 
-## Verification
+1. `docs/project/project-blueprint.json` exists
+2. The blueprint passes validation:
+   - schema-level sanity checks
+   - pack selection recommendation report (optional, but strongly recommended)
+3. The user explicitly approves the blueprint (checkpoint)
 
-Blueprint validation:
+---
+
+## Validate blueprint
+
+From repo root:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js validate   --blueprint docs/project/project-blueprint.json
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js validate \
+  --repo-root . \
+  --blueprint docs/project/project-blueprint.json
 ```
 
-Pack reconciliation (recommended):
+Optional: show recommended packs and whether they are installed:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js suggest-packs   --blueprint docs/project/project-blueprint.json   --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js suggest-packs \
+  --repo-root . \
+  --blueprint docs/project/project-blueprint.json
 ```
 
+---
 
+## Add-on flags (optional)
 
-## Add-on: context awareness (addon template only)
+If you want to enable the context-awareness add-on, set either:
+- `addons.contextAwareness: true` **or**
+- `context.enabled: true`
 
-If you want the LLM to have a stable, script-managed view of your project's **API**, **database schema**, and **business processes (BPMN)**:
+Optional:
+- `context.mode: "contract" | "snapshot"` (default: `contract`)
 
-- Add the following block to the blueprint:
+Note: Stage C `apply` will attempt to install the add-on payload from:
+- `addons/context-awareness/payload/` (default; can be overridden via `apply --addons-root`)
 
-```json
-{
-  "context": {
-    "enabled": true
-  }
-}
+---
+
+## User approval checkpoint (advance to Stage C)
+
+After the user explicitly approves the blueprint, record approval and advance:
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage B --repo-root .
 ```
 
-Stage C will install the context-awareness payload and enable the `context-core` pack automatically.

@@ -44,7 +44,7 @@ Use this skill when you are:
 - Prefer explicit inputs and explicit ordering.
 - Do not leak ORM types to upper layers unless the codebase intentionally standardizes on them.
 
-## Step-by-step workflow
+## Steps
 1. Identify the business operation (use case) and expected outcomes.
 2. Define a service method signature (input DTO, output type, errors).
 3. Identify persistence needs:
@@ -59,6 +59,24 @@ Use this skill when you are:
 6. Add unit tests:
    - mock repositories
    - test business rules and error cases
+
+## Verification
+
+- [ ] Service methods are unit-testable with mocked repositories
+- [ ] Service does not depend on HTTP/framework-specific objects (e.g., `req`, `res`)
+- [ ] Repository methods encapsulate persistence details (no ORM leakage to services)
+- [ ] Controllers delegate to services (not directly to repositories)
+- [ ] Domain errors are explicit types, not sentinel values or generic exceptions
+- [ ] Unit tests cover success path and at least one domain error case
+
+## Boundaries
+
+- MUST NOT import HTTP/framework modules in service layer
+- MUST NOT bypass service layer to call repositories from controllers
+- MUST NOT return ORM entities directly from services (map to DTOs if needed)
+- MUST NOT embed business logic in repositories
+- SHOULD NOT create circular dependencies between services
+- SHOULD NOT mix multiple unrelated responsibilities in a single service
 
 ## Included assets
 - Templates: `./templates/` includes DI-friendly service and repository skeletons.

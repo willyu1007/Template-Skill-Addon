@@ -1,342 +1,365 @@
 #!/usr/bin/env node
-
 /**
- * skillsctl.js
+ * skillsctl.js - Skills Pack Management Script
  *
- * Purpose:
- * - Provide a single, script-driven interface for skills pack switching.
- * - Avoid manual editing of `.ai/skills/_meta/sync-manifest.json`.
+ * Manages skill packs and wrapper synchronization.
  *
- * Implementation:
- * - Packs are JSON files under `.ai/skills/_meta/packs/*.json`, each matching the manifest schema.
- * - State is stored in `.ai/skills/_meta/skillsctl-state.json`:
- *   - base (the baseline selection)
- *   - enabledPacks (list of pack ids)
- * - The effective manifest is computed as: base ∪ enabled pack selections.
+ * Commands:
+ *   list-packs         List available skill packs
+ *   enable-pack        Enable a skill pack
+ *   disable-pack       Disable a skill pack
+ *   show-pack          Show pack details
+ *   sync               Sync skill wrappers to providers
+ *   help               Show this help message
  */
 
-const fs = require('fs');
-const path = require('path');
-const childProcess = require('child_process');
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { resolve, dirname, join, basename } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 
-const repoRootDefault = path.resolve(__dirname, '..', '..');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-const manifestRel = path.join('.ai', 'skills', '_meta', 'sync-manifest.json');
-const packsDirRel = path.join('.ai', 'skills', '_meta', 'packs');
-const stateRel = path.join('.ai', 'skills', '_meta', 'skillsctl-state.json');
+// ─────────────────────────────────────────────────────────────────────────────
+// Configuration
+// ─────────────────────────────────────────────────────────────────────────────
 
-const colors = {
-  cyan: (s) => `\x1b[36m${s}\x1b[0m`,
-  green: (s) => `\x1b[32m${s}\x1b[0m`,
-  gray: (s) => `\x1b[90m${s}\x1b[0m`,
-  red: (s) => `\x1b[31m${s}\x1b[0m`,
-  yellow: (s) => `\x1b[33m${s}\x1b[0m`,
-};
+const PACKS_DIR = '.ai/skills/_meta/packs';
+const MANIFEST_FILE = '.ai/skills/_meta/sync-manifest.json';
+const SYNC_SCRIPT = '.ai/scripts/sync-skills.js';
 
-function printHelp() {
-  const cmd = 'node .ai/scripts/skillsctl.js';
-  console.log([
-    'Manage skills pack selection and sync provider wrappers.',
-    '',
-    `Usage: ${cmd} <command> [options]`,
-    '',
-    'Commands:',
-    '  status                       Show base selection + enabled packs + effective manifest',
-    '  list-packs                    List available packs under .ai/skills/_meta/packs/',
-    '  enable-pack <packId>          Enable a pack and re-compute manifest',
-    '  disable-pack <packId>         Disable a pack and re-compute manifest',
-    '  reset-base                    Set base selection to current manifest; clear enabled packs',
-    '  sync                          Run sync-skills.js with the effective manifest',
-    '',
-    'Options:',
-    '  --repo-root <path>            Repo root (default: inferred from script location)',
-    '  --providers <codex|claude|both|csv> Providers for sync (default: both)',
-    '  --no-sync                     Do not run sync-skills.js automatically (enable/disable only)',
-    '  --dry-run                     Print actions without writing',
-    '  -h, --help                    Show help',
-    '',
-    'Notes:',
-    '- The effective manifest is written to `.ai/skills/_meta/sync-manifest.json`.',
-    '- Pack files MUST follow the same schema as the manifest.',
-    '',
-  ].join('\n'));
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Utilities
+// ─────────────────────────────────────────────────────────────────────────────
 
-function parseArgs(argv) {
-  const out = {
-    repoRoot: repoRootDefault,
-    providers: 'both',
-    noSync: false,
-    dryRun: false,
-    help: false,
-    command: null,
-    positional: [],
-  };
-
-  const args = argv.slice(2);
-  if (args[0] === '-h' || args[0] === '--help') {
-    out.help = true;
-    out.command = null;
-    return out;
+function parseArgs(args) {
+  const result = { _: [], flags: {} };
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg.startsWith('--')) {
+      const key = arg.slice(2);
+      const nextArg = args[i + 1];
+      if (nextArg && !nextArg.startsWith('--')) {
+        result.flags[key] = nextArg;
+        i++;
+      } else {
+        result.flags[key] = true;
+      }
+    } else {
+      result._.push(arg);
+    }
   }
+  return result;
+}
 
-  out.command = args[0] || null;
+function resolveRepoRoot(flagValue) {
+  if (flagValue) return resolve(flagValue);
+  // Default: assume script is at .ai/scripts/skillsctl.js
+  return resolve(__dirname, '..', '..');
+}
 
-  for (let i = 1; i < args.length; i += 1) {
-    const a = args[i];
-    if (a === '-h' || a === '--help') {
-      out.help = true;
-      continue;
-    }
-    if (a === '--repo-root') {
-      out.repoRoot = path.resolve(args[i + 1] || '.');
-      i += 1;
-      continue;
-    }
-    if (a === '--providers') {
-      out.providers = String(args[i + 1] || 'both').trim();
-      i += 1;
-      continue;
-    }
-    if (a === '--no-sync') {
-      out.noSync = true;
-      continue;
-    }
-    if (a === '--dry-run') {
-      out.dryRun = true;
-      continue;
-    }
-    out.positional.push(a);
+function ensureDir(dirPath) {
+  if (!existsSync(dirPath)) {
+    mkdirSync(dirPath, { recursive: true });
+    return true;
   }
-
-  return out;
+  return false;
 }
 
-function readJson(p) {
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
+function loadJson(filePath) {
+  if (!existsSync(filePath)) return null;
+  try {
+    return JSON.parse(readFileSync(filePath, 'utf8'));
+  } catch (e) {
+    console.error(`Error reading ${filePath}: ${e.message}`);
+    return null;
+  }
 }
 
-function writeJson(p, obj) {
-  fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, `${JSON.stringify(obj, null, 2)}\n`, 'utf8');
+function saveJson(filePath, data) {
+  ensureDir(dirname(filePath));
+  writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
-function normalizeManifest(m) {
-  const includePrefixes = Array.isArray(m.includePrefixes) ? m.includePrefixes : (Array.isArray(m.prefixes) ? m.prefixes : []);
-  const includeSkills = Array.isArray(m.includeSkills) ? m.includeSkills : (Array.isArray(m.skills) ? m.skills : []);
-  const excludeSkills = Array.isArray(m.excludeSkills) ? m.excludeSkills : (Array.isArray(m.exclude) ? m.exclude : []);
-
-  return {
-    version: 1,
-    includePrefixes: includePrefixes.map((s) => String(s)),
-    includeSkills: includeSkills.map((s) => String(s)),
-    excludeSkills: excludeSkills.map((s) => String(s)),
-  };
-}
-
-function uniq(arr) {
-  return [...new Set(arr)];
-}
-
-function loadOrInitState(statePath, manifestPath, { dryRun }) {
-  if (fs.existsSync(statePath)) {
-    const st = readJson(statePath);
+function loadManifest(repoRoot) {
+  const manifestPath = join(repoRoot, MANIFEST_FILE);
+  const manifest = loadJson(manifestPath);
+  if (!manifest) {
+    // Return default manifest structure
     return {
       version: 1,
-      base: normalizeManifest(st.base || {}),
-      enabledPacks: Array.isArray(st.enabledPacks) ? st.enabledPacks.map((s) => String(s)) : [],
+      includePrefixes: [],
+      excludePrefixes: [],
+      enabledPacks: []
     };
   }
+  // Ensure enabledPacks exists
+  if (!manifest.enabledPacks) {
+    manifest.enabledPacks = [];
+  }
+  return manifest;
+}
 
-  if (!fs.existsSync(manifestPath)) {
-    console.error(colors.red(`Missing manifest: ${manifestRel}`));
-    process.exit(1);
+function saveManifest(repoRoot, manifest) {
+  const manifestPath = join(repoRoot, MANIFEST_FILE);
+  saveJson(manifestPath, manifest);
+}
+
+function getAvailablePacks(repoRoot) {
+  const packsDir = join(repoRoot, PACKS_DIR);
+  if (!existsSync(packsDir)) return [];
+
+  const files = readdirSync(packsDir).filter(f => f.endsWith('.json'));
+  return files.map(f => {
+    const packId = basename(f, '.json');
+    const packPath = join(packsDir, f);
+    const pack = loadJson(packPath);
+    return { id: packId, path: packPath, data: pack };
+  }).filter(p => p.data !== null);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+function cmdListPacks(repoRoot) {
+  const packs = getAvailablePacks(repoRoot);
+  const manifest = loadManifest(repoRoot);
+  const enabledSet = new Set(manifest.enabledPacks || []);
+
+  if (packs.length === 0) {
+    console.log('No skill packs found.');
+    console.log(`\nPacks directory: ${PACKS_DIR}/`);
+    return 0;
   }
 
-  const base = normalizeManifest(readJson(manifestPath));
-  const st = { version: 1, base, enabledPacks: [] };
-
-  if (!dryRun) writeJson(statePath, st);
-  return st;
-}
-
-function listPacks(packsDir) {
-  if (!fs.existsSync(packsDir)) return [];
-  const entries = fs.readdirSync(packsDir, { withFileTypes: true });
-  return entries
-    .filter((e) => e.isFile() && e.name.endsWith('.json'))
-    .map((e) => e.name.replace(/\.json$/, ''))
-    .sort((a, b) => a.localeCompare(b));
-}
-
-function loadPack(packsDir, packId) {
-  const packPath = path.join(packsDir, `${packId}.json`);
-  if (!fs.existsSync(packPath)) {
-    console.error(colors.red(`Unknown pack: ${packId}`));
-    console.error(colors.gray(`Expected: ${toPosix(path.relative(repoRootDefault, packPath))}`));
-    process.exit(1);
+  console.log('Available skill packs:\n');
+  for (const pack of packs) {
+    const enabled = enabledSet.has(pack.id) ? '[enabled]' : '';
+    console.log(`  ${pack.id} ${enabled}`);
+    if (pack.data.description) {
+      console.log(`    ${pack.data.description}`);
+    }
+    if (pack.data.includePrefixes?.length) {
+      console.log(`    prefixes: ${pack.data.includePrefixes.join(', ')}`);
+    }
+    console.log();
   }
-  const raw = readJson(packPath);
-  const m = normalizeManifest(raw);
-  return { id: packId, manifest: m, packPath };
+  return 0;
 }
 
-function toPosix(p) {
-  return p.replace(/\\/g, '/');
-}
-
-function computeEffective(base, packs) {
-  const includePrefixes = [];
-  const includeSkills = [];
-  const excludeSkills = [];
-
-  includePrefixes.push(...base.includePrefixes);
-  includeSkills.push(...base.includeSkills);
-  excludeSkills.push(...base.excludeSkills);
-
-  for (const p of packs) {
-    includePrefixes.push(...p.manifest.includePrefixes);
-    includeSkills.push(...p.manifest.includeSkills);
-    excludeSkills.push(...p.manifest.excludeSkills);
+function cmdEnablePack(repoRoot, packId, flags) {
+  if (!packId) {
+    console.error('Error: pack id is required.');
+    console.error('Usage: skillsctl enable-pack <packId> [--no-sync] [--providers <both|codex|claude>]');
+    return 1;
   }
 
-  // Exclude wins by removal (sync-skills.js applies exclude after selecting).
-  return {
-    version: 1,
-    includePrefixes: uniq(includePrefixes),
-    includeSkills: uniq(includeSkills),
-    excludeSkills: uniq(excludeSkills),
-  };
+  const packsDir = join(repoRoot, PACKS_DIR);
+  const packPath = join(packsDir, `${packId}.json`);
+
+  if (!existsSync(packPath)) {
+    console.error(`Error: Pack "${packId}" not found at ${packPath}`);
+    console.error('Run `skillsctl list-packs` to see available packs.');
+    return 1;
+  }
+
+  const pack = loadJson(packPath);
+  if (!pack) {
+    console.error(`Error: Could not read pack file: ${packPath}`);
+    return 1;
+  }
+
+  const manifest = loadManifest(repoRoot);
+
+  // Add to enabledPacks if not already
+  if (!manifest.enabledPacks.includes(packId)) {
+    manifest.enabledPacks.push(packId);
+  }
+
+  // Merge includePrefixes from pack
+  if (pack.includePrefixes) {
+    for (const prefix of pack.includePrefixes) {
+      if (!manifest.includePrefixes.includes(prefix)) {
+        manifest.includePrefixes.push(prefix);
+      }
+    }
+  }
+
+  saveManifest(repoRoot, manifest);
+  console.log(`Enabled pack: ${packId}`);
+
+  // Sync unless --no-sync
+  if (!flags['no-sync']) {
+    const providers = flags.providers || 'both';
+    console.log(`\nSyncing wrappers (providers: ${providers})...`);
+    return cmdSync(repoRoot, { providers });
+  }
+
+  return 0;
 }
 
-function writeEffectiveManifest(manifestPath, effective, { dryRun }) {
-  if (!dryRun) writeJson(manifestPath, effective);
+function cmdDisablePack(repoRoot, packId, flags) {
+  if (!packId) {
+    console.error('Error: pack id is required.');
+    console.error('Usage: skillsctl disable-pack <packId> [--no-sync]');
+    return 1;
+  }
+
+  const manifest = loadManifest(repoRoot);
+
+  const idx = manifest.enabledPacks.indexOf(packId);
+  if (idx === -1) {
+    console.log(`Pack "${packId}" is not enabled.`);
+    return 0;
+  }
+
+  // Load pack to get its prefixes
+  const packPath = join(repoRoot, PACKS_DIR, `${packId}.json`);
+  const pack = loadJson(packPath);
+
+  manifest.enabledPacks.splice(idx, 1);
+
+  // Optionally remove prefixes (only if no other pack uses them)
+  if (pack?.includePrefixes) {
+    // Collect all prefixes from remaining enabled packs
+    const otherPrefixes = new Set();
+    for (const otherId of manifest.enabledPacks) {
+      const otherPack = loadJson(join(repoRoot, PACKS_DIR, `${otherId}.json`));
+      if (otherPack?.includePrefixes) {
+        otherPack.includePrefixes.forEach(p => otherPrefixes.add(p));
+      }
+    }
+    // Remove only prefixes unique to disabled pack
+    manifest.includePrefixes = manifest.includePrefixes.filter(p => {
+      if (pack.includePrefixes.includes(p) && !otherPrefixes.has(p)) {
+        return false; // Remove
+      }
+      return true;
+    });
+  }
+
+  saveManifest(repoRoot, manifest);
+  console.log(`Disabled pack: ${packId}`);
+
+  // Sync unless --no-sync
+  if (!flags['no-sync']) {
+    const providers = flags.providers || 'both';
+    console.log(`\nSyncing wrappers (providers: ${providers})...`);
+    return cmdSync(repoRoot, { providers });
+  }
+
+  return 0;
 }
 
-function syncWrappers(repoRoot, { providers, dryRun }) {
-  const cmd = 'node';
-  const args = [
-    path.join('.ai', 'scripts', 'sync-skills.js'),
-    '--scope',
-    'current',
-    '--providers',
-    providers,
-  ];
+function cmdShowPack(repoRoot, packId) {
+  if (!packId) {
+    console.error('Error: pack id is required.');
+    return 1;
+  }
 
-  console.log(colors.cyan(`Sync: ${cmd} ${args.join(' ')}`));
-  if (!dryRun) {
-    childProcess.execFileSync(cmd, args, { cwd: repoRoot, stdio: 'inherit' });
+  const packPath = join(repoRoot, PACKS_DIR, `${packId}.json`);
+  const pack = loadJson(packPath);
+
+  if (!pack) {
+    console.error(`Error: Pack "${packId}" not found.`);
+    return 1;
+  }
+
+  console.log(`Pack: ${packId}\n`);
+  console.log(JSON.stringify(pack, null, 2));
+  return 0;
+}
+
+function cmdSync(repoRoot, flags) {
+  const syncScript = join(repoRoot, SYNC_SCRIPT);
+
+  if (!existsSync(syncScript)) {
+    console.error(`Error: Sync script not found: ${SYNC_SCRIPT}`);
+    console.error('The base template sync-skills.js is required for wrapper synchronization.');
+    return 1;
+  }
+
+  const providers = flags.providers || 'both';
+  const scope = flags.scope || 'current';
+
+  const cmd = `node "${syncScript}" --scope ${scope} --providers ${providers}`;
+  console.log(`Running: ${cmd}\n`);
+
+  try {
+    execSync(cmd, { cwd: repoRoot, stdio: 'inherit' });
+    return 0;
+  } catch (e) {
+    console.error('Sync failed.');
+    return 1;
   }
 }
 
-function status(repoRoot, statePath, manifestPath, packsDir) {
-  const st = loadOrInitState(statePath, manifestPath, { dryRun: false });
-  const packIds = st.enabledPacks;
-  const packs = packIds.map((id) => loadPack(packsDir, id));
-  const effective = computeEffective(st.base, packs);
+function cmdHelp() {
+  console.log(`
+skillsctl.js - Skills Pack Management
 
-  console.log(colors.cyan('========================================'));
-  console.log(colors.cyan('  Skills pack status'));
-  console.log(colors.cyan('========================================'));
-  console.log(`Manifest: ${manifestRel}`);
-  console.log(`State:    ${stateRel}`);
-  console.log('');
-  console.log('Enabled packs:');
-  if (packIds.length === 0) console.log(colors.gray('  (none)'));
-  for (const id of packIds) console.log(`- ${id}`);
-  console.log('');
-  console.log('Effective selection (includePrefixes):');
-  for (const p of effective.includePrefixes) console.log(`- ${p}`);
-  console.log('');
-  console.log('Effective selection (includeSkills):');
-  if (effective.includeSkills.length === 0) console.log(colors.gray('  (none)'));
-  for (const s of effective.includeSkills) console.log(`- ${s}`);
-  console.log('');
-  console.log('Effective selection (excludeSkills):');
-  if (effective.excludeSkills.length === 0) console.log(colors.gray('  (none)'));
-  for (const s of effective.excludeSkills) console.log(`- ${s}`);
+Usage: node .ai/scripts/skillsctl.js <command> [options]
+
+Commands:
+  list-packs           List available skill packs
+  enable-pack <id>     Enable a skill pack
+    --no-sync          Don't sync wrappers after enabling
+    --providers <p>    Provider target: both (default), codex, claude
+  disable-pack <id>    Disable a skill pack
+    --no-sync          Don't sync wrappers after disabling
+  show-pack <id>       Show pack details
+  sync                 Sync skill wrappers to providers
+    --providers <p>    Provider target: both (default), codex, claude
+    --scope <s>        Sync scope: current (default), all
+  help                 Show this help message
+
+Global Options:
+  --repo-root <path>   Repository root (default: auto-detect)
+
+Pack Files:
+  Packs are defined as JSON files in ${PACKS_DIR}/.
+  Each pack specifies skill prefixes to include when enabled.
+
+Examples:
+  node .ai/scripts/skillsctl.js list-packs
+  node .ai/scripts/skillsctl.js enable-pack context-core --providers both
+  node .ai/scripts/skillsctl.js disable-pack context-core --no-sync
+  node .ai/scripts/skillsctl.js sync --providers codex
+`);
+  return 0;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main
+// ─────────────────────────────────────────────────────────────────────────────
 
 function main() {
-  const args = parseArgs(process.argv);
-  if (args.help || !args.command) {
-    printHelp();
-    process.exit(0);
+  const args = process.argv.slice(2);
+  const parsed = parseArgs(args);
+  const command = parsed._[0] || 'help';
+  const repoRoot = resolveRepoRoot(parsed.flags['repo-root']);
+
+  switch (command) {
+    case 'list-packs':
+      return cmdListPacks(repoRoot);
+    case 'enable-pack':
+      return cmdEnablePack(repoRoot, parsed._[1], parsed.flags);
+    case 'disable-pack':
+      return cmdDisablePack(repoRoot, parsed._[1], parsed.flags);
+    case 'show-pack':
+      return cmdShowPack(repoRoot, parsed._[1]);
+    case 'sync':
+      return cmdSync(repoRoot, parsed.flags);
+    case 'help':
+    case '--help':
+    case '-h':
+      return cmdHelp();
+    default:
+      console.error(`Unknown command: ${command}`);
+      return cmdHelp() || 1;
   }
-
-  const repoRoot = args.repoRoot;
-  const manifestPath = path.join(repoRoot, manifestRel);
-  const packsDir = path.join(repoRoot, packsDirRel);
-  const statePath = path.join(repoRoot, stateRel);
-
-  if (args.command === 'list-packs') {
-    const packs = listPacks(packsDir);
-    if (packs.length === 0) {
-      console.log(colors.gray('No packs found.'));
-      process.exit(0);
-    }
-    for (const p of packs) console.log(p);
-    process.exit(0);
-  }
-
-  if (args.command === 'status') {
-    status(repoRoot, statePath, manifestPath, packsDir);
-    process.exit(0);
-  }
-
-  if (args.command === 'reset-base') {
-    if (!fs.existsSync(manifestPath)) {
-      console.error(colors.red(`Missing manifest: ${manifestRel}`));
-      process.exit(1);
-    }
-    const base = normalizeManifest(readJson(manifestPath));
-    const st = { version: 1, base, enabledPacks: [] };
-    if (!args.dryRun) writeJson(statePath, st);
-    console.log(colors.green('Reset base selection and cleared enabled packs.'));
-    process.exit(0);
-  }
-
-  if (args.command === 'enable-pack' || args.command === 'disable-pack') {
-    const packId = args.positional[0];
-    if (!packId) {
-      console.error(colors.red(`${args.command} requires <packId>`));
-      process.exit(1);
-    }
-
-    const st = loadOrInitState(statePath, manifestPath, { dryRun: args.dryRun });
-    const enabled = new Set(st.enabledPacks);
-
-    if (args.command === 'enable-pack') enabled.add(packId);
-    if (args.command === 'disable-pack') enabled.delete(packId);
-
-    const enabledPacks = [...enabled].sort((a, b) => a.localeCompare(b));
-
-    // Load all packs to ensure they exist and are valid.
-    const packs = enabledPacks.map((id) => loadPack(packsDir, id));
-    const effective = computeEffective(st.base, packs);
-
-    const nextState = { version: 1, base: st.base, enabledPacks };
-    if (!args.dryRun) {
-      writeJson(statePath, nextState);
-      writeEffectiveManifest(manifestPath, effective, { dryRun: false });
-    }
-
-    console.log(colors.green(`Updated enabled packs: ${enabledPacks.join(', ') || '(none)'}`));
-
-    if (!args.noSync) {
-      syncWrappers(repoRoot, { providers: args.providers, dryRun: args.dryRun });
-    }
-    process.exit(0);
-  }
-
-  if (args.command === 'sync') {
-    syncWrappers(repoRoot, { providers: args.providers, dryRun: args.dryRun });
-    process.exit(0);
-  }
-
-  console.error(colors.red(`Unknown command: ${args.command}`));
-  console.error(colors.gray('Use --help for usage.'));
-  process.exit(1);
 }
 
-main();
+process.exit(main());

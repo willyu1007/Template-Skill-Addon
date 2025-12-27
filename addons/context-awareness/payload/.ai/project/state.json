@@ -1,14 +1,11 @@
 {
   "version": 1,
-  "stage": "prototype",
+  "createdAt": "2025-12-25T14:14:14Z",
+  "updatedAt": "2025-12-25T14:14:14Z",
   "context": {
-    "enabled": true,
     "mode": "contract",
-    "notes": "contract = docs/context artifacts are authoritative; snapshot = artifacts are generated from code/tools."
+    "enabled": true
   },
-  "runtime": {
-    "database": {
-      "dsnEnv": "DATABASE_URL"
-    }
-  }
+  "features": {},
+  "custom": {}
 }

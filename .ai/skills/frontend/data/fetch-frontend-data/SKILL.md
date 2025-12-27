@@ -34,7 +34,7 @@ Use this skill when you are:
 - Mutations MUST define how cache is updated (invalidate, update cache, optimistic).
 - Error states MUST be explicit and user-safe.
 
-## Recommended workflow
+## Steps
 1. Define a typed API client function (one responsibility per function).
 2. Define query keys and a query hook.
 3. Define mutation hooks with:
@@ -45,6 +45,24 @@ Use this skill when you are:
    - one successful fetch
    - one failure response
    - one mutation followed by refreshed UI state
+
+## Verification
+
+- [ ] Query keys are stable and follow project conventions
+- [ ] Successful fetch renders expected data
+- [ ] Failed fetch renders error UI with user-safe message
+- [ ] Mutation invalidates or updates cache correctly
+- [ ] Loading state is visible during fetch
+- [ ] Optimistic update reverts on failure (if implemented)
+
+## Boundaries
+
+- MUST NOT duplicate server state in local state
+- MUST NOT use inconsistent query key patterns
+- MUST NOT skip error handling for mutations
+- MUST NOT expose raw API errors to users
+- SHOULD NOT refetch on every render (use appropriate stale time)
+- SHOULD NOT implement optimistic updates without rollback logic
 
 ## Included assets
 - Templates: `./templates/` includes query key patterns and hook scaffolds.

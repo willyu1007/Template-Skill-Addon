@@ -46,7 +46,7 @@ Use this skill when you are:
    - optional
    - use sparingly for critical flows
 
-## Step-by-step workflow
+## Steps
 1. Identify critical behaviors and failure modes.
 2. Write service unit tests first:
    - success path
@@ -56,6 +56,24 @@ Use this skill when you are:
    - database side effects (if any)
 4. Add fixtures/builders to reduce boilerplate.
 5. Verify tests run reliably in CI.
+
+## Verification
+
+- [ ] Unit tests pass with mocked dependencies (no real DB/network)
+- [ ] Integration tests pass against an isolated test database
+- [ ] Tests are deterministic (no flaky failures)
+- [ ] Tests run successfully in CI environment
+- [ ] Business rules have corresponding unit tests
+- [ ] At least one happy-path integration test exists for each endpoint
+
+## Boundaries
+
+- MUST NOT use real credentials in tests
+- MUST NOT depend on shared external state (tests must be isolated)
+- MUST NOT skip test cleanup (reset DB state between tests)
+- MUST NOT test implementation details (test behavior, not internals)
+- SHOULD NOT mock everything (integration tests need real wiring)
+- SHOULD NOT write end-to-end tests for every scenario (use sparingly)
 
 ## Included assets
 - Templates: `./templates/` includes unit and integration test scaffolds.

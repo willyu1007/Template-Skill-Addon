@@ -1,4 +1,4 @@
-# Stage A - Requirements (DoD-driven)
+# Stage A: Requirements (DoD-driven)
 
 ## Goal
 
@@ -14,36 +14,30 @@ Produce a verifiable set of requirement documents under `docs/project/`.
 Templates:
 - `init/skills/initialize-project-from-requirements/templates/`
 
-Interview guide:
-- `init/skills/initialize-project-from-requirements/templates/conversation-prompts.md`
-
-## Steps
-
-1. Run a structured interview (start with MUST-ask questions, then branch modules).
-2. Draft the four documents from templates.
-3. Iterate with the user until the Definition of Done is met.
-
-## Definition of Done (DoD)
-
-- `requirements.md` includes explicit:
-  - Goals (MUST)
-  - Non-goals (OUT)
-  - Core user journeys with acceptance criteria
-- `non-functional-requirements.md` includes measurable targets or explicit TBD items.
-- `domain-glossary.md` defines all domain terms used in requirements.
-- `risk-open-questions.md` consolidates all unresolved decisions (owner + options + decision due).
-
 ## Verification
 
-Run:
+From repo root:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs --docs-root docs/project
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs \
+  --repo-root . \
+  --docs-root docs/project
 ```
 
-Strict gate (optional):
+Strict gate (treat warnings as errors):
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs --docs-root docs/project --strict
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs \
+  --repo-root . \
+  --docs-root docs/project \
+  --strict
+```
+
+## User approval checkpoint (advance to Stage B)
+
+After the user explicitly approves the Stage A documents:
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage A --repo-root .
 ```
 

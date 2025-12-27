@@ -1,6 +1,6 @@
 # AI Assistant Instructions
 
-This is an **AI-Friendly Repository Template** - a starter kit for creating LLM-optimized codebases.
+This is an **AI-Friendly Repository Template** - a starter kit for creating LLM-optimized codebases with optional add-ons.
 
 ## First Time?
 
@@ -15,11 +15,28 @@ Template repository. Users clone this to start new AI-friendly projects.
 | Directory | Purpose |
 |-----------|---------|
 | `init/` | **Start here** - Initialization instructions and output |
+| `addons/` | Optional add-on payloads (installed on-demand) |
 | `.ai/skills/` | Single Source of Truth for skills (including workflows) |
-| `.ai/scripts/` | Sync scripts (Node.js) |
+| `.ai/scripts/` | Sync scripts and control scripts (Node.js) |
 | `.codex/` | Codex skill entry stubs |
 | `.claude/` | Claude skill entry stubs |
 | `dev/` | Working documentation for complex tasks |
+
+## Available Add-ons
+
+| Add-on | Purpose | Control Script |
+|--------|---------|----------------|
+| `context-awareness` | API/DB/BPMN contracts for LLM context | `contextctl.js` |
+| `db-mirror` | Database schema mirroring | `dbctl.js` |
+| `ci-templates` | CI/CD configuration templates | `cictl.js` |
+| `packaging` | Container/artifact packaging | `packctl.js` |
+| `deployment` | Multi-environment deployment | `deployctl.js` |
+| `release` | Version and changelog management | `releasectl.js` |
+| `observability` | Metrics/logs/traces contracts | `obsctl.js` |
+
+Add-ons are enabled via `project-blueprint.json` and installed during initialization.
+
+See `init/ADDONS_DIRECTORY.md` for conventions.
 
 ## Common Tasks
 
@@ -34,6 +51,12 @@ Template repository. Users clone this to start new AI-friendly projects.
 1. Create `.ai/skills/[workflow-name]/SKILL.md`
 2. Include YAML frontmatter with `name` and `description`
 3. Run `node .ai/scripts/sync-skills.js`
+
+### Initialize a New Project
+
+1. Edit `docs/project/project-blueprint.json`
+2. Enable desired add-ons in `addons` section
+3. Run `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply --blueprint docs/project/project-blueprint.json`
 
 ## Available Workflows
 
@@ -57,3 +80,4 @@ Workflow skills live under `.ai/skills/`
 - Use supporting files (`reference.md`, `examples.md`, `scripts/`, `templates/`) for detailed reference content
 - Do not create a `resources/` subdirectory inside skills
 - Follow progressive disclosure pattern
+- For add-ons: edit `addons/*/ADDON.md` (source), use control scripts for runtime management

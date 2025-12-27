@@ -32,7 +32,7 @@ Use this skill when you are:
 - Unknown errors MUST be logged/tracked and mapped to `5xx`.
 - Code SHOULD prefer `async/await` over nested promise chains for readability.
 
-## Step-by-step workflow
+## Steps
 1. Identify where errors must be caught:
    - controller boundary
    - middleware boundary
@@ -43,6 +43,24 @@ Use this skill when you are:
 5. Add one test for:
    - an operational error mapping
    - an unknown error mapping
+
+## Verification
+
+- [ ] Async errors in controllers are propagated to the framework error boundary
+- [ ] Operational errors map to correct HTTP status codes (4xx)
+- [ ] Unknown errors map to 500 and are logged/tracked with context
+- [ ] No unhandled promise rejections in application logs
+- [ ] Error middleware is last in the middleware chain
+- [ ] `Promise.all` failures are handled and do not leave dangling promises
+
+## Boundaries
+
+- MUST NOT swallow errors silently (always log or propagate)
+- MUST NOT return 500 for known operational errors (use explicit status codes)
+- MUST NOT expose internal error details to clients in production
+- MUST NOT mix `.then()` chains and `async/await` in the same function
+- SHOULD NOT catch errors without re-throwing or logging
+- SHOULD NOT use generic `catch` blocks without error type checking
 
 ## Included assets
 - Templates: `./templates/` includes error types and async handler wrappers.

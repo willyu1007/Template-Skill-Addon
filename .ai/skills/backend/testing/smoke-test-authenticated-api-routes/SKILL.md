@@ -1,6 +1,6 @@
 ---
 name: smoke-test-authenticated-api-routes
-description: Smoke test authenticated API routes by constructing valid requests, validating responses, and verifying persistence side effects.
+description: Create a minimal smoke-test plan for authenticated API routes (happy path, one negative case, and persistence checks).
 ---
 
 # Smoke Test Authenticated API Routes
@@ -14,6 +14,11 @@ Use this skill when you are:
 - Verifying endpoint behavior after refactors
 - Debugging auth-related failures (`401`, `403`)
 - Confirming that POST/PUT/PATCH/DELETE endpoints create or update the right records
+
+
+Avoid using this skill when:
+- You need a full end-to-end test execution record across many endpoints, or you need to produce evidence for a release gate.
+- You primarily need a code/implementation review rather than a smoke test plan and quick validation run.
 
 ## Inputs
 - Endpoint(s): method + URL path
@@ -40,7 +45,7 @@ Use this skill when you are:
 - Any “mock auth” bypass MUST be limited to non-production environments.
 - Persisted side effects MUST be verified for write endpoints.
 
-## Step-by-step workflow
+## Steps
 1. **Locate the endpoint contract**
    - method + path
    - request fields (required/optional)
@@ -68,12 +73,23 @@ Use this skill when you are:
    - `404` not found: wrong URL/prefix/route registration
    - `5xx` server error: unhandled exception or downstream dependency
 
-## Verification checklist
-- [ ] Status codes match the contract.
-- [ ] Success response contains required fields.
-- [ ] Validation errors return stable error codes and details.
-- [ ] Persistence side effects match expectations.
-- [ ] No secrets or tokens were logged or committed to docs.
+## Verification
+
+- [ ] Status codes match the contract
+- [ ] Success response contains required fields
+- [ ] Validation errors return stable error codes and details
+- [ ] Persistence side effects match expectations
+- [ ] No secrets or tokens were logged or committed to docs
+- [ ] At least one valid and one invalid request were tested
+
+## Boundaries
+
+- MUST NOT use real production credentials in tests
+- MUST NOT enable mock auth bypasses in production environments
+- MUST NOT skip persistence verification for write endpoints
+- MUST NOT log or commit secrets/tokens to documentation
+- SHOULD NOT test only happy paths (include at least one negative case)
+- SHOULD NOT assume auth context without verifying it is attached
 
 ## Included assets
 - Templates: `./templates/` includes a route test matrix and a JSON test spec schema.

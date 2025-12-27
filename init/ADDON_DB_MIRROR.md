@@ -1,0 +1,60 @@
+# Database Mirror Add-on
+
+## Conclusions (read first)
+
+- Provides database schema mirroring without direct DB access
+- AI uses mirrors to understand schema, propose changes, plan migrations
+- Humans execute migrations and manage credentials
+
+## How to enable
+
+In `project-blueprint.json`:
+
+```json
+{
+  "addons": {
+    "dbMirror": true
+  },
+  "db": {
+    "enabled": true,
+    "kind": "postgres",
+    "environments": ["dev", "staging", "prod"]
+  }
+}
+```
+
+Then run:
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply --blueprint docs/project/project-blueprint.json
+```
+
+## What gets installed
+
+- `db/` - Database mirror root
+  - `db/schema/tables.json` - Table definitions
+  - `db/migrations/` - Migration files
+  - `db/config/db-environments.json` - Environment config
+- `.ai/scripts/dbctl.js` - Schema management
+- `.ai/scripts/migrate.js` - Migration management
+
+## Commands
+
+```bash
+# Add a table
+node .ai/scripts/dbctl.js add-table --name users --columns "id:uuid:pk,email:string:unique"
+
+# Generate migration
+node .ai/scripts/dbctl.js generate-migration --name add-user-roles
+
+# List migrations
+node .ai/scripts/migrate.js list
+
+# Verify
+node .ai/scripts/dbctl.js verify
+```
+
+## See also
+
+- `addons/db-mirror/ADDON.md` - Full documentation
+

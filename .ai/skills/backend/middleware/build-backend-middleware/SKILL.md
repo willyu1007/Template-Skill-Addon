@@ -58,7 +58,7 @@ A common order for HTTP services:
 - Middleware that adds context SHOULD attach it to a typed request context (or `res.locals` pattern).
 - Error middleware MUST be last in the chain.
 
-## Step-by-step workflow
+## Steps
 1. Define the middleware contract:
    - inputs it reads
    - outputs/side effects it writes
@@ -72,6 +72,24 @@ A common order for HTTP services:
    - one failure case
 5. Verify in a running service:
    - confirm ordering is correct (logs/context present)
+
+## Verification
+
+- [ ] Middleware executes in the documented order
+- [ ] Middleware correctly calls `next()` or terminates the response
+- [ ] Auth middleware rejects unauthenticated requests with 401
+- [ ] Error middleware catches and formats all upstream errors
+- [ ] Request/correlation ID is present in logs for traced requests
+- [ ] One success and one failure test exist for each middleware
+
+## Boundaries
+
+- MUST NOT embed business logic in middleware (delegate to services)
+- MUST NOT modify request/response outside documented responsibilities
+- MUST NOT skip error middleware registration (must be last)
+- MUST NOT assume middleware order without explicit documentation
+- SHOULD NOT create middleware with multiple unrelated responsibilities
+- SHOULD NOT block the event loop with synchronous operations in middleware
 
 ## Included assets
 - Templates: `./templates/` contains middleware scaffolds and async error wrappers.

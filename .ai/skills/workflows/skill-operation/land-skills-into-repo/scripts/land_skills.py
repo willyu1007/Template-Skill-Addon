@@ -2,15 +2,18 @@
 """
 land_skills.py
 
-A stdlib-only installer/sync tool for Agent Skills bundles.
+A stdlib-only installer tool for Agent Skills bundles.
 
 Design goals:
 - Safe by default (dry-run unless --apply is provided)
 - Auditable (prints a deterministic plan; optional JSON report)
-- Provider-agnostic (SSOT is configurable; provider roots are optional)
+- Provider-agnostic (SSOT is configurable)
 - Portable (no third-party dependencies)
 
 This script intentionally avoids non-stdlib Python packages.
+
+Note: Provider stubs (for .codex/skills, .claude/skills, etc.) should be
+generated using `node .ai/scripts/sync-skills.js`, not this script.
 """
 
 from __future__ import annotations
@@ -36,12 +39,6 @@ DEFAULT_IGNORE = [
     "**/__pycache__/**",
     "**/*.pyc",
 ]
-
-DEFAULT_PROVIDER_ROOTS = {
-    # Examples; override via --config or --provider-root.
-    "codex": ".codex/skills",
-    "claude": ".claude/skills",
-}
 
 EXIT_CONFLICT = 2
 EXIT_INVALID = 3
@@ -405,125 +402,6 @@ def install_from_source(
     return actions
 
 
-def sync_providers(
-    repo_root: Path,
-    ssot_root: Path,
-    providers: Dict[str, Dict[str, object]],
-    ignore_patterns: List[str],
-    apply: bool,
-    overwrite: str,
-    backup: bool,
-    backup_root: Optional[Path],
-    prune: bool,
-) -> List[Action]:
-    actions: List[Action] = []
-
-    skills, errors = collect_skills(ssot_root, ignore_patterns)
-    if errors:
-        for e in errors:
-            actions.append(Action(kind="conflict", reason=f"SSOT validation error: {e}"))
-        return actions
-
-    for pname, pconf in providers.items():
-        enabled = bool(pconf.get("enabled", True))
-        if not enabled:
-            actions.append(Action(kind="note", reason=f"Provider '{pname}' disabled; skipping"))
-            continue
-
-        ppath_raw = str(pconf.get("path") or "").strip()
-        if not ppath_raw:
-            actions.append(Action(kind="conflict", reason=f"Provider '{pname}' missing path"))
-            continue
-
-        flatten = bool(pconf.get("flatten", True))
-        provider_root = Path(ppath_raw)
-        if not provider_root.is_absolute():
-            provider_root = repo_root / provider_root
-
-        ensure_dir(provider_root, actions, apply)
-
-        expected_dirs = set()
-
-        for s in skills:
-            if flatten:
-                dst_skill_dir = provider_root / s.name
-                expected_dirs.add(dst_skill_dir.resolve())
-                actions.extend(
-                    plan_tree_copy(
-                        repo_root=repo_root,
-                        src_root=s.skill_dir,
-                        dst_root=dst_skill_dir,
-                        ignore_patterns=ignore_patterns,
-                        apply=apply,
-                        overwrite=overwrite,
-                        backup=backup,
-                        backup_root=backup_root,
-                        prune=False,
-                    )
-                )
-            else:
-                rel = s.skill_dir.relative_to(ssot_root)
-                dst_skill_dir = provider_root / rel
-                expected_dirs.add(dst_skill_dir.resolve())
-                actions.extend(
-                    plan_tree_copy(
-                        repo_root=repo_root,
-                        src_root=s.skill_dir,
-                        dst_root=dst_skill_dir,
-                        ignore_patterns=ignore_patterns,
-                        apply=apply,
-                        overwrite=overwrite,
-                        backup=backup,
-                        backup_root=backup_root,
-                        prune=False,
-                    )
-                )
-
-        if prune and provider_root.exists() and flatten:
-            for child in provider_root.iterdir():
-                if child.is_dir() and child.resolve() not in expected_dirs:
-                    actions.append(Action(kind="delete", dst=str(child), reason=f"Prune provider '{pname}': not in SSOT"))
-                    if apply:
-                        shutil.rmtree(child, ignore_errors=True)
-
-    return actions
-
-
-def build_providers_from_args(
-    config: Dict[str, object],
-    sync_names: Optional[str],
-    provider_roots_kv: List[str],
-) -> Dict[str, Dict[str, object]]:
-    providers: Dict[str, Dict[str, object]] = {}
-
-    conf_providers = config.get("provider_roots")
-    if isinstance(conf_providers, dict):
-        for k, v in conf_providers.items():
-            if isinstance(v, dict):
-                providers[str(k)] = dict(v)
-
-    # Only include defaults when sync was explicitly requested.
-    if sync_names:
-        for k, path in DEFAULT_PROVIDER_ROOTS.items():
-            providers.setdefault(k, {"path": path, "enabled": True, "flatten": True})
-
-    for item in provider_roots_kv:
-        if "=" not in item:
-            raise ValueError("--provider-root must be in NAME=PATH form")
-        name, path = item.split("=", 1)
-        name = name.strip()
-        path = path.strip()
-        if not name or not path:
-            raise ValueError("--provider-root must be in NAME=PATH form")
-        providers[name] = {"path": path, "enabled": True, "flatten": True}
-
-    if sync_names:
-        wanted = [x.strip() for x in sync_names.split(",") if x.strip()]
-        providers = {k: v for (k, v) in providers.items() if k in wanted}
-
-    return providers
-
-
 def load_config(path: Optional[str]) -> Dict[str, object]:
     if not path:
         return {}
@@ -549,7 +427,7 @@ def normalize_root(repo_root: Path, p: Path) -> Path:
 
 def main(argv: List[str]) -> int:
     ap = argparse.ArgumentParser(
-        description="Install/update Agent Skills bundles into a repository (SSOT) and optionally sync to provider roots."
+        description="Install/update Agent Skills bundles into a repository SSOT."
     )
     ap.add_argument("--repo-root", default=".", help="Target repository root (default: current directory).")
     ap.add_argument("--source", help="Path to skills bundle (dir or .zip). Required for install/update.")
@@ -560,11 +438,8 @@ def main(argv: List[str]) -> int:
     ap.add_argument("--overwrite", choices=["never", "changed", "always"], default=None, help="Overwrite mode.")
     ap.add_argument("--backup", action="store_true", help="Backup overwritten files.")
     ap.add_argument("--backup-dir", default=None, help="Backup base dir (default: config or .ai/.backups/skills-landing).")
-    ap.add_argument("--prune", action="store_true", help="Prune within installed skills; prune provider skills not in SSOT (OFF by default).")
-    ap.add_argument("--sync", default=None, help="Comma-separated provider names to sync from SSOT (e.g., codex,claude).")
-    ap.add_argument("--provider-root", action="append", default=[], help="Add/override provider root mapping NAME=PATH. Repeatable.")
+    ap.add_argument("--prune", action="store_true", help="Prune within installed skills (OFF by default).")
     ap.add_argument("--verify", action="store_true", help="Verify SSOT skill structure after operations.")
-    ap.add_argument("--verify-provider", default=None, help="Comma-separated provider names to verify (e.g., codex,claude).")
     ap.add_argument("--json-report", default=None, help="Write JSON report to this path; use '-' for stdout.")
 
     args = ap.parse_args(argv)
@@ -634,30 +509,6 @@ def main(argv: List[str]) -> int:
                 )
             )
 
-        if args.sync or args.provider_root:
-            providers = build_providers_from_args(
-                config=config,
-                sync_names=args.sync,
-                provider_roots_kv=args.provider_root,
-            )
-            if not providers:
-                all_actions.append(Action(kind="note", reason="No providers selected for sync; skipping"))
-            else:
-                all_actions.append(Action(kind="note", reason=f"Sync providers: {', '.join(sorted(providers.keys()))}"))
-                all_actions.extend(
-                    sync_providers(
-                        repo_root=repo_root,
-                        ssot_root=ssot_root,
-                        providers=providers,
-                        ignore_patterns=ignore_patterns,
-                        apply=apply,
-                        overwrite=overwrite,
-                        backup=args.backup,
-                        backup_root=backup_root,
-                        prune=prune,
-                    )
-                )
-
         if args.verify:
             skills, errors = collect_skills(ssot_root, ignore_patterns)
             if errors:
@@ -665,22 +516,6 @@ def main(argv: List[str]) -> int:
                     all_actions.append(Action(kind="conflict", reason=f"SSOT verify error: {e}"))
             else:
                 all_actions.append(Action(kind="note", reason=f"SSOT verify OK: {len(skills)} skills"))
-
-            if args.verify_provider:
-                providers = build_providers_from_args(
-                    config=config,
-                    sync_names=args.verify_provider,
-                    provider_roots_kv=args.provider_root,
-                )
-                for pname, pconf in providers.items():
-                    ppath = Path(str(pconf.get("path") or ""))
-                    proot = ppath if ppath.is_absolute() else (repo_root / ppath)
-                    ps, pe = collect_skills(proot, ignore_patterns)
-                    if pe:
-                        for e in pe:
-                            all_actions.append(Action(kind="conflict", reason=f"Provider '{pname}' verify error: {e}"))
-                    else:
-                        all_actions.append(Action(kind="note", reason=f"Provider '{pname}' verify OK: {len(ps)} skills"))
 
     finally:
         if tmp_dir is not None:

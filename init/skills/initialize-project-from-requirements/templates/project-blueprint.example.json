@@ -1,14 +1,10 @@
 {
   "version": 1,
   "project": {
-    "name": "my-product",
-    "description": "A web app that helps teams track work and ship faster.",
-    "domain": "work tracking",
-    "primaryUsers": [
-      "project manager",
-      "engineer",
-      "admin"
-    ]
+    "name": "example-project",
+    "description": "Example project demonstrating all blueprint and add-on options",
+    "domain": "E-commerce",
+    "primaryUsers": ["customers", "merchants", "admins"]
   },
   "repo": {
     "layout": "monorepo",
@@ -22,7 +18,7 @@
     },
     "backend": {
       "enabled": true,
-      "framework": "node"
+      "framework": "express"
     },
     "api": {
       "style": "rest",
@@ -31,44 +27,82 @@
     "database": {
       "enabled": true,
       "kind": "postgres",
-      "orm": "prisma",
-      "migrationStrategy": "migrations"
+      "orm": "prisma"
     },
     "bpmn": {
-      "enabled": false,
-      "storage": "none"
+      "enabled": true,
+      "storage": "docs"
     }
   },
   "quality": {
     "testing": {
-      "enabled": true,
-      "levels": [
-        "unit",
-        "integration"
-      ]
+      "unit": true,
+      "integration": true,
+      "e2e": true
     },
     "ci": {
-      "enabled": true,
-      "provider": "github-actions"
-    },
-    "devops": {
-      "containerize": true
+      "enabled": true
     }
   },
   "skills": {
-    "packs": [
-      "workflows",
-      "backend",
-      "frontend"
-    ]
+    "packs": ["workflows", "backend", "frontend", "data", "diagrams", "ops"],
+    "includeSkillNames": [],
+    "excludeSkillNames": []
+  },
+  "addons": {
+    "contextAwareness": true,
+    "dbMirror": true,
+    "ciTemplates": true,
+    "packaging": true,
+    "deployment": true,
+    "release": true,
+    "observability": true
   },
   "context": {
-    "enabled": false,
+    "enabled": true,
     "mode": "contract",
-    "artifacts": [
-      "api",
-      "db",
-      "bpmn"
-    ]
+    "environments": ["dev", "staging", "prod"]
+  },
+  "db": {
+    "enabled": true,
+    "kind": "postgres",
+    "environments": ["dev", "staging", "prod"],
+    "migrationTool": "prisma"
+  },
+  "ci": {
+    "enabled": true,
+    "platform": "github-actions",
+    "features": ["lint", "test", "build", "security"]
+  },
+  "packaging": {
+    "enabled": true,
+    "containerize": true,
+    "targets": ["services", "jobs"],
+    "registry": "ghcr.io/${GITHUB_REPOSITORY}"
+  },
+  "deploy": {
+    "enabled": true,
+    "model": "k8s",
+    "environments": ["dev", "staging", "prod"],
+    "k8s": {
+      "tool": "helm",
+      "namespaces": ["app-dev", "app-staging", "app-prod"]
+    }
+  },
+  "release": {
+    "enabled": true,
+    "strategy": "semantic",
+    "changelog": true,
+    "branches": {
+      "main": "main",
+      "develop": "develop"
+    }
+  },
+  "observability": {
+    "enabled": true,
+    "metrics": true,
+    "logs": true,
+    "traces": true,
+    "platform": "prometheus"
   }
 }

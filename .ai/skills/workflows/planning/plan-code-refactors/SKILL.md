@@ -27,7 +27,7 @@ Use this skill when:
 - A risk register with mitigations
 - Clear acceptance criteria and verification actions per phase
 
-## Workflow
+## Steps
 1. Define goals and non-goals.
 2. Inventory the scope:
    - files/modules involved
@@ -44,6 +44,24 @@ Use this skill when:
    - unit tests
    - integration tests
 6. Define rollout/backout (if user-facing behavior changes).
+
+## Verification
+
+- [ ] Refactor goals and non-goals are explicitly defined
+- [ ] All affected dependencies are identified
+- [ ] Plan includes buildable checkpoints between phases
+- [ ] Each phase has defined verification actions
+- [ ] Risk register includes mitigations
+- [ ] Rollback points are defined for each phase
+
+## Boundaries
+
+- MUST NOT plan refactors without identifying all affected dependencies first
+- MUST NOT plan changes that leave the codebase in a non-buildable state
+- MUST NOT mix behavior changes with structural refactors in the same phase
+- MUST NOT skip verification checkpoints between phases
+- SHOULD NOT plan "big bang" refactors; prefer incremental, reversible steps
+- SHOULD NOT skip rollback/backout planning for user-facing changes
 
 ## Included assets
 - Templates: `./templates/` includes a phased refactor plan outline.

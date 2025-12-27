@@ -39,7 +39,7 @@ Provide (or collect) the following:
 - Verification steps (how to confirm the fix)
 - Optional: a regression-prevention recommendation (test/monitoring)
 
-## Diagnostic workflow
+## Steps
 
 ### 1. Reproduce with a known-good auth context
 - Obtain a valid session/token for a test user with the expected permissions.
@@ -94,10 +94,23 @@ Provide (or collect) the following:
   - insufficient permission → should return `403`
 - Confirm logs/metrics show expected status codes.
 
+## Verification
+
+- [ ] Root cause is identified (which layer is failing and why)
+- [ ] Fix resolves the original failure
+- [ ] Re-running the failing request returns expected status
+- [ ] Invalid auth returns 401
+- [ ] Insufficient permission returns 403
+- [ ] Logs/metrics show expected status codes after fix
+
 ## Boundaries
-- You MUST NOT paste real tokens or session cookies into documentation.
-- You MUST NOT weaken production auth checks to “make the request work”.
-- You SHOULD add a regression test when the issue was systemic (middleware order, shared auth logic).
+
+- MUST NOT paste real tokens or session cookies into documentation
+- MUST NOT weaken production auth checks to "make the request work"
+- MUST NOT introduce auth bypasses in production code
+- SHOULD add a regression test when the issue was systemic (middleware order, shared auth logic)
+- SHOULD NOT skip verification after applying fixes
+- SHOULD NOT assume cookie/token is attached without confirming
 
 ## Included assets
 - Templates: `./templates/` contains a debugging checklist and a request capture template.

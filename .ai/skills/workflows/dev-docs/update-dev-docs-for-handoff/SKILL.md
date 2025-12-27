@@ -29,7 +29,7 @@ Use this skill when:
   - updated plan (if needed)
   - verification checklist and current status
 
-## Workflow
+## Steps
 1. Update `00-overview.md`:
    - current status (in progress / blocked / done)
    - any scope changes
@@ -45,6 +45,24 @@ Use this skill when:
 5. Update `04-verification.md`:
    - record what checks were run
    - record failures and next steps to resolve
+
+## Verification
+
+- [ ] Task status is clearly documented (in progress / blocked / done)
+- [ ] Completed milestones are marked in the plan
+- [ ] Implementation notes capture what changed and why
+- [ ] Verification section records what checks were run
+- [ ] Handoff docs are sufficient for another contributor to continue
+- [ ] No secrets or credentials in documentation
+
+## Boundaries
+
+- MUST NOT include secrets, credentials, or sensitive data in handoff docs
+- MUST NOT delete or overwrite previous decisions without explanation
+- MUST NOT mark tasks as complete without recording verification status
+- SHOULD NOT leave undocumented "tribal knowledge" that blocks the next contributor
+- SHOULD NOT use vague status updates; be specific about what works and what doesn't
+- SHOULD NOT skip updating verification status
 
 ## Included assets
 - Templates: `./templates/` provides a handoff checklist.

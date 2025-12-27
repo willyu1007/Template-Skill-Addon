@@ -41,13 +41,31 @@ Use this skill when:
   - monitoring/alerts
 - Backout/rollback is possible.
 
-## Workflow
+## Steps
 1. Restate the goal in one sentence.
 2. Identify missing pre-work (schema changes, migrations, permissions).
 3. Identify integration points and failure modes.
 4. Ensure tasks are ordered and parallelizable where possible.
 5. Add acceptance criteria for each milestone.
 6. Ensure verification and rollout/backout are included.
+
+## Verification
+
+- [ ] Goals and non-goals are explicit in the plan
+- [ ] Scope is bounded and realistic
+- [ ] Dependencies are identified and verified
+- [ ] Risks are listed with mitigations
+- [ ] Verification criteria are concrete and testable
+- [ ] Rollback/backout strategy exists for user-facing changes
+
+## Boundaries
+
+- MUST NOT approve plans that lack explicit verification criteria
+- MUST NOT approve plans without a rollback strategy for user-facing changes
+- MUST NOT skip risk assessment for plans involving data migrations or breaking changes
+- MUST NOT assume dependencies are stable without verifying
+- SHOULD NOT approve plans with unbounded scope or vague success criteria
+- SHOULD NOT skip review of integration points and failure modes
 
 ## Included assets
 - Templates: `./templates/` includes a plan review rubric.

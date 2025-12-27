@@ -65,7 +65,7 @@ Use this skill when:
 - Code duplication vs reuse
 - Comments/documentation for non-obvious decisions
 
-## Workflow
+## Steps
 1. Read the change intent (what problem it solves).
 2. Review the diff top-down:
    - contracts and boundaries first
@@ -73,6 +73,24 @@ Use this skill when:
 3. Identify risks and failure modes.
 4. Recommend minimal changes to mitigate risks.
 5. Provide a verification checklist.
+
+## Verification
+
+- [ ] All changed files have been reviewed
+- [ ] Critical issues are identified and prioritized
+- [ ] Recommendations include concrete, actionable steps
+- [ ] Security implications are assessed for auth/permission changes
+- [ ] Verification actions are defined for each critical issue
+- [ ] Review feedback is clear and constructive
+
+## Boundaries
+
+- MUST NOT approve code without actually reading and understanding the changes
+- MUST NOT skip security review for auth/permission changes
+- MUST NOT leave vague feedback without actionable suggestions
+- SHOULD NOT block on personal style preferences that aren't established team standards
+- SHOULD NOT nitpick trivial issues when critical problems exist
+- SHOULD NOT skip testing recommendations for critical changes
 
 ## Included assets
 - Templates: `./templates/` includes a review checklist you can paste into PR comments.

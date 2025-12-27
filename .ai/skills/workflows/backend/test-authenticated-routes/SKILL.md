@@ -1,6 +1,6 @@
 ---
 name: test-authenticated-routes
-description: Test and review authenticated API routes end-to-end by executing real requests, checking responses, and verifying database side effects.
+description: Execute and record end-to-end smoke tests for authenticated API routes, verify database side effects, and add a lightweight implementation review.
 ---
 
 # Test Authenticated Routes
@@ -14,6 +14,11 @@ Use this skill when:
 - You refactored controller/service/repository code for an endpoint
 - You added new permission checks
 - You suspect a regression in route wiring or middleware order
+
+
+Avoid using this skill when:
+- You only need to define what to test (a plan) and you are not ready to execute requests or capture evidence.
+- You are looking for unit-test-only guidance without any end-to-end request execution.
 
 ## Inputs
 - A list of changed endpoints (method + path)
@@ -33,8 +38,7 @@ Use this skill when:
   - maintainability concerns
   - missing tests/validation
 
-## Testing protocol
-
+## Steps
 ### 1. Inventory endpoints to test
 - Prefer using version control diffs, commit messages, or task notes to list changed routes.
 - Include:
@@ -74,13 +78,23 @@ Check:
 - repository isolates persistence
 - errors map consistently to status codes and error shapes
 
-## Verification checklist
-- [ ] Endpoint returns the expected status code on success.
-- [ ] Response shape matches the contract.
-- [ ] Validation failures return consistent error shape.
-- [ ] Permission failures return `403` (or your convention) with stable code.
-- [ ] Database side effects match expectations.
-- [ ] No secrets or tokens are logged or recorded.
+## Verification
+
+- [ ] Endpoint returns the expected status code on success
+- [ ] Response shape matches the contract
+- [ ] Validation failures return consistent error shape
+- [ ] Permission failures return `403` (or your convention) with stable code
+- [ ] Database side effects match expectations
+- [ ] No secrets or tokens are logged or recorded
+
+## Boundaries
+
+- MUST NOT use real production credentials
+- MUST NOT skip persistence verification for write endpoints
+- MUST NOT log or record secrets/tokens
+- MUST NOT approve endpoints without understanding the implementation
+- SHOULD NOT test only happy paths (include negative cases)
+- SHOULD NOT skip implementation review for auth-related changes
 
 ## Included assets
 - Templates: `./templates/` includes a per-endpoint test worksheet.

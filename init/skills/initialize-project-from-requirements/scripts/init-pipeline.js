@@ -9,11 +9,15 @@
  *   Stage C: minimal scaffold + skill pack manifest update + wrapper sync
  *
  * Commands:
+ *   - start          Initialize state file and show next steps
+ *   - status         Show current initialization progress
+ *   - advance        Print the next checkpoint actions for the current stage
+ *   - approve        Record explicit user approval and advance to the next stage
  *   - validate       Validate a blueprint JSON (no writes)
  *   - check-docs     Validate Stage A docs (structure + template placeholders)
  *   - suggest-packs  Recommend skill packs from blueprint capabilities (warn-only by default)
  *   - scaffold       Plan or apply a minimal directory scaffold from the blueprint
- *   - apply          validate + (optional) check-docs + scaffold + manifest update + wrapper sync
+ *   - apply          validate + (optional) check-docs + scaffold + configs + pack enable + wrapper sync
  *   - cleanup-init   Remove the `init/` bootstrap kit (opt-in, guarded)
  *
  * This script is intentionally framework-agnostic. It avoids generating code.
@@ -29,6 +33,25 @@ Usage:
   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js <command> [options]
 
 Commands:
+  start
+    --repo-root <path>          Repo root (default: cwd)
+    Initialize state file and show next steps.
+
+  status
+    --repo-root <path>          Repo root (default: cwd)
+    --format <text|json>        Output format (default: text)
+    Show current initialization progress.
+
+  advance
+    --repo-root <path>          Repo root (default: cwd)
+    Print the next checkpoint actions for the current stage.
+
+  approve
+    --repo-root <path>          Repo root (default: cwd)
+    --stage <A|B|C>             Stage to approve (default: current state.stage)
+    --note <text>               Optional audit note
+    Record explicit user approval and advance state to the next stage.
+
   validate
     --blueprint <path>          Blueprint JSON path (required)
     --repo-root <path>          Repo root (default: cwd)
@@ -55,10 +78,11 @@ Commands:
     --blueprint <path>          Blueprint JSON path (required)
     --repo-root <path>          Repo root (default: cwd)
     --providers <both|codex|claude|codex,claude>
-                                Providers to sync (default: both)
-    --require-stage-a           Run 'check-docs --strict' and fail if it does not pass
-    --cleanup-init              Remove <repo-root>/init after success (requires --i-understand)
-    --i-understand              Required acknowledgement for destructive actions
+    --addons-root <path>        Add-ons directory (default: addons)
+    --require-stage-a           Refuse apply if Stage A docs invalid
+    --skip-configs              Do not generate config files
+    --cleanup-init              Run cleanup-init after apply
+    --format <text|json>        Output format (default: text)
 
   cleanup-init
     --repo-root <path>          Repo root (default: cwd)
@@ -66,10 +90,12 @@ Commands:
     --i-understand              Required acknowledgement (refuses without it)
 
 Examples:
+  node .../init-pipeline.js start
+  node .../init-pipeline.js status
   node .../init-pipeline.js check-docs --docs-root docs/project
   node .../init-pipeline.js validate --blueprint docs/project/project-blueprint.json
-  node .../init-pipeline.js scaffold --blueprint docs/project/project-blueprint.json
-  node .../init-pipeline.js apply --blueprint docs/project/project-blueprint.json --providers codex,claude --require-stage-a
+  node .../init-pipeline.js apply --blueprint docs/project/project-blueprint.json --providers both
+  node .../init-pipeline.js approve --stage A
 `;
   console.log(msg.trim());
   process.exit(exitCode);
@@ -131,10 +157,249 @@ function uniq(arr) {
   return Array.from(new Set(arr));
 }
 
-function toStringArray(v) {
-  if (!v) return [];
-  if (!Array.isArray(v)) return [];
-  return v.filter((x) => typeof x === 'string').map((x) => x.trim()).filter(Boolean);
+// ============================================================================
+// State Management
+// ============================================================================
+
+const SCRIPT_DIR = __dirname;
+const TEMPLATES_DIR = path.join(SCRIPT_DIR, '..', 'templates');
+
+function getStatePath(repoRoot) {
+  return path.join(repoRoot, 'init', '.init-state.json');
+}
+
+function createInitialState() {
+  return {
+    version: 1,
+    stage: 'A',
+    createdAt: new Date().toISOString(),
+    stageA: {
+      mustAsk: {
+        onePurpose: { asked: false, answered: false, writtenTo: null },
+        userRoles: { asked: false, answered: false, writtenTo: null },
+        mustRequirements: { asked: false, answered: false, writtenTo: null },
+        outOfScope: { asked: false, answered: false, writtenTo: null },
+        userJourneys: { asked: false, answered: false, writtenTo: null },
+        constraints: { asked: false, answered: false, writtenTo: null },
+        successMetrics: { asked: false, answered: false, writtenTo: null }
+      },
+      docsWritten: {
+        requirements: false,
+        nfr: false,
+        glossary: false,
+        riskQuestions: false
+      },
+      validated: false,
+      userApproved: false
+    },
+    stageB: {
+      drafted: false,
+      validated: false,
+      packsReviewed: false,
+      userApproved: false
+    },
+    stageC: {
+      scaffoldApplied: false,
+      configsGenerated: false,
+      manifestUpdated: false,
+      wrappersSynced: false,
+      userApproved: false
+    },
+    history: []
+  };
+}
+
+function loadState(repoRoot) {
+  const statePath = getStatePath(repoRoot);
+  if (!fs.existsSync(statePath)) {
+    return null;
+  }
+  try {
+    return JSON.parse(fs.readFileSync(statePath, 'utf8'));
+  } catch (e) {
+    console.error(`[warn] Failed to parse state file: ${e.message}`);
+    return null;
+  }
+}
+
+function saveState(repoRoot, state) {
+  const statePath = getStatePath(repoRoot);
+  fs.mkdirSync(path.dirname(statePath), { recursive: true });
+  fs.writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n', 'utf8');
+}
+
+function addHistoryEvent(state, event, details) {
+  state.history = state.history || [];
+  state.history.push({
+    timestamp: new Date().toISOString(),
+    event,
+    details
+  });
+}
+
+function getStageProgress(state) {
+  const stageA = state.stageA || {};
+  const stageB = state.stageB || {};
+  const stageC = state.stageC || {};
+
+  const mustAskKeys = Object.keys(stageA.mustAsk || {});
+  const mustAskAnswered = mustAskKeys.filter(k => stageA.mustAsk[k]?.answered).length;
+
+  const docsKeys = ['requirements', 'nfr', 'glossary', 'riskQuestions'];
+  const docsWritten = docsKeys.filter(k => stageA.docsWritten?.[k]).length;
+
+  return {
+    stage: state.stage,
+    stageA: {
+      mustAskTotal: mustAskKeys.length,
+      mustAskAnswered,
+      docsTotal: docsKeys.length,
+      docsWritten,
+      validated: !!stageA.validated,
+      userApproved: !!stageA.userApproved
+    },
+    stageB: {
+      drafted: !!stageB.drafted,
+      validated: !!stageB.validated,
+      packsReviewed: !!stageB.packsReviewed,
+      userApproved: !!stageB.userApproved
+    },
+    stageC: {
+      scaffoldApplied: !!stageC.scaffoldApplied,
+      configsGenerated: !!stageC.configsGenerated,
+      manifestUpdated: !!stageC.manifestUpdated,
+      wrappersSynced: !!stageC.wrappersSynced,
+      userApproved: !!stageC.userApproved
+    }
+  };
+}
+
+function printStatus(state, repoRoot) {
+  const progress = getStageProgress(state);
+  const stageNames = { A: '需求 (Requirements)', B: '蓝图 (Blueprint)', C: '脚手架 (Scaffold)', complete: '完成' };
+
+  console.log('');
+  console.log('┌─────────────────────────────────────────────────────────┐');
+  console.log('│  初始化状态 (Init State)                                │');
+  console.log('├─────────────────────────────────────────────────────────┤');
+  console.log(`│  当前阶段: Stage ${progress.stage} - ${stageNames[progress.stage] || progress.stage}`);
+  console.log('│');
+
+  if (progress.stage === 'A' || progress.stage === 'B' || progress.stage === 'C') {
+    console.log('│  Stage A 进度:');
+    console.log(`│    必问问题: ${progress.stageA.mustAskAnswered}/${progress.stageA.mustAskTotal} 已完成`);
+    console.log(`│    文档撰写: ${progress.stageA.docsWritten}/${progress.stageA.docsTotal} 已完成`);
+    console.log(`│    验证状态: ${progress.stageA.validated ? '✓ 已验证' : '✗ 未验证'}`);
+    console.log(`│    用户确认: ${progress.stageA.userApproved ? '✓ 已确认' : '✗ 未确认'}`);
+  }
+
+  if (progress.stage === 'B' || progress.stage === 'C') {
+    console.log('│');
+    console.log('│  Stage B 进度:');
+    console.log(`│    蓝图起草: ${progress.stageB.drafted ? '✓' : '✗'}`);
+    console.log(`│    蓝图验证: ${progress.stageB.validated ? '✓' : '✗'}`);
+    console.log(`│    技能包审查: ${progress.stageB.packsReviewed ? '✓' : '✗'}`);
+    console.log(`│    用户确认: ${progress.stageB.userApproved ? '✓' : '✗'}`);
+  }
+
+  if (progress.stage === 'C' || progress.stage === 'complete') {
+    console.log('│');
+    console.log('│  Stage C 进度:');
+    console.log(`│    脚手架创建: ${progress.stageC.scaffoldApplied ? '✓' : '✗'}`);
+    console.log(`│    配置文件: ${progress.stageC.configsGenerated ? '✓' : '✗'}`);
+    console.log(`│    清单更新: ${progress.stageC.manifestUpdated ? '✓' : '✗'}`);
+    console.log(`│    Wrapper同步: ${progress.stageC.wrappersSynced ? '✓' : '✗'}`);
+  }
+
+  console.log('│');
+  console.log('│  下一步:');
+  if (progress.stage === 'A') {
+    if (!progress.stageA.validated) {
+      console.log('│    1. 完成需求访谈并撰写文档');
+      console.log('│    2. 运行: check-docs --docs-root docs/project');
+    } else if (!progress.stageA.userApproved) {
+      console.log('│    请用户审查 Stage A 文档并确认');
+      console.log('│    确认后运行: advance');
+    }
+  } else if (progress.stage === 'B') {
+    if (!progress.stageB.validated) {
+      console.log('│    1. 创建 docs/project/project-blueprint.json');
+      console.log('│    2. 运行: validate --blueprint docs/project/project-blueprint.json');
+    } else if (!progress.stageB.userApproved) {
+      console.log('│    请用户审查蓝图并确认');
+      console.log('│    确认后运行: advance');
+    }
+  } else if (progress.stage === 'C') {
+    if (!progress.stageC.wrappersSynced) {
+      console.log('│    运行: apply --blueprint docs/project/project-blueprint.json');
+    } else if (!progress.stageC.userApproved) {
+      console.log('│    初始化基本完成，请用户确认');
+      console.log('│    确认后可选运行: cleanup-init --apply --i-understand');
+    }
+  } else if (progress.stage === 'complete') {
+    console.log('│    初始化已完成！');
+  }
+
+  console.log('└─────────────────────────────────────────────────────────┘');
+  console.log('');
+}
+
+// ============================================================================
+// Config File Generation
+// ============================================================================
+
+function getConfigTemplateDir(language, packageManager) {
+  // Map language + packageManager to template directory
+  const mappings = {
+    'typescript-pnpm': 'typescript-pnpm',
+    'typescript-npm': 'typescript-pnpm',  // fallback
+    'typescript-yarn': 'typescript-pnpm', // fallback
+    'javascript-pnpm': 'typescript-pnpm', // fallback
+    'javascript-npm': 'typescript-pnpm',  // fallback
+    'go-go': 'go',
+    'go': 'go',
+    'cpp-xmake': 'cpp-xmake',
+    'c-xmake': 'cpp-xmake',
+    'cpp': 'cpp-xmake',
+    'c': 'cpp-xmake',
+    'react-native': 'react-native-typescript'
+  };
+
+  const key = `${language}-${packageManager}`.toLowerCase();
+  let templateName = mappings[key] || mappings[language] || null;
+
+  if (!templateName) return null;
+
+  const dir = path.join(TEMPLATES_DIR, 'scaffold-configs', templateName);
+  return fs.existsSync(dir) ? dir : null;
+}
+
+function renderTemplate(content, variables) {
+  let result = content;
+  for (const [key, value] of Object.entries(variables)) {
+    const pattern = new RegExp(`\\{\\{${key.replace(/\./g, '\\.')}\\}\\}`, 'g');
+    result = result.replace(pattern, value != null ? String(value) : '');
+  }
+  return result;
+}
+
+function flattenObject(obj, prefix = '') {
+  const result = {};
+  for (const [key, value] of Object.entries(obj || {})) {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      Object.assign(result, flattenObject(value, fullKey));
+    } else {
+      result[fullKey] = value;
+    }
+  }
+  return result;
+}
+
+function generateConfigFiles(repoRoot, blueprint, apply) {
+  // Delegate to scripts/scaffold-configs.js (single source of truth)
+  const { generateConfigFiles: gen } = require('./scaffold-configs');
+  return gen(repoRoot, blueprint, apply);
 }
 
 function packPrefixMap() {
@@ -150,7 +415,7 @@ function packPrefixMap() {
 }
 
 function packOrder() {
-  return ['workflows', 'backend', 'frontend', 'data', 'diagrams', 'ops', 'scaffold'];
+  return ['workflows', 'backend', 'frontend', 'data', 'diagrams', 'ops', 'scaffold', 'context-core'];
 }
 
 function normalizePackList(packs) {
@@ -214,35 +479,67 @@ function validateBlueprint(blueprint) {
   return { ok, errors, warnings, packs };
 }
 
+function isContextAwarenessEnabled(blueprint) {
+  if (!blueprint || typeof blueprint !== 'object') return false;
+
+  const context = blueprint.context || {};
+  if (context && context.enabled === true) return true;
+
+  const addons = blueprint.addons || {};
+  const v =
+    addons.contextAwareness ??
+    addons.context_awareness ??
+    addons['context-awareness'] ??
+    addons['contextAwareness'] ??
+    addons['context_awareness'];
+
+  return v === true;
+}
+
 function recommendedPacksFromBlueprint(blueprint) {
-  const rec = new Set(['workflows']);
-  const caps = blueprint.capabilities || {};
-  const q = blueprint.quality || {};
+const rec = new Set(['workflows']);
+const caps = blueprint.capabilities || {};
+const q = blueprint.quality || {};
+const devops = blueprint.devops || {};
 
-  if (caps.backend && caps.backend.enabled) rec.add('backend');
-  if (caps.frontend && caps.frontend.enabled) rec.add('frontend');
+if (caps.backend && caps.backend.enabled) rec.add('backend');
+if (caps.frontend && caps.frontend.enabled) rec.add('frontend');
 
-  if (caps.database && caps.database.enabled) rec.add('data');
-  if (caps.bpmn && caps.bpmn.enabled) rec.add('diagrams');
+if (caps.database && caps.database.enabled) rec.add('data');
+if (caps.bpmn && caps.bpmn.enabled) rec.add('diagrams');
 
-  if ((q.ci && q.ci.enabled) || (q.devops && q.devops.containerize)) rec.add('ops');
+const devopsEnabled =
+  (q.ci && q.ci.enabled) ||
+  (q.devops && (q.devops.enabled || q.devops.containerize || q.devops.packaging || q.devops.deployment)) ||
+  (devops && (devops.enabled || (devops.packaging && devops.packaging.enabled) || (devops.deploy && devops.deploy.enabled)));
 
-  // Optional packs can be added explicitly via blueprint.skills.packs.
+if (devopsEnabled) rec.add('ops');
 
-  const ordered = [];
-  for (const p of packOrder()) {
-    if (rec.has(p)) ordered.push(p);
-  }
-  return ordered;
+if (isContextAwarenessEnabled(blueprint)) rec.add('context-core');
+
+// Optional packs can be added explicitly via blueprint.skills.packs.
+// (This function only computes recommendations; it does NOT mutate the blueprint.)
+
+const ordered = [];
+for (const p of packOrder()) {
+  if (rec.has(p)) ordered.push(p);
+}
+return ordered;
 }
 
 function checkPackInstall(repoRoot, pack) {
-  const prefix = packPrefixMap()[pack];
-  if (!prefix) return { pack, installed: false, reason: 'unknown-pack' };
+const packFile = path.join(repoRoot, '.ai', 'skills', '_meta', 'packs', `${pack}.json`);
+if (fs.existsSync(packFile)) {
+  return { pack, installed: true, via: 'pack-file', path: path.relative(repoRoot, packFile) };
+}
 
-  const dir = path.join(repoRoot, '.ai', 'skills', prefix.replace(/\/$/, ''));
-  if (!fs.existsSync(dir)) return { pack, installed: false, reason: `missing ${path.relative(repoRoot, dir)}` };
-  return { pack, installed: true };
+// Back-compat for repos without pack files: infer install by prefix presence
+const prefix = packPrefixMap()[pack];
+if (!prefix) return { pack, installed: false, reason: 'missing pack-file and no prefix mapping' };
+
+const dir = path.join(repoRoot, '.ai', 'skills', prefix.replace(/\/$/, ''));
+if (!fs.existsSync(dir)) return { pack, installed: false, reason: `missing ${path.relative(repoRoot, dir)}` };
+return { pack, installed: true, via: 'prefix-dir', path: path.relative(repoRoot, dir) };
 }
 
 function printResult(result, format) {
@@ -327,6 +624,247 @@ function writeFileIfMissing(filePath, content, apply) {
   return { op: 'write', path: filePath, mode: 'applied' };
 }
 
+function listFilesRecursive(dir) {
+  const out = [];
+  function walk(current) {
+    const entries = fs.readdirSync(current, { withFileTypes: true });
+    for (const e of entries) {
+      const full = path.join(current, e.name);
+      if (e.isDirectory()) {
+        walk(full);
+      } else if (e.isFile()) {
+        out.push(full);
+      }
+    }
+  }
+  walk(dir);
+  return out;
+}
+
+function copyDirIfMissing(srcDir, destDir, apply) {
+  const actions = [];
+  if (!fs.existsSync(srcDir)) {
+    return { ok: false, actions, error: `source directory not found: ${srcDir}` };
+  }
+
+  const files = listFilesRecursive(srcDir);
+  for (const srcFile of files) {
+    const rel = path.relative(srcDir, srcFile);
+    const destFile = path.join(destDir, rel);
+
+    // Ensure parent directory exists
+    const parent = path.dirname(destFile);
+    if (!fs.existsSync(parent)) {
+      if (!apply) {
+        actions.push({ op: 'mkdir', path: parent, mode: 'dry-run', note: `parent ${path.relative(destDir, parent)}` });
+      } else {
+        fs.mkdirSync(parent, { recursive: true });
+        actions.push({ op: 'mkdir', path: parent, mode: 'applied', note: `parent ${path.relative(destDir, parent)}` });
+      }
+    }
+
+    if (fs.existsSync(destFile)) {
+      actions.push({ op: 'skip', path: destFile, reason: 'exists' });
+      continue;
+    }
+
+    if (!apply) {
+      actions.push({ op: 'copy', from: srcFile, to: destFile, mode: 'dry-run' });
+      continue;
+    }
+
+    fs.copyFileSync(srcFile, destFile);
+    actions.push({ op: 'copy', from: srcFile, to: destFile, mode: 'applied' });
+  }
+
+  return { ok: true, actions };
+}
+
+function findAddonPayloadDir(repoRoot, addonsRoot, addonId) {
+  const candidates = [
+    path.join(repoRoot, addonsRoot, addonId, 'payload'),
+    // common fallbacks
+    path.join(repoRoot, addonsRoot, addonId.replace(/-/g, '_'), 'payload'),
+    path.join(repoRoot, addonsRoot, addonId.replace(/_/g, '-'), 'payload'),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p) && fs.statSync(p).isDirectory()) return p;
+  }
+  return null;
+}
+
+function runNodeScript(repoRoot, scriptPath, args, apply) {
+  const cmd = 'node';
+  const fullArgs = [scriptPath, ...args];
+  const printable = `${cmd} ${fullArgs.join(' ')}`;
+
+  if (!apply) return { op: 'run', cmd: printable, mode: 'dry-run' };
+
+  const res = childProcess.spawnSync(cmd, fullArgs, { stdio: 'inherit', cwd: repoRoot });
+  if (res.status !== 0) return { op: 'run', cmd: printable, mode: 'failed', exitCode: res.status };
+  return { op: 'run', cmd: printable, mode: 'applied' };
+}
+
+function runNodeScriptWithRepoRootFallback(repoRoot, scriptPath, args, apply) {
+  const first = runNodeScript(repoRoot, scriptPath, args, apply);
+  if (!apply) return first;
+
+  if (first && first.mode === 'failed' && args.includes('--repo-root')) {
+    // Some add-on scripts may not accept --repo-root; retry without it (cwd is already repoRoot).
+    const altArgs = [];
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] === '--repo-root') {
+        i++; // skip value
+        continue;
+      }
+      altArgs.push(args[i]);
+    }
+    const second = runNodeScript(repoRoot, scriptPath, altArgs, apply);
+    second.note = 'fallback: retried without --repo-root';
+    return second;
+  }
+  return first;
+}
+
+
+function getContextMode(blueprint) {
+  const mode = ((blueprint.context && blueprint.context.mode) || '').toLowerCase();
+  if (mode === 'snapshot' || mode === 'contract') return mode;
+  return 'contract';
+}
+
+// ============================================================================
+// Add-on Detection Functions
+// ============================================================================
+
+function isDbMirrorEnabled(blueprint) {
+  if (!blueprint || typeof blueprint !== 'object') return false;
+  const addons = blueprint.addons || {};
+  const db = blueprint.db || {};
+  return addons.dbMirror === true || addons['db-mirror'] === true || db.enabled === true;
+}
+
+function isCiTemplatesEnabled(blueprint) {
+  if (!blueprint || typeof blueprint !== 'object') return false;
+  const addons = blueprint.addons || {};
+  const ci = blueprint.ci || {};
+  return addons.ciTemplates === true || addons['ci-templates'] === true || ci.enabled === true;
+}
+
+function isPackagingEnabled(blueprint) {
+  if (!blueprint || typeof blueprint !== 'object') return false;
+  const addons = blueprint.addons || {};
+  const pkg = blueprint.packaging || {};
+  return addons.packaging === true || pkg.enabled === true;
+}
+
+function isDeploymentEnabled(blueprint) {
+  if (!blueprint || typeof blueprint !== 'object') return false;
+  const addons = blueprint.addons || {};
+  const deploy = blueprint.deploy || {};
+  return addons.deployment === true || deploy.enabled === true;
+}
+
+function isReleaseEnabled(blueprint) {
+  if (!blueprint || typeof blueprint !== 'object') return false;
+  const addons = blueprint.addons || {};
+  const release = blueprint.release || {};
+  return addons.release === true || release.enabled === true;
+}
+
+function isObservabilityEnabled(blueprint) {
+  if (!blueprint || typeof blueprint !== 'object') return false;
+  const addons = blueprint.addons || {};
+  const obs = blueprint.observability || {};
+  return addons.observability === true || obs.enabled === true;
+}
+
+// ============================================================================
+// Generic Add-on Installer
+// ============================================================================
+
+function ensureAddon(repoRoot, addonId, addonsRoot, apply, ctlScriptName) {
+  const result = { addonId, op: 'ensure', actions: [], warnings: [], errors: [] };
+
+  // Determine the control script name (e.g., dbctl.js, cictl.js)
+  const ctlName = ctlScriptName || `${addonId.replace(/-/g, '')}ctl.js`;
+  const ctlPath = path.join(repoRoot, '.ai', 'scripts', ctlName);
+
+  // If control script already exists, just re-initialize (idempotent)
+  if (!fs.existsSync(ctlPath)) {
+    const payloadDir = findAddonPayloadDir(repoRoot, addonsRoot, addonId);
+    if (!payloadDir) {
+      result.warnings.push(`Add-on "${addonId}" is enabled but payload not found. Expected: ${path.join(addonsRoot, addonId, 'payload')}`);
+      return result;
+    }
+
+    const copyRes = copyDirIfMissing(payloadDir, repoRoot, apply);
+    if (!copyRes.ok) {
+      result.errors.push(copyRes.error || `Failed to copy add-on "${addonId}" payload.`);
+      return result;
+    }
+    result.actions.push({ op: 'install-addon', addonId, from: payloadDir, to: repoRoot, mode: apply ? 'applied' : 'dry-run' });
+    result.actions.push(...copyRes.actions);
+  }
+
+  // Run init command if control script exists
+  if (fs.existsSync(ctlPath)) {
+    result.actions.push(runNodeScriptWithRepoRootFallback(repoRoot, ctlPath, ['init', '--repo-root', repoRoot], apply));
+  } else if (apply) {
+    result.warnings.push(`Add-on "${addonId}" control script not found after install: ${ctlName}`);
+  }
+
+  return result;
+}
+
+function ensureContextAwarenessAddon(repoRoot, blueprint, addonsRoot, apply) {
+  const enabled = isContextAwarenessEnabled(blueprint);
+  const result = { enabled, op: enabled ? 'ensure' : 'skip', actions: [], warnings: [], errors: [] };
+
+  if (!enabled) return result;
+
+  // If already installed, just (re-)initialize skeleton (idempotent)
+  const contextctl = path.join(repoRoot, '.ai', 'scripts', 'contextctl.js');
+  const projectctl = path.join(repoRoot, '.ai', 'scripts', 'projectctl.js');
+
+  if (!fs.existsSync(contextctl)) {
+    const payloadDir = findAddonPayloadDir(repoRoot, addonsRoot, 'context-awareness');
+    if (!payloadDir) {
+      result.errors.push(`Context awareness is enabled, but add-on payload is not found. Expected: ${path.join(addonsRoot, 'context-awareness', 'payload')}`);
+      return result;
+    }
+
+    const copyRes = copyDirIfMissing(payloadDir, repoRoot, apply);
+    if (!copyRes.ok) {
+      result.errors.push(copyRes.error || 'Failed to copy add-on payload.');
+      return result;
+    }
+    result.actions.push({ op: 'install-addon', from: payloadDir, to: repoRoot, mode: apply ? 'applied' : 'dry-run' });
+    result.actions.push(...copyRes.actions);
+  }
+
+  if (!fs.existsSync(contextctl)) {
+    result.errors.push(`Context awareness payload did not provide .ai/scripts/contextctl.js (missing after install).`);
+    return result;
+  }
+
+  // Initialize docs/context skeleton (idempotent)
+  result.actions.push(runNodeScriptWithRepoRootFallback(repoRoot, contextctl, ['init', '--repo-root', repoRoot].concat(apply ? [] : ['--dry-run']), apply));
+
+  // Initialize project state if projectctl exists (optional)
+  if (fs.existsSync(projectctl)) {
+    result.actions.push(runNodeScriptWithRepoRootFallback(repoRoot, projectctl, ['init', '--repo-root', repoRoot].concat(apply ? [] : ['--dry-run']), apply));
+    const mode = getContextMode(blueprint);
+    result.actions.push(runNodeScriptWithRepoRootFallback(repoRoot, projectctl, ['set-context-mode', mode, '--repo-root', repoRoot].concat(apply ? [] : ['--dry-run']), apply));
+  } else {
+    result.warnings.push('projectctl.js not found; skipping project state initialization.');
+  }
+
+  return result;
+}
+
+
+
 function planScaffold(repoRoot, blueprint, apply) {
   const results = [];
   const repo = blueprint.repo || {};
@@ -388,143 +926,262 @@ function planScaffold(repoRoot, blueprint, apply) {
     }
   }
 
+        // Optional: DevOps scaffolding (packaging/deploy conventions)
+  // Enabled when either:
+  // - blueprint.devops.enabled (or sub-flags) is true
+  // - blueprint.quality.ci.enabled is true
+  // - blueprint.quality.devops.* indicates containerization/packaging/deploy
+  const q = blueprint.quality || {};
+  const devops = blueprint.devops || {};
+  const devopsEnabled =
+    (q.ci && q.ci.enabled) ||
+    (q.devops && (q.devops.enabled || q.devops.containerize || q.devops.packaging || q.devops.deployment)) ||
+    (devops && (devops.enabled || (devops.packaging && devops.packaging.enabled) || (devops.deploy && devops.deploy.enabled)));
+
+  if (devopsEnabled) {
+    results.push(ensureDir(path.join(repoRoot, 'ops'), apply));
+    results.push(writeFileIfMissing(
+      path.join(repoRoot, 'ops', 'README.md'),
+      `# Ops (Packaging & Deploy)
+
+This folder holds DevOps-oriented configuration and workdocs.
+
+High-level split:
+- ops/packaging/  Build artifacts (often container images for services)
+- ops/deploy/     Run artifacts in environments (deploy/rollback/runbooks)
+
+Guidelines:
+- Keep definitions small and structured.
+- Prefer a small number of scripts as execution entry points.
+- Record decisions and history under ops/*/workdocs/.
+`,
+      apply
+    ));
+
+    // Packaging (services, jobs, apps)
+    results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging'), apply));
+    results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'services'), apply));
+    results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'jobs'), apply));
+    results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'apps'), apply));
+    results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'scripts'), apply));
+    results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'workdocs'), apply));
+    results.push(writeFileIfMissing(
+      path.join(repoRoot, 'ops', 'packaging', 'README.md'),
+      `# Packaging
+
+Goal: turn code into runnable artifacts.
+
+Repository layout:
+- ops/packaging/services/   Packaging definitions per HTTP service
+- ops/packaging/jobs/       Packaging definitions per workload/job
+- ops/packaging/apps/       Packaging definitions per client/distribution app
+- ops/packaging/scripts/    Shared build scripts (preferred entry points)
+- ops/packaging/workdocs/   Plans, checklists, and build records
+
+Guidelines:
+- Keep definitions small and structured.
+- For services, container images are a common packaging target.
+- Treat artifact naming, versioning, and provenance as first-class.
+`,
+      apply
+    ));
+    results.push(writeFileIfMissing(
+      path.join(repoRoot, 'ops', 'packaging', 'workdocs', 'README.md'),
+      `# Packaging workdocs
+
+Use this folder for:
+- Packaging plans (inputs, outputs, artifact naming)
+- Build checklists
+- Build logs (what was built, when, from which revision, by whom)
+`,
+      apply
+    ));
+    results.push(writeFileIfMissing(
+      path.join(repoRoot, 'ops', 'packaging', 'scripts', 'build.js'),
+      `#!/usr/bin/env node
+/**
+ * build.js (placeholder)
+ *
+ * Provider-agnostic packaging entry.
+ * Extend it to build artifacts for your services/jobs/apps.
+ */
+
+console.log("[todo] Implement packaging build pipeline for this repo.");
+process.exit(0);
+`,
+      apply
+    ));
+
+    // Deploy (http services, workloads, clients)
+    results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy'), apply));
+    results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'http_services'), apply));
+    results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'workloads'), apply));
+    results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'clients'), apply));
+    results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'scripts'), apply));
+    results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'workdocs'), apply));
+    results.push(writeFileIfMissing(
+      path.join(repoRoot, 'ops', 'deploy', 'README.md'),
+      `# Deploy
+
+Goal: take packaged artifacts and run them in target environments.
+
+Repository layout:
+- ops/deploy/http_services/  Deployment descriptors for long-running services
+- ops/deploy/workloads/      Deployment descriptors for jobs/event-driven workloads
+- ops/deploy/clients/        Deployment descriptors for client apps (web/mobile/desktop)
+- ops/deploy/scripts/        Shared deploy/rollback scripts (preferred entry points)
+- ops/deploy/workdocs/       Runbooks and deployment history
+
+Guidelines:
+- Capture environment-specific parameters explicitly.
+- Keep rollback paths documented and tested.
+`,
+      apply
+    ));
+    results.push(writeFileIfMissing(
+      path.join(repoRoot, 'ops', 'deploy', 'workdocs', 'README.md'),
+      `# Deploy workdocs
+
+Use this folder for:
+- Environment definitions (dev/stage/prod)
+- Runbooks (how to deploy, verify, rollback)
+- Postmortems and deployment incident notes
+`,
+      apply
+    ));
+    results.push(writeFileIfMissing(
+      path.join(repoRoot, 'ops', 'deploy', 'scripts', 'deploy.js'),
+      `#!/usr/bin/env node
+/**
+ * deploy.js (placeholder)
+ *
+ * Provider-agnostic deployment entry.
+ * Extend it to apply your chosen deployment model and platform.
+ */
+
+console.log("[todo] Implement deployment automation for this repo.");
+process.exit(0);
+`,
+      apply
+    ));
+    results.push(writeFileIfMissing(
+      path.join(repoRoot, 'ops', 'deploy', 'scripts', 'rollback.js'),
+      `#!/usr/bin/env node
+/**
+ * rollback.js (placeholder)
+ *
+ * Provider-agnostic rollback entry.
+ */
+
+console.log("[todo] Implement rollback procedure for this repo.");
+process.exit(0);
+`,
+      apply
+    ));
+  }
+
+
   return results;
 }
 
 function updateManifest(repoRoot, blueprint, apply) {
-  // Manifest schema MUST match `.ai/scripts/sync-skills.js`:
-  // {
-  //   "version": 1,
-  //   "includePrefixes": ["workflows/"],
-  //   "includeSkills": [],
-  //   "excludeSkills": []
-  // }
+  // In add-on repos, pack switching MUST go through .ai/scripts/skillsctl.js (scheme A).
+  // In non-add-on repos, fall back to a flat sync-manifest.json update (additive; never removes).
   const manifestPath = path.join(repoRoot, '.ai', 'skills', '_meta', 'sync-manifest.json');
-  const prefixMap = packPrefixMap();
+  const skillsctlPath = path.join(repoRoot, '.ai', 'scripts', 'skillsctl.js');
 
-  const skills = blueprint.skills || {};
-  const packs = normalizePackList(skills.packs || []);
-
-  // Backward-compatible aliases (some blueprints may use these names).
-  const includeSkills = uniq([
-    ...toStringArray(skills.includeSkills),
-    ...toStringArray(skills.includeSkillNames),
-  ]);
-  const excludeSkills = uniq([
-    ...toStringArray(skills.excludeSkills),
-    ...toStringArray(skills.excludeSkillNames),
-  ]);
-
-  const includePrefixes = [];
   const warnings = [];
+  const errors = [];
 
-  for (const p of packs) {
-    const pref = prefixMap[p];
-    if (!pref) {
-      warnings.push(`Unknown pack "${p}" (no prefix mapping). Ignoring.`);
+  const packsFromBlueprint = normalizePackList((blueprint.skills && blueprint.skills.packs) || []);
+  const packs = new Set(packsFromBlueprint);
+
+  // Add-on: context awareness is an explicit capability switch; it implies enabling the context-core pack.
+  if (isContextAwarenessEnabled(blueprint)) {
+    packs.add('context-core');
+  }
+
+  const packList = Array.from(packs);
+
+  if (packList.length === 0) {
+    return { op: 'skip', path: manifestPath, mode: apply ? 'applied' : 'dry-run', warnings, note: 'no packs requested' };
+  }
+
+  // Prefer skillsctl if available (add-on mode)
+  if (fs.existsSync(skillsctlPath)) {
+    // Preflight: ensure pack files exist (more actionable than letting skillsctl fail mid-run).
+    for (const p of packList) {
+      const packFile = path.join(repoRoot, '.ai', 'skills', '_meta', 'packs', `${p}.json`);
+      if (!fs.existsSync(packFile)) {
+        errors.push(`Pack "${p}" is requested, but pack file is missing: ${path.relative(repoRoot, packFile)}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      return { op: 'skillsctl', path: skillsctlPath, mode: 'failed', errors, warnings, packs: packList };
+    }
+
+    const actions = [];
+    for (const p of packList) {
+      const cmd = 'node';
+      const args = [skillsctlPath, 'enable-pack', p, '--repo-root', repoRoot, '--no-sync'];
+      const printable = `${cmd} ${args.join(' ')}`;
+
+      if (!apply) {
+        actions.push({ op: 'run', cmd: printable, mode: 'dry-run' });
+        continue;
+      }
+
+      const res = childProcess.spawnSync(cmd, args, { stdio: 'inherit', cwd: repoRoot });
+      if (res.status !== 0) {
+        return { op: 'skillsctl', path: skillsctlPath, mode: 'failed', exitCode: res.status, packs: packList, warnings };
+      }
+      actions.push({ op: 'run', cmd: printable, mode: 'applied' });
+    }
+
+    // Read effective manifest (if present) for reporting
+    let effective = null;
+    if (fs.existsSync(manifestPath)) {
+      try { effective = readJson(manifestPath); } catch {}
+    }
+
+    return { op: 'skillsctl', path: manifestPath, mode: apply ? 'applied' : 'dry-run', warnings, packs: packList, actions, effectiveManifest: effective };
+  }
+
+  // Fallback: update flat manifest directly (additive; safe for basic repos)
+  let manifest;
+  if (fs.existsSync(manifestPath)) {
+    manifest = readJson(manifestPath);
+  } else {
+    manifest = { version: 1, includePrefixes: [], includeSkills: [], excludeSkills: [] };
+  }
+
+  if (!Array.isArray(manifest.includePrefixes)) manifest.includePrefixes = [];
+  if (!Array.isArray(manifest.includeSkills)) manifest.includeSkills = [];
+  if (!Array.isArray(manifest.excludeSkills)) manifest.excludeSkills = [];
+
+  const prefixMap = packPrefixMap();
+  const prefixesToAdd = [];
+  for (const p of packList) {
+    const prefix = prefixMap[p];
+    if (!prefix) {
+      warnings.push(`Pack "${p}" has no prefix mapping and skillsctl is not installed; skipping (install add-on or add pack mapping).`);
       continue;
     }
-    includePrefixes.push(pref);
+    prefixesToAdd.push(prefix);
   }
 
-  if (Array.isArray(skills.excludePrefixes) && skills.excludePrefixes.length > 0) {
-    warnings.push('skills.excludePrefixes is not supported by the current manifest schema. Use skills.excludeSkills instead.');
+  manifest.includePrefixes = uniq([...manifest.includePrefixes, ...prefixesToAdd]);
+
+  if (!apply) {
+    return { op: 'write', path: manifestPath, mode: 'dry-run', warnings, includePrefixes: manifest.includePrefixes, packs: packList };
   }
-
-  const manifest = {
-    version: 1,
-    includePrefixes: uniq(includePrefixes),
-    includeSkills,
-    excludeSkills,
-  };
-
-  if (!apply) return { op: 'write', path: manifestPath, mode: 'dry-run', warnings, manifest };
 
   writeJson(manifestPath, manifest);
-  return { op: 'write', path: manifestPath, mode: 'applied', warnings, manifest };
+  return { op: 'write', path: manifestPath, mode: 'applied', warnings, includePrefixes: manifest.includePrefixes, packs: packList };
 }
 
 
-function contextAddonRequested(blueprint) {
-  // Minimal-intrusion hook:
-  // - default: disabled (no repo changes)
-  // - enable by setting: blueprint.context.enabled = true
-  const ctx = blueprint && blueprint.context ? blueprint.context : null;
-  if (ctx && typeof ctx.enabled === 'boolean') return ctx.enabled;
-
-  // Backward-compatible aliases (optional):
-  const addons = blueprint && blueprint.addons ? blueprint.addons : null;
-  if (addons && typeof addons.contextAwareness === 'boolean') return addons.contextAwareness;
-  if (Array.isArray(addons) && addons.includes('context-awareness')) return true;
-
-  return false;
-}
-
-function copyFileIfMissing(srcPath, dstPath, apply) {
-  if (fs.existsSync(dstPath)) return { op: 'skip', path: dstPath, reason: 'exists' };
-  if (!apply) return { op: 'copy', path: dstPath, mode: 'dry-run', src: srcPath };
-  fs.mkdirSync(path.dirname(dstPath), { recursive: true });
-  fs.copyFileSync(srcPath, dstPath);
-  return { op: 'copy', path: dstPath, mode: 'applied', src: srcPath };
-}
-
-function listFilesRecursive(dirPath) {
-  const out = [];
-  if (!fs.existsSync(dirPath)) return out;
-  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-  for (const e of entries) {
-    const p = path.join(dirPath, e.name);
-    if (e.isDirectory()) out.push(...listFilesRecursive(p));
-    else if (e.isFile()) out.push(p);
-  }
-  return out;
-}
-
-function copyTreeIfMissing(srcRoot, dstRoot, apply) {
-  const plan = [];
-  const files = listFilesRecursive(srcRoot);
-  for (const f of files) {
-    const rel = path.relative(srcRoot, f);
-    const dst = path.join(dstRoot, rel);
-    plan.push(copyFileIfMissing(f, dst, apply));
-  }
-  return plan;
-}
-
-function installContextAwarenessAddon(repoRoot, apply) {
-  const payloadRoot = path.join(repoRoot, 'addons', 'context-awareness', 'payload');
-  if (!fs.existsSync(payloadRoot)) {
-    return { op: 'install-addon', mode: 'skipped', reason: 'payload not found', plan: [] };
-  }
-
-  const plan = [];
-  const srcAi = path.join(payloadRoot, '.ai');
-  const srcDocs = path.join(payloadRoot, 'docs');
-
-  if (fs.existsSync(srcAi)) plan.push(...copyTreeIfMissing(srcAi, path.join(repoRoot, '.ai'), apply));
-  if (fs.existsSync(srcDocs)) plan.push(...copyTreeIfMissing(srcDocs, path.join(repoRoot, 'docs'), apply));
-
-  return { op: 'install-addon', mode: apply ? 'applied' : 'dry-run', addon: 'context-awareness', payloadRoot, plan };
-}
-
-function enablePackWithSkillsctl(repoRoot, providers, packId, apply) {
-  const scriptPath = path.join(repoRoot, '.ai', 'scripts', 'skillsctl.js');
-  if (!fs.existsSync(scriptPath)) {
-    return { op: 'run', mode: 'skipped', reason: 'skillsctl.js not installed', cmd: null };
-  }
-
-  const providersArg = providers || 'both';
-  const cmd = 'node';
-  const args = [scriptPath, 'enable-pack', packId, '--providers', providersArg, '--no-sync'];
-
-  if (!apply) return { op: 'run', cmd: `${cmd} ${args.join(' ')}`, mode: 'dry-run' };
-
-  const res = childProcess.spawnSync(cmd, args, { stdio: 'inherit', cwd: repoRoot });
-  if (res.status !== 0) {
-    return { op: 'run', cmd: `${cmd} ${args.join(' ')}`, mode: 'failed', exitCode: res.status };
-  }
-  return { op: 'run', cmd: `${cmd} ${args.join(' ')}`, mode: 'applied' };
-}
 
 function syncWrappers(repoRoot, providers, apply) {
   const scriptPath = path.join(repoRoot, '.ai', 'scripts', 'sync-skills.js');
@@ -582,10 +1239,180 @@ function main() {
   const blueprintPath = resolvePath(repoRoot, opts['blueprint']);
   const docsRoot = resolvePath(repoRoot, opts['docs-root'] || path.join('docs', 'project'));
 
-  if (command === 'validate') {
+  // ========== start ==========
+  if (command === 'start') {
+    const existingState = loadState(repoRoot);
+    if (existingState) {
+      console.log('[info] 检测到已存在的初始化状态');
+      printStatus(existingState, repoRoot);
+      console.log('[info] 如需重新开始，请先删除 init/.init-state.json');
+      process.exit(0);
+    }
+
+    const state = createInitialState();
+    addHistoryEvent(state, 'init_started', 'Initialization started');
+    saveState(repoRoot, state);
+
+    console.log('[ok] 初始化状态已创建: init/.init-state.json');
+    printStatus(state, repoRoot);
+    process.exit(0);
+  }
+
+  // ========== status ==========
+  if (command === 'status') {
+    const state = loadState(repoRoot);
+    if (!state) {
+      console.log('[info] 未检测到初始化状态');
+      console.log('[info] 运行 "start" 命令开始初始化');
+      process.exit(0);
+    }
+
+    if (format === 'json') {
+      console.log(JSON.stringify(getStageProgress(state), null, 2));
+    } else {
+      printStatus(state, repoRoot);
+    }
+    process.exit(0);
+  }
+
+    // ========== advance ==========
+  if (command === 'advance') {
+    const state = loadState(repoRoot);
+    if (!state) {
+      die('[error] 未检测到初始化状态，请先运行 "start" 命令');
+    }
+
+    const progress = getStageProgress(state);
+    const self = path.relative(repoRoot, __filename);
+    const docsRel = path.relative(repoRoot, docsRoot);
+    const bpRel = blueprintPath ? path.relative(repoRoot, blueprintPath) : 'docs/project/project-blueprint.json';
+
+    if (progress.stage === 'A') {
+      if (!progress.stageA.validated) {
+        console.log('[info] Stage A 需求文档尚未通过结构验证。');
+        console.log('请先运行:');
+        console.log(`  node ${self} check-docs --docs-root ${docsRel} --strict`);
+        process.exit(1);
+      }
+      console.log('\n== Stage A → B Checkpoint ==\n');
+      console.log('Stage A 文档已通过结构验证。下一步需要用户审查并明确批准。');
+      console.log('批准后运行:');
+      console.log(`  node ${self} approve --stage A --repo-root ${repoRoot}`);
+      process.exit(0);
+    }
+
+    if (progress.stage === 'B') {
+      if (!progress.stageB.validated) {
+        console.log('[info] Stage B 蓝图尚未验证。');
+        console.log('请先运行:');
+        console.log(`  node ${self} validate --blueprint ${bpRel}`);
+        process.exit(1);
+      }
+      console.log('\n== Stage B → C Checkpoint ==\n');
+      console.log('Stage B 蓝图已验证通过。下一步需要用户审查并明确批准。');
+      console.log('批准后运行:');
+      console.log(`  node ${self} approve --stage B --repo-root ${repoRoot}`);
+      process.exit(0);
+    }
+
+    if (progress.stage === 'C') {
+      if (!progress.stageC.wrappersSynced) {
+        console.log('[info] Stage C 尚未完成（wrappers 未同步）。');
+        console.log('请先运行:');
+        console.log(`  node ${self} apply --blueprint ${bpRel}`);
+        process.exit(1);
+      }
+
+      console.log('\n== Stage C Completion Checkpoint ==\n');
+      console.log('Stage C 已执行完成（scaffold + skills 已落盘）。');
+      console.log('下一步需要用户确认：生成的骨架与启用的能力符合预期。');
+      console.log('确认后运行:');
+      console.log(`  node ${self} approve --stage C --repo-root ${repoRoot}`);
+      console.log('\n可选：之后可运行 cleanup-init --apply --i-understand 删除 init/ 目录');
+      process.exit(0);
+    }
+
+    console.log('[info] 初始化已完成 (state.stage = complete)');
+    process.exit(0);
+  }
+
+
+
+    // ========== approve ==========
+  if (command === 'approve') {
+    const state = loadState(repoRoot);
+    if (!state) {
+      die('[error] 未检测到初始化状态，请先运行 "start" 命令');
+    }
+
+    const current = String(state.stage || '').toUpperCase();
+    const desired = String(opts['stage'] || current).toUpperCase();
+    const note = opts['note'] ? String(opts['note']) : '';
+
+    if (!['A', 'B', 'C', 'COMPLETE'].includes(desired)) {
+      die('[error] --stage must be one of: A | B | C');
+    }
+
+    if (desired !== current) {
+      die(`[error] 当前 stage=${state.stage}，无法批准 stage=${desired}。请先运行 status 确认，或不要传 --stage。`);
+    }
+
+    if (desired === 'A') {
+      if (!state.stageA.validated) {
+        die('[error] Stage A 尚未验证。请先运行 check-docs');
+      }
+      state.stageA.userApproved = true;
+      state.stage = 'B';
+      addHistoryEvent(state, 'stage_a_approved', note || 'Stage A approved by user');
+      saveState(repoRoot, state);
+      printStatus(state, repoRoot);
+      process.exit(0);
+    }
+
+    if (desired === 'B') {
+      if (!state.stageB.validated) {
+        die('[error] Stage B 尚未验证。请先运行 validate');
+      }
+      state.stageB.userApproved = true;
+      state.stage = 'C';
+      addHistoryEvent(state, 'stage_b_approved', note || 'Stage B approved by user');
+      saveState(repoRoot, state);
+      printStatus(state, repoRoot);
+      process.exit(0);
+    }
+
+    if (desired === 'C') {
+      if (!state.stageC.wrappersSynced) {
+        die('[error] Stage C 尚未完成。请先运行 apply');
+      }
+      state.stageC.userApproved = true;
+      state.stage = 'complete';
+      addHistoryEvent(state, 'init_completed', note || 'Initialization completed');
+      saveState(repoRoot, state);
+      printStatus(state, repoRoot);
+      process.exit(0);
+    }
+
+    console.log('[info] 已完成，无需重复 approve');
+    process.exit(0);
+  }
+
+if (command === 'validate') {
     if (!blueprintPath) die('[error] --blueprint is required for validate');
     const blueprint = readJson(blueprintPath);
     const v = validateBlueprint(blueprint);
+
+    // Auto-update state if validation passes
+    if (v.ok) {
+      const state = loadState(repoRoot);
+      if (state && state.stage === 'B') {
+        state.stageB.drafted = true;
+        state.stageB.validated = true;
+        addHistoryEvent(state, 'stage_b_validated', 'Stage B blueprint validated');
+        saveState(repoRoot, state);
+        console.log('[auto] 状态已更新: stageB.validated = true');
+      }
+    }
 
     const result = {
       ok: v.ok,
@@ -608,6 +1435,23 @@ function main() {
     const summary = ok
       ? `[ok] Stage A docs check passed: ${path.relative(repoRoot, docsRoot)}`
       : `[error] Stage A docs check failed: ${path.relative(repoRoot, docsRoot)}`;
+
+    // Auto-update state if validation passes
+    if (ok) {
+      const state = loadState(repoRoot);
+      if (state && state.stage === 'A') {
+        state.stageA.validated = true;
+        state.stageA.docsWritten = {
+          requirements: fs.existsSync(path.join(docsRoot, 'requirements.md')),
+          nfr: fs.existsSync(path.join(docsRoot, 'non-functional-requirements.md')),
+          glossary: fs.existsSync(path.join(docsRoot, 'domain-glossary.md')),
+          riskQuestions: fs.existsSync(path.join(docsRoot, 'risk-open-questions.md'))
+        };
+        addHistoryEvent(state, 'stage_a_validated', 'Stage A docs validated');
+        saveState(repoRoot, state);
+        console.log('[auto] 状态已更新: stageA.validated = true');
+      }
+    }
 
     printResult({ ok, errors: res.errors, warnings: res.warnings, summary }, format);
     process.exit(ok ? 0 : 1);
@@ -682,7 +1526,9 @@ function main() {
     if (!blueprintPath) die('[error] --blueprint is required for apply');
     const providers = opts['providers'] || 'both';
     const requireStageA = !!opts['require-stage-a'];
+    const skipConfigs = !!opts['skip-configs'];
     const cleanup = !!opts['cleanup-init'];
+    const addonsRoot = opts['addons-root'] || 'addons';
 
     if (cleanup && !opts['i-understand']) {
       die('[error] --cleanup-init requires --i-understand');
@@ -710,42 +1556,140 @@ function main() {
       console.warn(`[warn] Run: suggest-packs --blueprint ${path.relative(repoRoot, blueprintPath)} --write  (or edit blueprint.skills.packs manually)`);
     }
 
-    // Scaffold
+    // Scaffold directories
     const scaffoldPlan = planScaffold(repoRoot, blueprint, true);
+
+    // Generate config files (default: enabled)
+    let configResults = [];
+    if (!skipConfigs) {
+      configResults = generateConfigFiles(repoRoot, blueprint, true);
+      console.log('[ok] Config files generated.');
+      for (const r of configResults) {
+        const mode = r.mode ? ` (${r.mode})` : '';
+        const reason = r.reason ? ` [${r.reason}]` : '';
+        console.log(`  - ${r.action}: ${r.file}${mode}${reason}`);
+      }
+    }
+
+    
+    // Optional: context awareness add-on (on-demand; minimal intrusion)
+    const contextAddon = ensureContextAwarenessAddon(repoRoot, blueprint, addonsRoot, true);
+    if (contextAddon.errors && contextAddon.errors.length > 0) {
+      for (const e of contextAddon.errors) console.error(`[error] ${e}`);
+      die('[error] Context awareness add-on setup failed.');
+    }
+    if (contextAddon.warnings && contextAddon.warnings.length > 0) {
+      for (const w of contextAddon.warnings) console.warn(`[warn] ${w}`);
+    }
+
+    // Optional add-ons installation
+    const addonResults = [];
+
+    // db-mirror add-on
+    if (isDbMirrorEnabled(blueprint)) {
+      console.log('[info] Installing db-mirror add-on...');
+      const res = ensureAddon(repoRoot, 'db-mirror', addonsRoot, true, 'dbctl.js');
+      addonResults.push(res);
+      if (res.errors.length > 0) {
+        for (const e of res.errors) console.error(`[error] ${e}`);
+      }
+      if (res.warnings.length > 0) {
+        for (const w of res.warnings) console.warn(`[warn] ${w}`);
+      }
+    }
+
+    // ci-templates add-on
+    if (isCiTemplatesEnabled(blueprint)) {
+      console.log('[info] Installing ci-templates add-on...');
+      const res = ensureAddon(repoRoot, 'ci-templates', addonsRoot, true, 'cictl.js');
+      addonResults.push(res);
+      if (res.errors.length > 0) {
+        for (const e of res.errors) console.error(`[error] ${e}`);
+      }
+      if (res.warnings.length > 0) {
+        for (const w of res.warnings) console.warn(`[warn] ${w}`);
+      }
+    }
+
+    // packaging add-on
+    if (isPackagingEnabled(blueprint)) {
+      console.log('[info] Installing packaging add-on...');
+      const res = ensureAddon(repoRoot, 'packaging', addonsRoot, true, 'packctl.js');
+      addonResults.push(res);
+      if (res.errors.length > 0) {
+        for (const e of res.errors) console.error(`[error] ${e}`);
+      }
+      if (res.warnings.length > 0) {
+        for (const w of res.warnings) console.warn(`[warn] ${w}`);
+      }
+    }
+
+    // deployment add-on
+    if (isDeploymentEnabled(blueprint)) {
+      console.log('[info] Installing deployment add-on...');
+      const res = ensureAddon(repoRoot, 'deployment', addonsRoot, true, 'deployctl.js');
+      addonResults.push(res);
+      if (res.errors.length > 0) {
+        for (const e of res.errors) console.error(`[error] ${e}`);
+      }
+      if (res.warnings.length > 0) {
+        for (const w of res.warnings) console.warn(`[warn] ${w}`);
+      }
+    }
+
+    // release add-on
+    if (isReleaseEnabled(blueprint)) {
+      console.log('[info] Installing release add-on...');
+      const res = ensureAddon(repoRoot, 'release', addonsRoot, true, 'releasectl.js');
+      addonResults.push(res);
+      if (res.errors.length > 0) {
+        for (const e of res.errors) console.error(`[error] ${e}`);
+      }
+      if (res.warnings.length > 0) {
+        for (const w of res.warnings) console.warn(`[warn] ${w}`);
+      }
+    }
+
+    // observability add-on
+    if (isObservabilityEnabled(blueprint)) {
+      console.log('[info] Installing observability add-on...');
+      const res = ensureAddon(repoRoot, 'observability', addonsRoot, true, 'obsctl.js');
+      addonResults.push(res);
+      if (res.errors.length > 0) {
+        for (const e of res.errors) console.error(`[error] ${e}`);
+      }
+      if (res.warnings.length > 0) {
+        for (const w of res.warnings) console.warn(`[warn] ${w}`);
+      }
+    }
 
     // Manifest update
     const manifestResult = updateManifest(repoRoot, blueprint, true);
+    if (manifestResult.mode === 'failed') {
+      if (manifestResult.errors && manifestResult.errors.length > 0) {
+        for (const e of manifestResult.errors) console.error(`[error] ${e}`);
+      }
+      die('[error] Skill pack / manifest update failed.');
+    }
     if (manifestResult.warnings && manifestResult.warnings.length > 0) {
       for (const w of manifestResult.warnings) console.warn(`[warn] ${w}`);
     }
 
-    // Optional context-awareness add-on (minimal-intrusion; opt-in)
-    const contextEnabled = contextAddonRequested(blueprint);
-    let ctxInstallResult = null;
-    let ctxPackResult = null;
-
-    if (contextEnabled) {
-      console.log('[info] Installing context-awareness add-on (blueprint.context.enabled=true)');
-      ctxInstallResult = installContextAwarenessAddon(repoRoot, true);
-
-      if (ctxInstallResult.mode === 'skipped') die('[error] Context add-on requested but payload is missing: addons/context-awareness/payload/');
-
-      const copied = (ctxInstallResult.plan || []).filter((p) => p.op === 'copy' && p.mode === 'applied').length;
-      const skipped = (ctxInstallResult.plan || []).filter((p) => p.op === 'skip').length;
-      console.log(`[info] context-awareness add-on: copied=${copied}, skipped=${skipped}`);
-
-      // Enable the context pack so the new scaffold skills are discoverable.
-      ctxPackResult = enablePackWithSkillsctl(repoRoot, providers, 'context-core', true);
-      if (ctxPackResult.mode === 'failed') die('[error] skillsctl enable-pack context-core failed.');
-      if (ctxPackResult.mode === 'skipped') {
-        console.warn('[warn] skillsctl.js not installed; add-on installed but pack not enabled.');
-      }
-    }
-
-
     // Sync wrappers
     const syncResult = syncWrappers(repoRoot, providers, true);
     if (syncResult.mode === 'failed') die(`[error] sync-skills.js failed with exit code ${syncResult.exitCode}`);
+
+    // Auto-update state
+    const state = loadState(repoRoot);
+    if (state) {
+      state.stageC.scaffoldApplied = true;
+      state.stageC.configsGenerated = !skipConfigs;
+      state.stageC.manifestUpdated = true;
+      state.stageC.wrappersSynced = syncResult.mode === 'applied';
+      addHistoryEvent(state, 'stage_c_applied', 'Stage C apply completed');
+      saveState(repoRoot, state);
+      console.log('[auto] 状态已更新: stageC.* = true');
+    }
 
     // Optional cleanup
     let cleanupResult = null;
@@ -762,7 +1706,10 @@ function main() {
         blueprint: path.relative(repoRoot, blueprintPath),
         docsRoot: path.relative(repoRoot, docsRoot),
         stageA: stageARes,
+        contextAddon: contextAddon,
+        addons: addonResults,
         scaffold: scaffoldPlan,
+        configs: configResults,
         manifest: manifestResult,
         sync: syncResult,
         cleanup: cleanupResult
@@ -771,6 +1718,12 @@ function main() {
       console.log('[ok] Apply completed.');
       console.log(`- Blueprint: ${path.relative(repoRoot, blueprintPath)}`);
       console.log(`- Docs root: ${path.relative(repoRoot, docsRoot)}`);
+      if (contextAddon && contextAddon.enabled) {
+        console.log(`- Context awareness: enabled (addonsRoot=${addonsRoot})`);
+      }
+      if (addonResults.length > 0) {
+        console.log(`- Add-ons installed: ${addonResults.map(r => r.addonId).join(', ')}`);
+      }
       if (!stageARes.ok) console.log('[warn] Stage A docs check had errors; consider re-running with --require-stage-a.');
       if (stageARes.warnings.length > 0) console.log('[warn] Stage A docs check has warnings; ensure TBD/TODO items are tracked.');
       console.log(`- Manifest updated: ${path.relative(repoRoot, manifestResult.path)}`);

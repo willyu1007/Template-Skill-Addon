@@ -73,7 +73,7 @@ Use these decisions to avoid ambiguous boundaries.
   - If the rule depends on HTTP context, keep enforcement in middleware/controller.
   - If the rule is domain-specific, enforce in services as well.
 
-## Step-by-step workflow
+## Steps
 1. Identify the public interfaces (endpoints/jobs/events).
 2. Define domain services and responsibilities.
 3. Define repository boundaries (per aggregate or per module).
@@ -83,11 +83,22 @@ Use these decisions to avoid ambiguous boundaries.
 7. Add templates to standardize new modules.
 
 ## Verification
-- New endpoints follow the dependency direction.
-- Controllers contain no data access queries.
-- Routes contain no business logic.
-- Services contain no HTTP concepts.
-- At least one service is unit-tested in isolation.
+
+- [ ] New endpoints follow the dependency direction (routes → controllers → services → repositories)
+- [ ] Controllers contain no data access queries
+- [ ] Routes contain no business logic
+- [ ] Services contain no HTTP concepts (`req`, `res`)
+- [ ] At least one service is unit-tested in isolation
+- [ ] Build passes after applying the architecture
+
+## Boundaries
+
+- MUST NOT allow dependencies to flow outward (repositories calling controllers)
+- MUST NOT embed business logic in routes or controllers
+- MUST NOT introduce circular dependencies between layers
+- SHOULD NOT skip repository layer for non-trivial queries
+- SHOULD NOT mix multiple responsibilities in a single layer
+- SHOULD NOT bypass architectural invariants without documented justification
 
 ## Included assets
 - Examples: see `./examples/` for request lifecycle and module layout blueprints.

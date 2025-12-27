@@ -33,7 +33,7 @@ Use this skill when you are:
 - Lazy loading SHOULD be used for large feature routes to reduce initial bundle size.
 - The app MUST have a 404/not-found route.
 
-## Step-by-step workflow
+## Steps
 1. Add a route entry:
    - path
    - component
@@ -46,6 +46,24 @@ Use this skill when you are:
    - direct URL entry works
    - lazy chunk loads successfully
    - unauthorized access is handled gracefully
+
+## Verification
+
+- [ ] Navigation between routes works
+- [ ] Direct URL entry loads the correct page
+- [ ] Lazy-loaded chunks load successfully
+- [ ] 404/not-found route renders for unknown paths
+- [ ] Protected routes redirect unauthenticated users appropriately
+- [ ] Route guards block unauthorized access
+
+## Boundaries
+
+- MUST NOT define routes in multiple places without a clear consolidation rule
+- MUST NOT skip 404 handling
+- MUST NOT lazy-load critical above-the-fold routes
+- SHOULD NOT create deeply nested route structures without clear navigation
+- SHOULD NOT hardcode URLs (use route constants or helpers)
+- SHOULD NOT skip chunk loading error handling for lazy routes
 
 ## Included assets
 - Templates: `./templates/` includes lazy route scaffolds.

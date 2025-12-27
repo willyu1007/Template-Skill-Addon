@@ -68,7 +68,7 @@ When using soft delete:
 - Fetch related entities via joins/includes when appropriate.
 - Consider batching, caching, or explicit query composition.
 
-## Step-by-step workflow
+## Steps
 1. Define data invariants (what MUST always be true).
 2. Define repository contract:
    - inputs
@@ -86,6 +86,24 @@ When using soft delete:
 6. Add verification:
    - one correctness test
    - one performance sanity check (where practical)
+
+## Verification
+
+- [ ] Repository methods return expected results for valid inputs
+- [ ] Transactions roll back completely on failure (no partial commits)
+- [ ] Pagination returns correct page sizes and cursor/offset handling
+- [ ] Soft delete queries correctly exclude deleted records by default
+- [ ] Query performance meets latency targets (check query plans if needed)
+- [ ] N+1 queries are not introduced (verify query count in tests)
+
+## Boundaries
+
+- MUST NOT call external services inside database transactions
+- MUST NOT expose ORM-specific types to service layer (unless intentionally standardized)
+- MUST NOT skip transaction boundaries for multi-write operations
+- MUST NOT use unbounded queries on large datasets
+- SHOULD NOT use offset pagination for large or frequently-updated datasets
+- SHOULD NOT hold transactions open longer than necessary
 
 ## Included assets
 - Templates: `./templates/` includes pagination and transaction scaffolds.
