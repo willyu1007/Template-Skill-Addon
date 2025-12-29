@@ -1,0 +1,16 @@
+{
+  "name": "__AGENT_PKG_NAME__",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start:api": "node src/adapters/http/server.js",
+    "start:worker": "node src/adapters/worker/worker.js",
+    "run:cron": "node src/adapters/cron/run-cron.js",
+    "run:pipeline": "node src/adapters/pipeline/run-step.js",
+    "test": "node src/tests/smoke.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

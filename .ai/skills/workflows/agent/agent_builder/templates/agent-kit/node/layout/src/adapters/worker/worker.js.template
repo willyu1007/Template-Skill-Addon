@@ -1,0 +1,89 @@
+import fs from 'fs';
+import path from 'path';
+import { loadConfig, log } from '../../core/config.js';
+import { runAgent } from '../../core/agent.js';
+import { toErrorResponse } from '../../core/errors.js';
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function ensureDir(p) {
+  fs.mkdirSync(p, { recursive: true });
+}
+
+function listJsonFiles(dir) {
+  try {
+    return fs.readdirSync(dir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => path.join(dir, f));
+  } catch {
+    return [];
+  }
+}
+
+async function processFile(filePath, cfg) {
+  const started = Date.now();
+  const name = path.basename(filePath);
+  const requestId = 'wkr_' + name.replace(/\W+/g, '_');
+
+  let req;
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    req = JSON.parse(raw);
+  } catch (err) {
+    const e = toErrorResponse(err);
+    log('error', { msg: 'worker_bad_input', file: filePath, error: e });
+    // Move to output as error
+    const outPath = path.join(cfg.worker.outputDir, name.replace(/\.json$/, '.error.json'));
+    fs.writeFileSync(outPath, JSON.stringify(e, null, 2));
+    fs.renameSync(filePath, filePath + '.bad');
+    return;
+  }
+
+  try {
+    const output = await runAgent(req, { requestId });
+    const outPath = path.join(cfg.worker.outputDir, name.replace(/\.json$/, '.out.json'));
+    fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
+    fs.renameSync(filePath, filePath + '.done');
+    log('info', { msg: 'worker_processed', file: filePath, durationMs: Date.now() - started });
+  } catch (err) {
+    const e = toErrorResponse(err);
+    const outPath = path.join(cfg.worker.outputDir, name.replace(/\.json$/, '.error.json'));
+    fs.writeFileSync(outPath, JSON.stringify(e, null, 2));
+    fs.renameSync(filePath, filePath + '.failed');
+    log('error', { msg: 'worker_failed', file: filePath, durationMs: Date.now() - started, error: e });
+  }
+}
+
+async function main() {
+  const cfg = loadConfig();
+  ensureDir(cfg.worker.inputDir);
+  ensureDir(cfg.worker.outputDir);
+
+  const concurrency = Number(process.env.AGENT_WORKER_CONCURRENCY || 2);
+  log('info', { msg: 'worker_start', inputDir: cfg.worker.inputDir, outputDir: cfg.worker.outputDir, concurrency });
+
+  const inFlight = new Set();
+
+  while (true) {
+    const files = listJsonFiles(cfg.worker.inputDir);
+    for (const f of files) {
+      if (inFlight.size >= concurrency) break;
+      if (inFlight.has(f)) continue;
+
+      const p = processFile(f, cfg)
+        .catch(() => {})
+        .finally(() => inFlight.delete(f));
+      inFlight.add(f);
+    }
+
+    await sleep(cfg.worker.pollIntervalMs);
+  }
+}
+
+main().catch((err) => {
+  const e = toErrorResponse(err);
+  log('error', { msg: 'worker_crash', error: e });
+  process.exit(1);
+});

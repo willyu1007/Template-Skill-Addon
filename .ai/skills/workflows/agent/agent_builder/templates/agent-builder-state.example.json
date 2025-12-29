@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "run_id": "2025-01-01T00-00-00Z_example",
+  "created_at": "2025-01-01T00:00:00Z",
+  "workdir": "/tmp/agent_builder/2025-01-01T00-00-00Z_example",
+  "repo_root": "<repo-root>",
+  "stage": "A",
+  "stages": {
+    "A": {
+      "status": "in_progress",
+      "user_approved": false,
+      "notes": "Interview in progress; no repo writes.",
+      "artifacts": [
+        "stageA/interview-notes.md",
+        "stageA/integration-decision.md"
+      ]
+    },
+    "B": {
+      "status": "not_started",
+      "user_approved": false,
+      "artifacts": [
+        "stageB/agent-blueprint.json"
+      ]
+    },
+    "C": {
+      "status": "not_started",
+      "user_approved": false
+    },
+    "D": {
+      "status": "not_started",
+      "user_approved": false
+    },
+    "E": {
+      "status": "not_started",
+      "user_approved": false
+    }
+  },
+  "blueprint_path": "stageB/agent-blueprint.json",
+  "history": [
+    {
+      "timestamp": "2025-01-01T00:00:00Z",
+      "event": "start",
+      "details": {
+        "workdir": "..."
+      }
+    }
+  ]
+}

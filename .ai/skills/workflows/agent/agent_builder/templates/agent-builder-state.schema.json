@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/agent-builder-state.schema.json",
+  "title": "Agent Builder Run State",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "version",
+    "run_id",
+    "created_at",
+    "workdir",
+    "stage",
+    "stages"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "workdir": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repo_root": {
+      "type": "string"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "DONE"
+      ]
+    },
+    "stages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "properties": {
+        "A": {
+          "$ref": "#/$defs/StageState"
+        },
+        "B": {
+          "$ref": "#/$defs/StageState"
+        },
+        "C": {
+          "$ref": "#/$defs/StageState"
+        },
+        "D": {
+          "$ref": "#/$defs/StageState"
+        },
+        "E": {
+          "$ref": "#/$defs/StageState"
+        }
+      }
+    },
+    "blueprint_path": {
+      "type": "string"
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "timestamp",
+          "event"
+        ],
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "event": {
+            "type": "string"
+          },
+          "details": {}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "StageState": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "status",
+        "user_approved"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "not_started",
+            "in_progress",
+            "ready_for_review",
+            "approved",
+            "applied",
+            "complete"
+          ]
+        },
+        "user_approved": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

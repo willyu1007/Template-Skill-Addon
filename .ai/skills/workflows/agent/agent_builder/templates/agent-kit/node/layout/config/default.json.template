@@ -1,0 +1,9 @@
+{
+  "agent": {
+    "max_steps": 6,
+    "llm_timeout_ms": 30000
+  },
+  "worker": {
+    "poll_interval_ms": 1000
+  }
+}
