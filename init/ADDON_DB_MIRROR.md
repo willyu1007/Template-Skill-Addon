@@ -26,7 +26,7 @@ In `project-blueprint.json`:
 Then run:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply --blueprint docs/project/project-blueprint.json
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --blueprint docs/project/project-blueprint.json
 ```
 
 ## What gets installed
@@ -54,7 +54,16 @@ node .ai/scripts/migrate.js list
 node .ai/scripts/dbctl.js verify
 ```
 
+## Context bridge (optional)
+
+If the context-awareness add-on is enabled, you can sync the mirror into `docs/context/`:
+
+```bash
+node .ai/scripts/dbctl.js sync-to-context
+```
+
+This writes `docs/context/db/schema.json` and updates the context registry checksum so `contextctl verify` succeeds.
+
 ## See also
 
 - `addons/db-mirror/ADDON.md` - Full documentation
-

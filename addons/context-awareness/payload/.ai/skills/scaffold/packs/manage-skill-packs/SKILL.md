@@ -30,7 +30,7 @@ Do NOT use this skill if:
 
 - Updated `.ai/skills/_meta/sync-manifest.json` (effective selection)
 - Updated `.ai/skills/_meta/skillsctl-state.json` (base + enabled packs)
-- Regenerated wrappers under provider skill roots (via `sync-skills.js`)
+- Regenerated wrappers under provider skill roots (via `sync-skills.cjs`)
 
 ## Steps
 

@@ -1,145 +1,311 @@
 #!/usr/bin/env node
 /**
- * dbctl.js - Database Schema Mirror Management
+ * dbctl.js
  *
- * Manages the db/ directory structure for database schema mirroring.
+ * Database schema mirror management for the db-mirror add-on.
+ * The real database is the source of truth; this manages structured mirrors.
  *
  * Commands:
- *   init                Initialize db mirror structure (idempotent)
- *   add-table           Add a table to the schema mirror
- *   remove-table        Remove a table from the schema mirror
- *   list-tables         List all tables in the schema
+ *   init              Initialize db/ directory skeleton (idempotent)
+ *   add-table         Add a table to the schema mirror
+ *   remove-table      Remove a table from the schema mirror
+ *   list-tables       List tables in the schema
+ *   verify            Verify schema mirror consistency
  *   generate-migration  Generate a new migration file
- *   verify              Verify schema consistency
- *   help                Show this help message
+ *   sync-to-context   Sync schema to docs/context/ (if context-awareness enabled)
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// ============================================================================
+// CLI Argument Parsing
+// ============================================================================
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Configuration
-// ─────────────────────────────────────────────────────────────────────────────
+function usage(exitCode = 0) {
+  const msg = `
+Usage:
+  node .ai/scripts/dbctl.js <command> [options]
 
-const DB_DIR = 'db';
-const SCHEMA_DIR = 'db/schema';
-const MIGRATIONS_DIR = 'db/migrations';
-const CONFIG_DIR = 'db/config';
-const SAMPLES_DIR = 'db/samples';
-const WORKDOCS_DIR = 'db/workdocs';
-const TABLES_FILE = 'db/schema/tables.json';
-const DB_ENVS_FILE = 'db/config/db-environments.json';
+Commands:
+  init
+    --repo-root <path>          Repo root (default: cwd)
+    --dry-run                   Show what would be created without writing
+    Initialize db/ directory skeleton (idempotent).
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Utilities
-// ─────────────────────────────────────────────────────────────────────────────
+  add-table
+    --name <string>             Table name (required)
+    --columns <string>          Column definitions: "name:type[:constraint],..." (required)
+    --repo-root <path>          Repo root (default: cwd)
+    Add a table to the schema mirror.
 
-function parseArgs(args) {
-  const result = { _: [], flags: {} };
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg.startsWith('--')) {
-      const key = arg.slice(2);
-      const nextArg = args[i + 1];
-      if (nextArg && !nextArg.startsWith('--')) {
-        result.flags[key] = nextArg;
-        i++;
+  remove-table
+    --name <string>             Table name (required)
+    --repo-root <path>          Repo root (default: cwd)
+    Remove a table from the schema mirror.
+
+  list-tables
+    --repo-root <path>          Repo root (default: cwd)
+    --format <text|json>        Output format (default: text)
+    List tables in the schema.
+
+  verify
+    --repo-root <path>          Repo root (default: cwd)
+    --env <string>              Environment to verify against (optional)
+    Verify schema mirror consistency.
+
+  generate-migration
+    --name <string>             Migration name (required)
+    --repo-root <path>          Repo root (default: cwd)
+    Generate a new migration file.
+
+  sync-to-context
+    --repo-root <path>          Repo root (default: cwd)
+    Sync schema to docs/context/db/ (requires context-awareness).
+
+Examples:
+  node .ai/scripts/dbctl.js init
+  node .ai/scripts/dbctl.js add-table --name users --columns "id:uuid:pk,email:string:unique,created_at:timestamp"
+  node .ai/scripts/dbctl.js list-tables
+  node .ai/scripts/dbctl.js generate-migration --name add-user-roles
+  node .ai/scripts/dbctl.js verify --env dev
+`;
+  console.log(msg.trim());
+  process.exit(exitCode);
+}
+
+function die(msg, exitCode = 1) {
+  console.error(msg);
+  process.exit(exitCode);
+}
+
+function parseArgs(argv) {
+  const args = argv.slice(2);
+  if (args.length === 0 || args[0] === '-h' || args[0] === '--help') usage(0);
+
+  const command = args.shift();
+  const opts = {};
+  const positionals = [];
+
+  while (args.length > 0) {
+    const token = args.shift();
+    if (token === '-h' || token === '--help') usage(0);
+
+    if (token.startsWith('--')) {
+      const key = token.slice(2);
+      if (args.length > 0 && !args[0].startsWith('--')) {
+        opts[key] = args.shift();
       } else {
-        result.flags[key] = true;
+        opts[key] = true;
       }
     } else {
-      result._.push(arg);
+      positionals.push(token);
     }
   }
-  return result;
+
+  return { command, opts, positionals };
 }
 
-function resolveRepoRoot(flagValue) {
-  if (flagValue) return resolve(flagValue);
-  return resolve(__dirname, '..', '..');
-}
+// ============================================================================
+// File Utilities
+// ============================================================================
 
-function isoNow() {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-}
-
-function ensureDir(dirPath) {
-  if (!existsSync(dirPath)) {
-    mkdirSync(dirPath, { recursive: true });
-    return true;
-  }
-  return false;
-}
-
-function loadJson(filePath) {
-  if (!existsSync(filePath)) return null;
+function readJson(filePath) {
   try {
-    return JSON.parse(readFileSync(filePath, 'utf8'));
+    const raw = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(raw);
   } catch (e) {
-    console.error(`Error reading ${filePath}: ${e.message}`);
     return null;
   }
 }
 
-function saveJson(filePath, data) {
-  ensureDir(dirname(filePath));
-  writeFileSync(filePath, JSON.stringify(data, null, 2));
+function writeJson(filePath, data) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n', 'utf8');
 }
 
-function loadTables(repoRoot) {
-  return loadJson(join(repoRoot, TABLES_FILE));
+function ensureDir(dirPath) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+    return { op: 'mkdir', path: dirPath };
+  }
+  return { op: 'skip', path: dirPath, reason: 'exists' };
 }
 
-function saveTables(repoRoot, tables) {
-  tables.updatedAt = isoNow();
-  saveJson(join(repoRoot, TABLES_FILE), tables);
+function writeFileIfMissing(filePath, content) {
+  if (fs.existsSync(filePath)) {
+    return { op: 'skip', path: filePath, reason: 'exists' };
+  }
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, 'utf8');
+  return { op: 'write', path: filePath };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
+// Database Schema Management
+// ============================================================================
+
+function getDbDir(repoRoot) {
+  return path.join(repoRoot, 'db');
+}
+
+function getSchemaPath(repoRoot) {
+  return path.join(getDbDir(repoRoot), 'schema', 'tables.json');
+}
+
+function getEnvConfigPath(repoRoot) {
+  return path.join(getDbDir(repoRoot), 'config', 'db-environments.json');
+}
+
+function getMigrationsDir(repoRoot) {
+  return path.join(getDbDir(repoRoot), 'migrations');
+}
+
+function loadSchema(repoRoot) {
+  const schemaPath = getSchemaPath(repoRoot);
+  const data = readJson(schemaPath);
+  if (!data) {
+    return {
+      version: 1,
+      lastUpdated: new Date().toISOString(),
+      tables: []
+    };
+  }
+  return data;
+}
+
+function saveSchema(repoRoot, schema) {
+  schema.lastUpdated = new Date().toISOString();
+  writeJson(getSchemaPath(repoRoot), schema);
+}
+
+function loadEnvConfig(repoRoot) {
+  const configPath = getEnvConfigPath(repoRoot);
+  const data = readJson(configPath);
+  if (!data) {
+    return {
+      environments: []
+    };
+  }
+  return data;
+}
+
+function parseColumnDef(colDef) {
+  const parts = colDef.split(':');
+  if (parts.length < 2) {
+    return null;
+  }
+  return {
+    name: parts[0],
+    type: parts[1],
+    constraints: parts.slice(2)
+  };
+}
+
+// ============================================================================
 // Commands
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 
-function cmdInit(repoRoot) {
-  console.log(`Initializing database mirror at ${repoRoot}...`);
-  let created = false;
+function cmdInit(repoRoot, dryRun) {
+  const dbDir = getDbDir(repoRoot);
+  const actions = [];
 
-  // Create directories
-  const dirs = [DB_DIR, SCHEMA_DIR, MIGRATIONS_DIR, CONFIG_DIR, SAMPLES_DIR, WORKDOCS_DIR];
+  // Create directory structure
+  const dirs = [
+    dbDir,
+    path.join(dbDir, 'schema'),
+    path.join(dbDir, 'migrations'),
+    path.join(dbDir, 'config'),
+    path.join(dbDir, 'samples'),
+    path.join(dbDir, 'workdocs')
+  ];
+
   for (const dir of dirs) {
-    const fullPath = join(repoRoot, dir);
-    if (ensureDir(fullPath)) {
-      console.log(`  Created: ${dir}/`);
-      created = true;
+    if (dryRun) {
+      actions.push({ op: 'mkdir', path: dir, mode: 'dry-run' });
+    } else {
+      actions.push(ensureDir(dir));
     }
   }
 
-  // Create tables.json if missing
-  const tablesPath = join(repoRoot, TABLES_FILE);
-  if (!existsSync(tablesPath)) {
-    const initialTables = {
-      version: 1,
-      updatedAt: isoNow(),
-      tables: []
-    };
-    saveJson(tablesPath, initialTables);
-    console.log(`  Created: ${TABLES_FILE}`);
-    created = true;
+  // Create AGENTS.md
+  const agentsPath = path.join(dbDir, 'AGENTS.md');
+  const agentsContent = `# Database Mirror (LLM-first)
+
+## Conclusions (read first)
+
+- Real databases are the **source of truth**; this directory holds structured mirrors.
+- AI/LLM uses these mirrors to understand schema and propose changes.
+- All database operations go through scripts - no direct database manipulation.
+
+## Directory Structure
+
+| Path | Purpose |
+|------|---------|
+| \`schema/tables.json\` | Table structure definitions |
+| \`migrations/\` | Migration files (timestamped) |
+| \`config/\` | Environment-specific DB config |
+| \`samples/\` | Sample/seed data |
+| \`workdocs/\` | Design decisions and plans |
+
+## Commands
+
+\`\`\`bash
+# Add a table
+node .ai/scripts/dbctl.js add-table --name users --columns "id:uuid:pk,email:string:unique"
+
+# List tables
+node .ai/scripts/dbctl.js list-tables
+
+# Generate migration
+node .ai/scripts/dbctl.js generate-migration --name add-user-roles
+
+# Verify schema
+node .ai/scripts/dbctl.js verify
+\`\`\`
+
+## AI/LLM Guidelines
+
+1. **Read** \`schema/tables.json\` to understand current schema
+2. **Propose** schema changes by editing mirror files
+3. **Generate** migrations via \`dbctl generate-migration\`
+4. **Document** intentions in \`workdocs/\`
+5. **Never** directly connect to databases or run arbitrary SQL
+
+Humans execute migrations and handle credentials.
+`;
+
+  if (dryRun) {
+    actions.push({ op: 'write', path: agentsPath, mode: 'dry-run' });
+  } else {
+    actions.push(writeFileIfMissing(agentsPath, agentsContent));
   }
 
-  // Create db-environments.json if missing
-  const envsPath = join(repoRoot, DB_ENVS_FILE);
-  if (!existsSync(envsPath)) {
-    const initialEnvs = {
+  // Create tables.json
+  const schemaPath = getSchemaPath(repoRoot);
+  if (!fs.existsSync(schemaPath) && !dryRun) {
+    const schema = {
       version: 1,
-      updatedAt: isoNow(),
+      lastUpdated: new Date().toISOString(),
+      tables: []
+    };
+    writeJson(schemaPath, schema);
+    actions.push({ op: 'write', path: schemaPath });
+  } else if (dryRun) {
+    actions.push({ op: 'write', path: schemaPath, mode: 'dry-run' });
+  } else {
+    actions.push({ op: 'skip', path: schemaPath, reason: 'exists' });
+  }
+
+  // Create db-environments.json
+  const envConfigPath = getEnvConfigPath(repoRoot);
+  if (!fs.existsSync(envConfigPath) && !dryRun) {
+    const envConfig = {
       environments: [
         {
           id: 'dev',
-          description: 'Local development database',
+          description: 'Local development',
           connectionTemplate: 'postgresql://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}',
           permissions: {
             migrations: true,
@@ -149,408 +315,299 @@ function cmdInit(repoRoot) {
         },
         {
           id: 'staging',
-          description: 'Staging database',
+          description: 'Staging environment',
           connectionTemplate: 'postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}',
           permissions: {
-            migrations: 'review-required',
-            seedData: false,
+            migrations: true,
+            seedData: true,
             directQueries: false
           }
         },
         {
           id: 'prod',
-          description: 'Production database',
+          description: 'Production environment',
           connectionTemplate: 'postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}',
           permissions: {
-            migrations: 'change-request',
+            migrations: true,
             seedData: false,
             directQueries: false
           }
         }
       ]
     };
-    saveJson(envsPath, initialEnvs);
-    console.log(`  Created: ${DB_ENVS_FILE}`);
-    created = true;
-  }
-
-  // Create AGENTS.md if missing
-  const agentsPath = join(repoRoot, DB_DIR, 'AGENTS.md');
-  if (!existsSync(agentsPath)) {
-    const agentsContent = `# Database Mirror - AI Guidance
-
-## Conclusions (read first)
-
-- \`db/\` contains the **schema mirror** for this project's database(s).
-- Real databases are the **single source of truth**; this directory holds structured descriptions.
-- AI MUST use \`dbctl.js\` and \`migrate.js\` scripts for all database operations.
-- Never attempt direct database connections or arbitrary SQL execution.
-
-## Directory Structure
-
-- \`db/schema/tables.json\` - Table structure definitions
-- \`db/migrations/\` - Migration files
-- \`db/config/db-environments.json\` - Environment configuration
-- \`db/samples/\` - Sample/seed data
-- \`db/workdocs/\` - Design decisions and planning
-
-## AI Workflow
-
-1. **Read** \`db/schema/tables.json\` to understand current schema
-2. **Propose** changes by editing schema files
-3. **Generate** migrations: \`node .ai/scripts/dbctl.js generate-migration --name <name>\`
-4. **Document** intentions in \`db/workdocs/\`
-5. **Request human** to apply migrations to non-dev environments
-
-## Environment Permissions
-
-Check \`db/config/db-environments.json\` for what operations are allowed:
-
-- \`dev\`: Full access (migrations, seed data, queries)
-- \`staging\`: Migrations require review
-- \`prod\`: Migrations require formal change request
-
-## Forbidden Actions
-
-- Direct database connections
-- Running arbitrary SQL
-- Modifying production without change request
-- Storing credentials in code
-`;
-    writeFileSync(agentsPath, agentsContent);
-    console.log(`  Created: ${DB_DIR}/AGENTS.md`);
-    created = true;
+    writeJson(envConfigPath, envConfig);
+    actions.push({ op: 'write', path: envConfigPath });
+  } else if (dryRun) {
+    actions.push({ op: 'write', path: envConfigPath, mode: 'dry-run' });
+  } else {
+    actions.push({ op: 'skip', path: envConfigPath, reason: 'exists' });
   }
 
   // Create workdocs README
-  const workdocsReadme = join(repoRoot, WORKDOCS_DIR, 'README.md');
-  if (!existsSync(workdocsReadme)) {
-    const content = `# Database Workdocs
+  const workdocsReadmePath = path.join(dbDir, 'workdocs', 'README.md');
+  const workdocsContent = `# Database Workdocs
 
 Use this directory for:
-
 - Schema design decisions
 - Migration planning
-- Data model proposals
-- Database-related notes and discussions
-
-Files here are for documentation and planning, not execution.
+- Data modeling discussions
+- Change history and rationale
 `;
-    writeFileSync(workdocsReadme, content);
-    console.log(`  Created: ${WORKDOCS_DIR}/README.md`);
-    created = true;
+
+  if (dryRun) {
+    actions.push({ op: 'write', path: workdocsReadmePath, mode: 'dry-run' });
+  } else {
+    actions.push(writeFileIfMissing(workdocsReadmePath, workdocsContent));
   }
 
-  // Create .gitkeep files
-  for (const dir of [MIGRATIONS_DIR, SAMPLES_DIR]) {
-    const gitkeep = join(repoRoot, dir, '.gitkeep');
-    if (!existsSync(gitkeep)) {
-      writeFileSync(gitkeep, '');
-    }
+  console.log('[ok] Database mirror initialized.');
+  for (const action of actions) {
+    const mode = action.mode ? ` (${action.mode})` : '';
+    const reason = action.reason ? ` [${action.reason}]` : '';
+    console.log(`  ${action.op}: ${path.relative(repoRoot, action.path)}${mode}${reason}`);
   }
-
-  if (!created) {
-    console.log('  Database mirror already initialized (no changes).');
-  }
-
-  console.log('Done.');
-  return 0;
 }
 
-function cmdAddTable(repoRoot, flags) {
-  const { name, columns } = flags;
+function cmdAddTable(repoRoot, name, columnsStr) {
+  if (!name) die('[error] --name is required');
+  if (!columnsStr) die('[error] --columns is required');
 
-  if (!name) {
-    console.error('Error: --name is required.');
-    console.error('Usage: dbctl add-table --name <name> --columns "col1:type:constraint,col2:type"');
-    return 1;
-  }
+  const schema = loadSchema(repoRoot);
 
-  const tables = loadTables(repoRoot);
-  if (!tables) {
-    console.error('Error: Tables file not found. Run `dbctl init` first.');
-    return 1;
-  }
-
-  // Check for duplicate
-  if (tables.tables.some(t => t.name === name)) {
-    console.error(`Error: Table "${name}" already exists.`);
-    return 1;
+  // Check if table exists
+  if (schema.tables.find(t => t.name === name)) {
+    die(`[error] Table "${name}" already exists. Use remove-table first.`);
   }
 
   // Parse columns
-  const parsedColumns = [];
-  if (columns) {
-    const colDefs = columns.split(',');
-    for (const colDef of colDefs) {
-      const parts = colDef.trim().split(':');
-      if (parts.length < 2) {
-        console.error(`Error: Invalid column format: ${colDef}`);
-        console.error('Expected format: name:type[:constraint]');
-        return 1;
-      }
-      const col = {
-        name: parts[0],
-        type: parts[1]
-      };
-      if (parts[2]) {
-        col.constraints = parts.slice(2);
-      }
-      parsedColumns.push(col);
+  const columnDefs = columnsStr.split(',').map(c => c.trim());
+  const columns = [];
+  for (const colDef of columnDefs) {
+    const col = parseColumnDef(colDef);
+    if (!col) {
+      die(`[error] Invalid column definition: ${colDef}. Format: name:type[:constraint,...]`);
     }
+    columns.push(col);
   }
 
-  const table = {
+  schema.tables.push({
     name,
-    columns: parsedColumns,
-    createdAt: isoNow(),
-    updatedAt: isoNow()
-  };
+    columns,
+    createdAt: new Date().toISOString()
+  });
 
-  tables.tables.push(table);
-  saveTables(repoRoot, tables);
-
-  console.log(`Added table: ${name}`);
-  if (parsedColumns.length > 0) {
-    console.log(`  columns: ${parsedColumns.map(c => c.name).join(', ')}`);
+  saveSchema(repoRoot, schema);
+  console.log(`[ok] Added table: ${name} (${columns.length} columns)`);
+  for (const col of columns) {
+    const constraints = col.constraints.length > 0 ? ` [${col.constraints.join(', ')}]` : '';
+    console.log(`  - ${col.name}: ${col.type}${constraints}`);
   }
-  return 0;
 }
 
-function cmdRemoveTable(repoRoot, flags) {
-  const { name } = flags;
+function cmdRemoveTable(repoRoot, name) {
+  if (!name) die('[error] --name is required');
 
-  if (!name) {
-    console.error('Error: --name is required.');
-    return 1;
+  const schema = loadSchema(repoRoot);
+  const index = schema.tables.findIndex(t => t.name === name);
+
+  if (index === -1) {
+    die(`[error] Table "${name}" not found.`);
   }
 
-  const tables = loadTables(repoRoot);
-  if (!tables) {
-    console.error('Error: Tables file not found.');
-    return 1;
-  }
-
-  const idx = tables.tables.findIndex(t => t.name === name);
-  if (idx === -1) {
-    console.error(`Error: Table "${name}" not found.`);
-    return 1;
-  }
-
-  tables.tables.splice(idx, 1);
-  saveTables(repoRoot, tables);
-
-  console.log(`Removed table: ${name}`);
-  return 0;
+  schema.tables.splice(index, 1);
+  saveSchema(repoRoot, schema);
+  console.log(`[ok] Removed table: ${name}`);
 }
 
-function cmdListTables(repoRoot) {
-  const tables = loadTables(repoRoot);
-  if (!tables) {
-    console.error('Error: Tables file not found.');
-    return 1;
+function cmdListTables(repoRoot, format) {
+  const schema = loadSchema(repoRoot);
+
+  if (format === 'json') {
+    console.log(JSON.stringify(schema, null, 2));
+    return;
   }
 
-  if (tables.tables.length === 0) {
-    console.log('No tables defined.');
-    return 0;
+  console.log(`Database Schema (${schema.tables.length} tables):`);
+  console.log(`Last updated: ${schema.lastUpdated || 'unknown'}\n`);
+
+  if (schema.tables.length === 0) {
+    console.log('  (no tables defined)');
+    return;
   }
 
-  console.log(`Tables (${tables.tables.length}):\n`);
-  for (const t of tables.tables) {
-    console.log(`  ${t.name}`);
-    if (t.columns && t.columns.length > 0) {
-      for (const c of t.columns) {
-        const constraints = c.constraints ? ` (${c.constraints.join(', ')})` : '';
-        console.log(`    - ${c.name}: ${c.type}${constraints}`);
-      }
+  for (const table of schema.tables) {
+    console.log(`  [${table.name}]`);
+    for (const col of table.columns || []) {
+      const constraints = col.constraints?.length > 0 ? ` [${col.constraints.join(', ')}]` : '';
+      console.log(`    - ${col.name}: ${col.type}${constraints}`);
     }
-    console.log();
+    console.log('');
   }
-  return 0;
 }
 
-function cmdGenerateMigration(repoRoot, flags) {
-  const { name } = flags;
+function cmdVerify(repoRoot, env) {
+  const errors = [];
+  const warnings = [];
+  const dbDir = getDbDir(repoRoot);
 
-  if (!name) {
-    console.error('Error: --name is required.');
-    console.error('Usage: dbctl generate-migration --name <migration-name>');
-    return 1;
+  // Check db directory exists
+  if (!fs.existsSync(dbDir)) {
+    errors.push('db/ directory does not exist. Run: dbctl init');
   }
 
-  // Validate name
-  if (!/^[a-z][a-z0-9_-]*$/.test(name)) {
-    console.error('Error: Migration name must be lowercase alphanumeric with underscores/hyphens.');
-    return 1;
-  }
-
-  const migrationsDir = join(repoRoot, MIGRATIONS_DIR);
-  ensureDir(migrationsDir);
-
-  // Generate timestamp-based filename
-  const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
-  const filename = `${timestamp}_${name}.sql`;
-  const filepath = join(migrationsDir, filename);
-
-  if (existsSync(filepath)) {
-    console.error(`Error: Migration file already exists: ${filename}`);
-    return 1;
-  }
-
-  const content = `-- Migration: ${name}
--- Generated: ${isoNow()}
--- 
--- Describe what this migration does:
--- TODO: Add description
---
-
--- Up migration
--- TODO: Add SQL statements for applying this migration
-
--- Down migration (rollback)
--- TODO: Add SQL statements for reverting this migration
-`;
-
-  writeFileSync(filepath, content);
-  console.log(`Created migration: ${filename}`);
-  console.log(`  Path: ${MIGRATIONS_DIR}/${filename}`);
-  console.log('\nNext steps:');
-  console.log('1. Edit the migration file with your SQL statements');
-  console.log('2. Run: node .ai/scripts/migrate.js apply --env dev');
-  return 0;
-}
-
-function cmdVerify(repoRoot, flags) {
-  const { env } = flags;
-
-  console.log('Verifying database mirror...');
-  let errors = 0;
-
-  // Check tables file exists
-  const tables = loadTables(repoRoot);
-  if (!tables) {
-    console.error('  ERROR: Tables file not found.');
-    errors++;
+  // Check schema exists
+  const schemaPath = getSchemaPath(repoRoot);
+  if (!fs.existsSync(schemaPath)) {
+    errors.push('schema/tables.json does not exist. Run: dbctl init');
   } else {
-    console.log(`  OK: ${tables.tables.length} table(s) defined`);
+    const schema = loadSchema(repoRoot);
 
-    // Validate each table
-    for (const t of tables.tables) {
-      if (!t.name) {
-        console.error('  ERROR: Table missing name');
-        errors++;
+    // Verify tables have valid structure
+    for (const table of schema.tables) {
+      if (!table.name) {
+        errors.push('Found table without name');
+      }
+      if (!table.columns || table.columns.length === 0) {
+        warnings.push(`Table "${table.name}" has no columns defined`);
       }
     }
   }
 
-  // Check environments file
-  const envsPath = join(repoRoot, DB_ENVS_FILE);
-  if (!existsSync(envsPath)) {
-    console.warn('  Warning: db-environments.json not found');
-  } else {
-    const envs = loadJson(envsPath);
-    if (envs && envs.environments) {
-      console.log(`  OK: ${envs.environments.length} environment(s) configured`);
-      
-      if (env) {
-        const found = envs.environments.find(e => e.id === env);
-        if (!found) {
-          console.error(`  ERROR: Environment "${env}" not found`);
-          errors++;
-        } else {
-          console.log(`  OK: Environment "${env}" exists`);
-        }
-      }
+  // Check environment config if env specified
+  if (env) {
+    const envConfig = loadEnvConfig(repoRoot);
+    const envEntry = envConfig.environments?.find(e => e.id === env);
+    if (!envEntry) {
+      errors.push(`Environment "${env}" not found in db-environments.json`);
     }
   }
 
   // Check migrations directory
-  const migrationsDir = join(repoRoot, MIGRATIONS_DIR);
-  if (existsSync(migrationsDir)) {
-    const migrations = readdirSync(migrationsDir).filter(f => f.endsWith('.sql'));
-    console.log(`  OK: ${migrations.length} migration(s) found`);
+  const migrationsDir = getMigrationsDir(repoRoot);
+  if (!fs.existsSync(migrationsDir)) {
+    warnings.push('migrations/ directory does not exist');
   }
 
-  if (errors > 0) {
-    console.error(`\nVerification FAILED: ${errors} error(s).`);
-    return 1;
+  // Report results
+  if (errors.length > 0) {
+    console.log('\nErrors:');
+    for (const e of errors) console.log(`  - ${e}`);
   }
 
-  console.log('\nVerification passed.');
-  return 0;
+  if (warnings.length > 0) {
+    console.log('\nWarnings:');
+    for (const w of warnings) console.log(`  - ${w}`);
+  }
+
+  const ok = errors.length === 0;
+  if (ok) {
+    console.log('[ok] Database schema verification passed.');
+  } else {
+    console.log('[error] Database schema verification failed.');
+    process.exit(1);
+  }
 }
 
-function cmdHelp() {
-  console.log(`
-dbctl.js - Database Schema Mirror Management
+function cmdGenerateMigration(repoRoot, name) {
+  if (!name) die('[error] --name is required');
 
-Usage: node .ai/scripts/dbctl.js <command> [options]
+  const migrationsDir = getMigrationsDir(repoRoot);
+  ensureDir(migrationsDir);
 
-Commands:
-  init                Initialize db mirror structure (idempotent)
-  
-  add-table           Add a table to the schema mirror
-    --name <name>     Table name (required)
-    --columns <cols>  Column definitions: "col1:type:constraint,col2:type"
-    
-  remove-table        Remove a table from the schema mirror
-    --name <name>     Table name (required)
-    
-  list-tables         List all tables in the schema
-  
-  generate-migration  Generate a new migration file
-    --name <name>     Migration name (required)
-    
-  verify              Verify schema consistency
-    --env <id>        Verify specific environment exists
-    
-  help                Show this help message
+  // Generate timestamp-based filename
+  const timestamp = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
+  const safeName = name.replace(/[^a-z0-9-_]/gi, '-').toLowerCase();
+  const filename = `${timestamp}_${safeName}.sql`;
+  const filePath = path.join(migrationsDir, filename);
 
-Global Options:
-  --repo-root <path>  Repository root (default: auto-detect)
+  const content = `-- Migration: ${name}
+-- Generated: ${new Date().toISOString()}
+-- 
+-- Instructions:
+-- 1. Fill in the UP migration below
+-- 2. Add DOWN migration for rollback
+-- 3. Test in dev environment first
+-- 4. Have a human execute in staging/prod
 
-Examples:
-  node .ai/scripts/dbctl.js init
-  node .ai/scripts/dbctl.js add-table --name users --columns "id:uuid:pk,email:string:unique"
-  node .ai/scripts/dbctl.js generate-migration --name add-user-roles
-  node .ai/scripts/dbctl.js verify --env staging
-`);
-  return 0;
+-- ============================================================================
+-- UP Migration
+-- ============================================================================
+
+-- TODO: Add your schema changes here
+
+-- ============================================================================
+-- DOWN Migration (Rollback)
+-- ============================================================================
+
+-- TODO: Add rollback statements here
+`;
+
+  fs.writeFileSync(filePath, content, 'utf8');
+  console.log(`[ok] Generated migration: ${filename}`);
+  console.log(`     Path: ${path.relative(repoRoot, filePath)}`);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+function cmdSyncToContext(repoRoot) {
+  const contextDbPath = path.join(repoRoot, 'docs', 'context', 'db', 'schema.json');
+  const contextDir = path.dirname(contextDbPath);
+
+  // Check if context-awareness is installed
+  if (!fs.existsSync(path.join(repoRoot, 'docs', 'context'))) {
+    die('[error] Context layer not found. Install context-awareness add-on first.');
+  }
+
+  // Load schema
+  const schema = loadSchema(repoRoot);
+
+  // Ensure context db directory exists
+  ensureDir(contextDir);
+
+  // Write schema to context
+  writeJson(contextDbPath, {
+    source: 'db-mirror',
+    syncedAt: new Date().toISOString(),
+    schema: schema
+  });
+
+  console.log(`[ok] Synced schema to ${path.relative(repoRoot, contextDbPath)}`);
+  console.log('     Run: node .ai/scripts/contextctl.js touch  (to update registry checksums)');
+}
+
+// ============================================================================
 // Main
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 
 function main() {
-  const args = process.argv.slice(2);
-  const parsed = parseArgs(args);
-  const command = parsed._[0] || 'help';
-  const repoRoot = resolveRepoRoot(parsed.flags['repo-root']);
+  const { command, opts } = parseArgs(process.argv);
+  const repoRoot = path.resolve(opts['repo-root'] || process.cwd());
+  const format = (opts['format'] || 'text').toLowerCase();
 
   switch (command) {
     case 'init':
-      return cmdInit(repoRoot);
+      cmdInit(repoRoot, !!opts['dry-run']);
+      break;
     case 'add-table':
-      return cmdAddTable(repoRoot, parsed.flags);
+      cmdAddTable(repoRoot, opts['name'], opts['columns']);
+      break;
     case 'remove-table':
-      return cmdRemoveTable(repoRoot, parsed.flags);
+      cmdRemoveTable(repoRoot, opts['name']);
+      break;
     case 'list-tables':
-      return cmdListTables(repoRoot);
-    case 'generate-migration':
-      return cmdGenerateMigration(repoRoot, parsed.flags);
+      cmdListTables(repoRoot, format);
+      break;
     case 'verify':
-      return cmdVerify(repoRoot, parsed.flags);
-    case 'help':
-    case '--help':
-    case '-h':
-      return cmdHelp();
+      cmdVerify(repoRoot, opts['env']);
+      break;
+    case 'generate-migration':
+      cmdGenerateMigration(repoRoot, opts['name']);
+      break;
+    case 'sync-to-context':
+      cmdSyncToContext(repoRoot);
+      break;
     default:
-      console.error(`Unknown command: ${command}`);
-      return cmdHelp() || 1;
+      console.error(`[error] Unknown command: ${command}`);
+      usage(1);
   }
 }
 
-process.exit(main());
-
+main();

@@ -47,7 +47,7 @@ Enable in your `project-blueprint.json`:
 
 Then run:
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply --blueprint docs/project/project-blueprint.json
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --blueprint docs/project/project-blueprint.json
 ```
 
 ### Option B: Install manually
@@ -150,5 +150,5 @@ Delete these paths (if you want a clean uninstall):
 
 Then re-sync wrappers:
 ```bash
-node .ai/scripts/sync-skills.js --scope current --providers both
+node .ai/scripts/sync-skills.cjs --scope current --providers both
 ```

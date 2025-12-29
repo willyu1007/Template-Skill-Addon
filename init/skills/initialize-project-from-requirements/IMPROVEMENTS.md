@@ -25,7 +25,7 @@ It addresses the known “1.4” issues by enforcing consistent single sources o
 ### 2) Configuration generation SSOT
 - All config generation is delegated to:
 
-- `init/skills/initialize-project-from-requirements/scripts/scaffold-configs.js`
+- `init/skills/initialize-project-from-requirements/scripts/scaffold-configs.cjs`
 
 The pipeline no longer duplicates config-generation logic in multiple locations.
 
@@ -34,7 +34,7 @@ The pipeline no longer duplicates config-generation logic in multiple locations.
 - Stage transitions require explicit approval via:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage <A|B|C>
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage <A|B|C>
 ```
 
 The `advance` command now only prints “what to do next” and does not mutate state.
@@ -42,7 +42,7 @@ The `advance` command now only prints “what to do next” and does not mutate 
 ### 4) Add-on compatibility: `blueprint.addons.contextAwareness` (scheme A)
 - Blueprint toggles supported:
   - `addons.contextAwareness: true`
-  - `context.enabled: true`
+- `context.*` is configuration only and does not trigger installation.
 - When enabled, `apply`:
   - installs the add-on payload (copy-if-missing) from `addons/context-awareness/payload/` (or `--addons-root`)
   - runs `.ai/scripts/contextctl.js init`
@@ -54,7 +54,7 @@ The `advance` command now only prints “what to do next” and does not mutate 
 - Otherwise, the pipeline falls back to a safe, additive update of `includePrefixes`
 
 ### 6) DevOps scaffolding (optional)
-- Stage C scaffold can create a conventional `ops/` structure aligned with `devops_extension_guide.md` chapters 5–7:
+- Stage C scaffold can create a conventional `ops/` structure aligned with `init/stages/03-stage-c-scaffold-and-skills.md`:
   - `ops/packaging/{services,jobs,apps,scripts,workdocs}/`
   - `ops/deploy/{http_services,workloads,clients,scripts,workdocs}/`
 
@@ -64,6 +64,5 @@ The `advance` command now only prints “what to do next” and does not mutate 
 
 - The pipeline no longer instructs users/agents to hand-edit state files to advance stages.
 - The pipeline’s docs and examples use the canonical script path:
-  - `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js ...`
+  - `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs ...`
 - Add-on installation is non-destructive (copy-if-missing) by design; upgrades require deliberate review.
-

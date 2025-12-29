@@ -1,342 +1,381 @@
 #!/usr/bin/env node
 /**
- * migrate.js - Database Migration Management
+ * migrate.js
  *
- * Manages migration execution and status.
- * Note: This script provides structure for migration management.
- * Actual database connections should be configured per project.
+ * Migration execution helper for the db-mirror add-on.
+ * Note: This script does NOT execute migrations automatically for safety.
+ * It helps track and plan migrations; humans must execute them.
  *
  * Commands:
- *   list      List all migrations and their status
- *   status    Show migration status for an environment
- *   apply     Apply pending migrations (placeholder)
- *   rollback  Rollback last migration (placeholder)
- *   help      Show this help message
+ *   list              List all migrations and their status
+ *   status            Show migration status for an environment
+ *   plan              Show what would be applied
+ *   mark-applied      Mark a migration as applied (for tracking)
+ *   mark-pending      Mark a migration as pending (for tracking)
  */
 
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// ============================================================================
+// CLI Argument Parsing
+// ============================================================================
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Configuration
-// ─────────────────────────────────────────────────────────────────────────────
+function usage(exitCode = 0) {
+  const msg = `
+Usage:
+  node .ai/scripts/migrate.js <command> [options]
 
-const MIGRATIONS_DIR = 'db/migrations';
-const DB_ENVS_FILE = 'db/config/db-environments.json';
-const MIGRATION_STATUS_FILE = 'db/migrations/.migration-status.json';
+Commands:
+  list
+    --repo-root <path>          Repo root (default: cwd)
+    --format <text|json>        Output format (default: text)
+    List all migrations.
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Utilities
-// ─────────────────────────────────────────────────────────────────────────────
+  status
+    --env <string>              Environment (required)
+    --repo-root <path>          Repo root (default: cwd)
+    --format <text|json>        Output format (default: text)
+    Show migration status for an environment.
 
-function parseArgs(args) {
-  const result = { _: [], flags: {} };
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg.startsWith('--')) {
-      const key = arg.slice(2);
-      const nextArg = args[i + 1];
-      if (nextArg && !nextArg.startsWith('--')) {
-        result.flags[key] = nextArg;
-        i++;
+  plan
+    --env <string>              Environment (required)
+    --repo-root <path>          Repo root (default: cwd)
+    Show what migrations would be applied.
+
+  mark-applied
+    --migration <string>        Migration filename (required)
+    --env <string>              Environment (required)
+    --repo-root <path>          Repo root (default: cwd)
+    Mark a migration as applied (for tracking).
+
+  mark-pending
+    --migration <string>        Migration filename (required)
+    --env <string>              Environment (required)
+    --repo-root <path>          Repo root (default: cwd)
+    Mark a migration as pending (for tracking).
+
+Examples:
+  node .ai/scripts/migrate.js list
+  node .ai/scripts/migrate.js status --env staging
+  node .ai/scripts/migrate.js plan --env prod
+  node .ai/scripts/migrate.js mark-applied --migration 20241228120000_add_users.sql --env staging
+
+Note: This script does NOT execute migrations. Humans must run them manually.
+The script helps track which migrations have been applied to each environment.
+`;
+  console.log(msg.trim());
+  process.exit(exitCode);
+}
+
+function die(msg, exitCode = 1) {
+  console.error(msg);
+  process.exit(exitCode);
+}
+
+function parseArgs(argv) {
+  const args = argv.slice(2);
+  if (args.length === 0 || args[0] === '-h' || args[0] === '--help') usage(0);
+
+  const command = args.shift();
+  const opts = {};
+  const positionals = [];
+
+  while (args.length > 0) {
+    const token = args.shift();
+    if (token === '-h' || token === '--help') usage(0);
+
+    if (token.startsWith('--')) {
+      const key = token.slice(2);
+      if (args.length > 0 && !args[0].startsWith('--')) {
+        opts[key] = args.shift();
       } else {
-        result.flags[key] = true;
+        opts[key] = true;
       }
     } else {
-      result._.push(arg);
+      positionals.push(token);
     }
   }
-  return result;
+
+  return { command, opts, positionals };
 }
 
-function resolveRepoRoot(flagValue) {
-  if (flagValue) return resolve(flagValue);
-  return resolve(__dirname, '..', '..');
-}
+// ============================================================================
+// File Utilities
+// ============================================================================
 
-function isoNow() {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-}
-
-function loadJson(filePath) {
-  if (!existsSync(filePath)) return null;
+function readJson(filePath) {
   try {
-    return JSON.parse(readFileSync(filePath, 'utf8'));
+    const raw = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(raw);
   } catch (e) {
-    console.error(`Error reading ${filePath}: ${e.message}`);
     return null;
   }
 }
 
-function saveJson(filePath, data) {
-  writeFileSync(filePath, JSON.stringify(data, null, 2));
+function writeJson(filePath, data) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n', 'utf8');
 }
 
-function getMigrations(repoRoot) {
-  const dir = join(repoRoot, MIGRATIONS_DIR);
-  if (!existsSync(dir)) return [];
-  
-  return readdirSync(dir)
+// ============================================================================
+// Migration Management
+// ============================================================================
+
+function getDbDir(repoRoot) {
+  return path.join(repoRoot, 'db');
+}
+
+function getMigrationsDir(repoRoot) {
+  return path.join(getDbDir(repoRoot), 'migrations');
+}
+
+function getMigrationStatePath(repoRoot) {
+  return path.join(getDbDir(repoRoot), 'config', 'migration-state.json');
+}
+
+function loadMigrationState(repoRoot) {
+  const statePath = getMigrationStatePath(repoRoot);
+  const data = readJson(statePath);
+  if (!data) {
+    return {
+      version: 1,
+      environments: {}
+    };
+  }
+  return data;
+}
+
+function saveMigrationState(repoRoot, state) {
+  writeJson(getMigrationStatePath(repoRoot), state);
+}
+
+function listMigrationFiles(repoRoot) {
+  const migrationsDir = getMigrationsDir(repoRoot);
+  if (!fs.existsSync(migrationsDir)) {
+    return [];
+  }
+
+  const files = fs.readdirSync(migrationsDir);
+  return files
     .filter(f => f.endsWith('.sql'))
     .sort();
 }
 
-function loadMigrationStatus(repoRoot) {
-  const statusPath = join(repoRoot, MIGRATION_STATUS_FILE);
-  return loadJson(statusPath) || { applied: {} };
+function getMigrationInfo(filename) {
+  // Parse filename like: 20241228120000_add_users.sql
+  const match = filename.match(/^(\d{14})_(.+)\.sql$/);
+  if (!match) {
+    return {
+      filename,
+      timestamp: null,
+      name: filename.replace('.sql', ''),
+      valid: false
+    };
+  }
+
+  return {
+    filename,
+    timestamp: match[1],
+    name: match[2].replace(/-/g, ' '),
+    valid: true
+  };
 }
 
-function saveMigrationStatus(repoRoot, status) {
-  const statusPath = join(repoRoot, MIGRATION_STATUS_FILE);
-  saveJson(statusPath, status);
-}
-
-function getEnvConfig(repoRoot, envId) {
-  const envsPath = join(repoRoot, DB_ENVS_FILE);
-  const envs = loadJson(envsPath);
-  if (!envs || !envs.environments) return null;
-  return envs.environments.find(e => e.id === envId);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 // Commands
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 
-function cmdList(repoRoot) {
-  const migrations = getMigrations(repoRoot);
-  const status = loadMigrationStatus(repoRoot);
+function cmdList(repoRoot, format) {
+  const files = listMigrationFiles(repoRoot);
+  const state = loadMigrationState(repoRoot);
+
+  const migrations = files.map(f => {
+    const info = getMigrationInfo(f);
+    const envStatus = {};
+    
+    for (const [env, envState] of Object.entries(state.environments || {})) {
+      envStatus[env] = envState.applied?.includes(f) ? 'applied' : 'pending';
+    }
+
+    return {
+      ...info,
+      environments: envStatus
+    };
+  });
+
+  if (format === 'json') {
+    console.log(JSON.stringify({ migrations }, null, 2));
+    return;
+  }
+
+  console.log(`Migrations (${migrations.length} total):\n`);
 
   if (migrations.length === 0) {
-    console.log('No migrations found.');
-    return 0;
+    console.log('  (no migrations found)');
+    console.log('  Run: node .ai/scripts/dbctl.js generate-migration --name <name>');
+    return;
   }
 
-  console.log(`Migrations (${migrations.length}):\n`);
   for (const m of migrations) {
-    const appliedEnvs = [];
-    for (const [env, applied] of Object.entries(status.applied || {})) {
-      if (applied.includes(m)) {
-        appliedEnvs.push(env);
+    const validity = m.valid ? '' : ' [invalid filename]';
+    console.log(`  ${m.filename}${validity}`);
+    if (Object.keys(m.environments).length > 0) {
+      for (const [env, status] of Object.entries(m.environments)) {
+        const icon = status === 'applied' ? '✓' : '○';
+        console.log(`    ${icon} ${env}: ${status}`);
       }
     }
-    
-    const appliedStr = appliedEnvs.length > 0 
-      ? `[applied: ${appliedEnvs.join(', ')}]`
-      : '[pending]';
-    
-    console.log(`  ${m} ${appliedStr}`);
   }
-  return 0;
 }
 
-function cmdStatus(repoRoot, flags) {
-  const { env } = flags;
+function cmdStatus(repoRoot, env, format) {
+  if (!env) die('[error] --env is required');
 
-  if (!env) {
-    console.error('Error: --env is required.');
-    return 1;
+  const files = listMigrationFiles(repoRoot);
+  const state = loadMigrationState(repoRoot);
+  const envState = state.environments?.[env] || { applied: [] };
+
+  const applied = files.filter(f => envState.applied?.includes(f));
+  const pending = files.filter(f => !envState.applied?.includes(f));
+
+  const status = {
+    environment: env,
+    total: files.length,
+    applied: applied.length,
+    pending: pending.length,
+    appliedMigrations: applied,
+    pendingMigrations: pending
+  };
+
+  if (format === 'json') {
+    console.log(JSON.stringify(status, null, 2));
+    return;
   }
 
-  const envConfig = getEnvConfig(repoRoot, env);
-  if (!envConfig) {
-    console.error(`Error: Environment "${env}" not found.`);
-    return 1;
-  }
+  console.log(`Migration Status for "${env}":\n`);
+  console.log(`  Total:   ${status.total}`);
+  console.log(`  Applied: ${status.applied}`);
+  console.log(`  Pending: ${status.pending}`);
+  console.log('');
 
-  const migrations = getMigrations(repoRoot);
-  const status = loadMigrationStatus(repoRoot);
-  const applied = status.applied?.[env] || [];
-
-  console.log(`Migration status for: ${env}`);
-  console.log(`Environment: ${envConfig.description}`);
-  console.log(`Permissions: migrations=${envConfig.permissions?.migrations || 'unknown'}\n`);
-
-  const pending = migrations.filter(m => !applied.includes(m));
-  
-  console.log(`Applied: ${applied.length}`);
-  console.log(`Pending: ${pending.length}`);
-  
   if (pending.length > 0) {
-    console.log('\nPending migrations:');
+    console.log('  Pending migrations:');
     for (const m of pending) {
-      console.log(`  - ${m}`);
+      console.log(`    ○ ${m}`);
     }
+  } else {
+    console.log('  All migrations applied.');
   }
-
-  return 0;
 }
 
-function cmdApply(repoRoot, flags) {
-  const { env, confirm } = flags;
+function cmdPlan(repoRoot, env) {
+  if (!env) die('[error] --env is required');
 
-  if (!env) {
-    console.error('Error: --env is required.');
-    return 1;
-  }
+  const files = listMigrationFiles(repoRoot);
+  const state = loadMigrationState(repoRoot);
+  const envState = state.environments?.[env] || { applied: [] };
 
-  const envConfig = getEnvConfig(repoRoot, env);
-  if (!envConfig) {
-    console.error(`Error: Environment "${env}" not found.`);
-    return 1;
-  }
+  const pending = files.filter(f => !envState.applied?.includes(f));
 
-  // Check permissions
-  const migrationPerm = envConfig.permissions?.migrations;
-  if (migrationPerm === false) {
-    console.error(`Error: Migrations are not allowed for environment "${env}".`);
-    return 1;
-  }
-
-  if (migrationPerm === 'review-required' || migrationPerm === 'change-request') {
-    console.warn(`Warning: Environment "${env}" requires ${migrationPerm} for migrations.`);
-    if (!confirm) {
-      console.log('\nTo proceed, run with --confirm flag after obtaining approval.');
-      return 1;
-    }
-  }
-
-  const migrations = getMigrations(repoRoot);
-  const status = loadMigrationStatus(repoRoot);
-  const applied = status.applied?.[env] || [];
-  const pending = migrations.filter(m => !applied.includes(m));
+  console.log(`Migration Plan for "${env}":\n`);
 
   if (pending.length === 0) {
-    console.log('No pending migrations.');
-    return 0;
+    console.log('  No pending migrations.');
+    return;
   }
 
-  console.log(`\nApplying ${pending.length} migration(s) to ${env}...`);
-  console.log('\n⚠️  NOTE: This is a placeholder implementation.');
-  console.log('In a real project, this would connect to the database and execute SQL.\n');
-
-  // Simulate applying migrations (just mark as applied)
-  if (!status.applied) status.applied = {};
-  if (!status.applied[env]) status.applied[env] = [];
-
-  for (const m of pending) {
-    console.log(`  Applying: ${m}`);
-    // In real implementation: execute SQL here
-    status.applied[env].push(m);
+  console.log('  The following migrations would be applied:\n');
+  for (let i = 0; i < pending.length; i++) {
+    console.log(`  ${i + 1}. ${pending[i]}`);
   }
 
-  saveMigrationStatus(repoRoot, status);
-
-  console.log(`\nMarked ${pending.length} migration(s) as applied.`);
-  console.log('In production: connect your database and execute the SQL files.');
-  return 0;
+  console.log('\n  Instructions:');
+  console.log('  1. Review each migration file carefully');
+  console.log('  2. Backup your database before applying');
+  console.log('  3. Apply migrations in order using your preferred tool');
+  console.log('  4. Run: node .ai/scripts/migrate.js mark-applied --migration <file> --env ' + env);
 }
 
-function cmdRollback(repoRoot, flags) {
-  const { env, confirm } = flags;
+function cmdMarkApplied(repoRoot, migration, env) {
+  if (!migration) die('[error] --migration is required');
+  if (!env) die('[error] --env is required');
 
-  if (!env) {
-    console.error('Error: --env is required.');
-    return 1;
+  const files = listMigrationFiles(repoRoot);
+  if (!files.includes(migration)) {
+    die(`[error] Migration file not found: ${migration}`);
   }
 
-  const envConfig = getEnvConfig(repoRoot, env);
-  if (!envConfig) {
-    console.error(`Error: Environment "${env}" not found.`);
-    return 1;
+  const state = loadMigrationState(repoRoot);
+  if (!state.environments[env]) {
+    state.environments[env] = { applied: [] };
   }
 
-  const status = loadMigrationStatus(repoRoot);
-  const applied = status.applied?.[env] || [];
-
-  if (applied.length === 0) {
-    console.log('No migrations to rollback.');
-    return 0;
+  if (state.environments[env].applied.includes(migration)) {
+    console.log(`[info] Migration already marked as applied: ${migration}`);
+    return;
   }
 
-  const lastMigration = applied[applied.length - 1];
+  state.environments[env].applied.push(migration);
+  state.environments[env].applied.sort();
+  state.environments[env].lastUpdated = new Date().toISOString();
 
-  console.log(`Rolling back: ${lastMigration}`);
-  console.log('\n⚠️  NOTE: This is a placeholder implementation.');
-  console.log('In a real project, this would execute the down migration.\n');
-
-  if (!confirm) {
-    console.log('To proceed, run with --confirm flag.');
-    return 1;
-  }
-
-  // Remove from applied list
-  status.applied[env] = applied.slice(0, -1);
-  saveMigrationStatus(repoRoot, status);
-
-  console.log(`Marked ${lastMigration} as rolled back.`);
-  return 0;
+  saveMigrationState(repoRoot, state);
+  console.log(`[ok] Marked as applied: ${migration} (${env})`);
 }
 
-function cmdHelp() {
-  console.log(`
-migrate.js - Database Migration Management
+function cmdMarkPending(repoRoot, migration, env) {
+  if (!migration) die('[error] --migration is required');
+  if (!env) die('[error] --env is required');
 
-Usage: node .ai/scripts/migrate.js <command> [options]
+  const state = loadMigrationState(repoRoot);
+  if (!state.environments[env]) {
+    console.log(`[info] No state found for environment: ${env}`);
+    return;
+  }
 
-Commands:
-  list              List all migrations and their status
-  
-  status            Show migration status for an environment
-    --env <id>      Environment ID (required)
-    
-  apply             Apply pending migrations
-    --env <id>      Environment ID (required)
-    --confirm       Confirm application (required for non-dev)
-    
-  rollback          Rollback last migration
-    --env <id>      Environment ID (required)
-    --confirm       Confirm rollback
-    
-  help              Show this help message
+  const index = state.environments[env].applied?.indexOf(migration);
+  if (index === -1 || index === undefined) {
+    console.log(`[info] Migration not in applied list: ${migration}`);
+    return;
+  }
 
-Global Options:
-  --repo-root <path>  Repository root (default: auto-detect)
+  state.environments[env].applied.splice(index, 1);
+  state.environments[env].lastUpdated = new Date().toISOString();
 
-Notes:
-  This script provides migration management structure.
-  Actual database execution should be configured per project.
-  
-Examples:
-  node .ai/scripts/migrate.js list
-  node .ai/scripts/migrate.js status --env staging
-  node .ai/scripts/migrate.js apply --env dev
-  node .ai/scripts/migrate.js apply --env staging --confirm
-`);
-  return 0;
+  saveMigrationState(repoRoot, state);
+  console.log(`[ok] Marked as pending: ${migration} (${env})`);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 // Main
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 
 function main() {
-  const args = process.argv.slice(2);
-  const parsed = parseArgs(args);
-  const command = parsed._[0] || 'help';
-  const repoRoot = resolveRepoRoot(parsed.flags['repo-root']);
+  const { command, opts } = parseArgs(process.argv);
+  const repoRoot = path.resolve(opts['repo-root'] || process.cwd());
+  const format = (opts['format'] || 'text').toLowerCase();
 
   switch (command) {
     case 'list':
-      return cmdList(repoRoot);
+      cmdList(repoRoot, format);
+      break;
     case 'status':
-      return cmdStatus(repoRoot, parsed.flags);
-    case 'apply':
-      return cmdApply(repoRoot, parsed.flags);
-    case 'rollback':
-      return cmdRollback(repoRoot, parsed.flags);
-    case 'help':
-    case '--help':
-    case '-h':
-      return cmdHelp();
+      cmdStatus(repoRoot, opts['env'], format);
+      break;
+    case 'plan':
+      cmdPlan(repoRoot, opts['env']);
+      break;
+    case 'mark-applied':
+      cmdMarkApplied(repoRoot, opts['migration'], opts['env']);
+      break;
+    case 'mark-pending':
+      cmdMarkPending(repoRoot, opts['migration'], opts['env']);
+      break;
     default:
-      console.error(`Unknown command: ${command}`);
-      return cmdHelp() || 1;
+      console.error(`[error] Unknown command: ${command}`);
+      usage(1);
   }
 }
 
-process.exit(main());
-
+main();

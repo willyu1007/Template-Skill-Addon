@@ -24,7 +24,7 @@ init/                         # Project bootstrap kit (Stage A/B/C)
 
 .ai/
   skills/                     # SSOT skills (edit here only)
-  scripts/                    # `sync-skills.js` (generates provider wrappers)
+  scripts/                    # `sync-skills.cjs` (generates provider wrappers)
 
 .codex/skills/                # Generated wrappers (DO NOT EDIT)
 .claude/skills/               # Generated wrappers (DO NOT EDIT)
@@ -40,15 +40,15 @@ dev/                          # Working docs (optional)
 - After changing `.ai/skills/`, regenerate wrappers:
 
 ```bash
-node .ai/scripts/sync-skills.js --scope current --providers both
+node .ai/scripts/sync-skills.cjs --scope current --providers both
 ```
 
 ## Pointers
 
 - Initialization: `init/README.md`
 - AI assistant rules: `AGENTS.md` and `init/AGENTS.md`
-- Skill authoring standard: `docs/skill-authoring-guidelines.md`
-- Documentation standard: `docs/documentation-guidelines.md`
+- Skill authoring standard: `.ai/skills/standards/documentation-guidelines/SKILL.md`
+- Documentation standard: `.ai/skills/standards/documentation-guidelines/SKILL.md`
 
 
 ## Optional add-ons (addon template)
@@ -61,8 +61,11 @@ Enable via `docs/project/project-blueprint.json`:
 
 ```json
 {
-  "context": { "enabled": true }
+  "addons": { "contextAwareness": true },
+  "context": { "mode": "contract" }
 }
 ```
 
-Then run Stage C (`init/.../init-pipeline.js apply`).
+`context.*` is optional configuration and does not trigger installation.
+
+Then run Stage C (`init/.../init-pipeline.cjs apply`).

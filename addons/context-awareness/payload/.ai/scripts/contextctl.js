@@ -1,696 +1,677 @@
 #!/usr/bin/env node
 /**
- * contextctl.js - Context Registry Management Script
+ * contextctl.js
  *
- * Manages the docs/context/ directory and registry.json for project context artifacts.
- * Also manages environment configuration registry.
+ * Context artifacts and registry management for the context-awareness add-on.
  *
  * Commands:
- *   init              Initialize context directory structure (idempotent)
- *   add-artifact      Register a new artifact in registry.json
- *   remove-artifact   Remove an artifact from registry.json
- *   touch             Update checksums for all registered artifacts
- *   verify            Verify registry consistency
+ *   init              Initialize docs/context skeleton (idempotent)
+ *   add-artifact      Add an artifact to the registry
+ *   remove-artifact   Remove an artifact from the registry
+ *   touch             Update checksums after editing artifacts
  *   list              List all registered artifacts
- *   add-env           Add an environment to the environment registry
- *   list-envs         List all registered environments
+ *   verify            Verify context layer consistency
+ *   add-env           Add a new environment
+ *   list-envs         List all environments
  *   verify-config     Verify environment configuration
- *   help              Show this help message
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
-import { createHash } from 'node:crypto';
-import { resolve, dirname, relative, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// ============================================================================
+// CLI Argument Parsing
+// ============================================================================
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Configuration
-// ─────────────────────────────────────────────────────────────────────────────
+function usage(exitCode = 0) {
+  const msg = `
+Usage:
+  node .ai/scripts/contextctl.js <command> [options]
 
-const CONTEXT_DIR = 'docs/context';
-const REGISTRY_FILE = 'docs/context/registry.json';
-const INDEX_FILE = 'docs/context/INDEX.md';
-const REGISTRY_SCHEMA_FILE = 'docs/context/registry.schema.json';
-const ENV_REGISTRY_FILE = 'docs/context/config/environment-registry.json';
-const CONFIG_DIR = 'config';
-const CONFIG_ENVS_DIR = 'config/environments';
+Commands:
+  init
+    --repo-root <path>          Repo root (default: cwd)
+    --dry-run                   Show what would be created without writing
+    Initialize docs/context skeleton (idempotent).
 
-const DEFAULT_SUBDIRS = ['api', 'db', 'process', 'config'];
+  add-artifact
+    --id <string>               Artifact ID (required)
+    --type <openapi|db|bpmn|json|yaml|markdown>  Artifact type (required)
+    --path <string>             Path to artifact file (required)
+    --repo-root <path>          Repo root (default: cwd)
+    Add an artifact to the context registry.
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Utilities
-// ─────────────────────────────────────────────────────────────────────────────
+  remove-artifact
+    --id <string>               Artifact ID to remove (required)
+    --repo-root <path>          Repo root (default: cwd)
+    Remove an artifact from the registry.
 
-function parseArgs(args) {
-  const result = { _: [], flags: {} };
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg.startsWith('--')) {
-      const key = arg.slice(2);
-      const nextArg = args[i + 1];
-      if (nextArg && !nextArg.startsWith('--')) {
-        result.flags[key] = nextArg;
-        i++;
+  touch
+    --repo-root <path>          Repo root (default: cwd)
+    Update checksums for all registered artifacts.
+
+  list
+    --repo-root <path>          Repo root (default: cwd)
+    --format <text|json>        Output format (default: text)
+    List all registered artifacts.
+
+  verify
+    --repo-root <path>          Repo root (default: cwd)
+    --strict                    Treat warnings as errors
+    Verify context layer consistency.
+
+  add-env
+    --id <string>               Environment ID (required)
+    --description <string>      Description (optional)
+    --repo-root <path>          Repo root (default: cwd)
+    Add a new environment to the registry.
+
+  list-envs
+    --repo-root <path>          Repo root (default: cwd)
+    --format <text|json>        Output format (default: text)
+    List all environments.
+
+  verify-config
+    --env <string>              Environment to verify (optional, verifies all if omitted)
+    --repo-root <path>          Repo root (default: cwd)
+    Verify environment configuration.
+
+Examples:
+  node .ai/scripts/contextctl.js init
+  node .ai/scripts/contextctl.js add-artifact --id my-api --type openapi --path docs/context/api/my-api.yaml
+  node .ai/scripts/contextctl.js verify --strict
+`;
+  console.log(msg.trim());
+  process.exit(exitCode);
+}
+
+function die(msg, exitCode = 1) {
+  console.error(msg);
+  process.exit(exitCode);
+}
+
+function parseArgs(argv) {
+  const args = argv.slice(2);
+  if (args.length === 0 || args[0] === '-h' || args[0] === '--help') usage(0);
+
+  const command = args.shift();
+  const opts = {};
+  const positionals = [];
+
+  while (args.length > 0) {
+    const token = args.shift();
+    if (token === '-h' || token === '--help') usage(0);
+
+    if (token.startsWith('--')) {
+      const key = token.slice(2);
+      if (args.length > 0 && !args[0].startsWith('--')) {
+        opts[key] = args.shift();
       } else {
-        result.flags[key] = true;
+        opts[key] = true;
       }
     } else {
-      result._.push(arg);
+      positionals.push(token);
     }
   }
-  return result;
+
+  return { command, opts, positionals };
 }
 
-function resolveRepoRoot(flagValue) {
-  if (flagValue) return resolve(flagValue);
-  // Default: assume script is at .ai/scripts/contextctl.js
-  return resolve(__dirname, '..', '..');
+// ============================================================================
+// File Utilities
+// ============================================================================
+
+function resolvePath(base, p) {
+  if (!p) return null;
+  if (path.isAbsolute(p)) return p;
+  return path.resolve(base, p);
 }
 
-function sha256(content) {
-  return createHash('sha256').update(content).digest('hex');
-}
-
-function isoNow() {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-}
-
-function loadRegistry(repoRoot) {
-  const registryPath = join(repoRoot, REGISTRY_FILE);
-  if (!existsSync(registryPath)) {
-    return null;
-  }
+function readJson(filePath) {
   try {
-    return JSON.parse(readFileSync(registryPath, 'utf8'));
+    const raw = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(raw);
   } catch (e) {
-    console.error(`Error reading registry: ${e.message}`);
     return null;
   }
 }
 
-function saveRegistry(repoRoot, registry) {
-  const registryPath = join(repoRoot, REGISTRY_FILE);
-  registry.updatedAt = isoNow();
-  writeFileSync(registryPath, JSON.stringify(registry, null, 2));
-}
-
-function loadEnvRegistry(repoRoot) {
-  const envRegistryPath = join(repoRoot, ENV_REGISTRY_FILE);
-  if (!existsSync(envRegistryPath)) {
-    return null;
-  }
-  try {
-    return JSON.parse(readFileSync(envRegistryPath, 'utf8'));
-  } catch (e) {
-    console.error(`Error reading environment registry: ${e.message}`);
-    return null;
-  }
-}
-
-function saveEnvRegistry(repoRoot, envRegistry) {
-  const envRegistryPath = join(repoRoot, ENV_REGISTRY_FILE);
-  envRegistry.updatedAt = isoNow();
-  writeFileSync(envRegistryPath, JSON.stringify(envRegistry, null, 2));
+function writeJson(filePath, data) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n', 'utf8');
 }
 
 function ensureDir(dirPath) {
-  if (!existsSync(dirPath)) {
-    mkdirSync(dirPath, { recursive: true });
-    return true;
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+    return { op: 'mkdir', path: dirPath };
   }
-  return false;
+  return { op: 'skip', path: dirPath, reason: 'exists' };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Commands
-// ─────────────────────────────────────────────────────────────────────────────
-
-function cmdInit(repoRoot) {
-  console.log(`Initializing context layer at ${repoRoot}...`);
-
-  const contextDir = join(repoRoot, CONTEXT_DIR);
-  let created = false;
-
-  // Create base directory
-  if (ensureDir(contextDir)) {
-    console.log(`  Created: ${CONTEXT_DIR}/`);
-    created = true;
+function writeFileIfMissing(filePath, content) {
+  if (fs.existsSync(filePath)) {
+    return { op: 'skip', path: filePath, reason: 'exists' };
   }
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, 'utf8');
+  return { op: 'write', path: filePath };
+}
 
-  // Create subdirectories
-  for (const sub of DEFAULT_SUBDIRS) {
-    const subDir = join(contextDir, sub);
-    if (ensureDir(subDir)) {
-      console.log(`  Created: ${CONTEXT_DIR}/${sub}/`);
-      created = true;
+function computeChecksum(filePath) {
+  if (!fs.existsSync(filePath)) return null;
+  const content = fs.readFileSync(filePath, 'utf8');
+  return crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
+}
+
+// ============================================================================
+// Context Management
+// ============================================================================
+
+function getContextDir(repoRoot) {
+  return path.join(repoRoot, 'docs', 'context');
+}
+
+function getRegistryPath(repoRoot) {
+  return path.join(getContextDir(repoRoot), 'registry.json');
+}
+
+function getEnvRegistryPath(repoRoot) {
+  return path.join(getContextDir(repoRoot), 'config', 'environment-registry.json');
+}
+
+function loadRegistry(repoRoot) {
+  const registryPath = getRegistryPath(repoRoot);
+  const data = readJson(registryPath);
+  if (!data) {
+    return {
+      version: 1,
+      lastUpdated: new Date().toISOString(),
+      artifacts: []
+    };
+  }
+  return data;
+}
+
+function saveRegistry(repoRoot, registry) {
+  registry.lastUpdated = new Date().toISOString();
+  writeJson(getRegistryPath(repoRoot), registry);
+}
+
+function loadEnvRegistry(repoRoot) {
+  const envRegistryPath = getEnvRegistryPath(repoRoot);
+  const data = readJson(envRegistryPath);
+  if (!data) {
+    return {
+      version: 1,
+      environments: []
+    };
+  }
+  return data;
+}
+
+function saveEnvRegistry(repoRoot, envRegistry) {
+  writeJson(getEnvRegistryPath(repoRoot), envRegistry);
+}
+
+// ============================================================================
+// Commands
+// ============================================================================
+
+function cmdInit(repoRoot, dryRun) {
+  const contextDir = getContextDir(repoRoot);
+  const actions = [];
+
+  // Create directory structure
+  const dirs = [
+    contextDir,
+    path.join(contextDir, 'api'),
+    path.join(contextDir, 'db'),
+    path.join(contextDir, 'process'),
+    path.join(contextDir, 'config')
+  ];
+
+  for (const dir of dirs) {
+    if (dryRun) {
+      actions.push({ op: 'mkdir', path: dir, mode: 'dry-run' });
+    } else {
+      actions.push(ensureDir(dir));
     }
   }
 
-  // Create config directories
-  const configDir = join(repoRoot, CONFIG_DIR);
-  if (ensureDir(configDir)) {
-    console.log(`  Created: ${CONFIG_DIR}/`);
-    created = true;
+  // Create INDEX.md
+  const indexPath = path.join(contextDir, 'INDEX.md');
+  const indexContent = `# Context Index
+
+This directory contains structured context artifacts for AI/LLM consumption.
+
+## Entry Points
+
+- \`registry.json\` - Artifact registry with checksums
+- \`config/environment-registry.json\` - Environment configuration
+
+## Artifact Types
+
+| Directory | Purpose |
+|-----------|---------|
+| \`api/\` | OpenAPI/Swagger specifications |
+| \`db/\` | Database schema mirrors |
+| \`process/\` | BPMN/workflow definitions |
+| \`config/\` | Environment and runtime configuration |
+
+## Usage
+
+AI/LLM should:
+1. Read this INDEX.md first
+2. Check registry.json for available artifacts
+3. Load specific artifacts as needed
+
+All context changes go through \`contextctl.js\` commands.
+`;
+
+  if (dryRun) {
+    actions.push({ op: 'write', path: indexPath, mode: 'dry-run' });
+  } else {
+    actions.push(writeFileIfMissing(indexPath, indexContent));
   }
 
-  const configEnvsDir = join(repoRoot, CONFIG_ENVS_DIR);
-  if (ensureDir(configEnvsDir)) {
-    console.log(`  Created: ${CONFIG_ENVS_DIR}/`);
-    created = true;
-  }
-
-  // Create registry.json if missing
-  const registryPath = join(repoRoot, REGISTRY_FILE);
-  if (!existsSync(registryPath)) {
-    const initialRegistry = {
+  // Create registry.json
+  const registryPath = getRegistryPath(repoRoot);
+  if (!fs.existsSync(registryPath) && !dryRun) {
+    const registry = {
       version: 1,
-      updatedAt: isoNow(),
+      lastUpdated: new Date().toISOString(),
       artifacts: []
     };
-    writeFileSync(registryPath, JSON.stringify(initialRegistry, null, 2));
-    console.log(`  Created: ${REGISTRY_FILE}`);
-    created = true;
+    writeJson(registryPath, registry);
+    actions.push({ op: 'write', path: registryPath });
+  } else if (dryRun) {
+    actions.push({ op: 'write', path: registryPath, mode: 'dry-run' });
   }
 
-  // Create environment-registry.json if missing
-  const envRegistryPath = join(repoRoot, ENV_REGISTRY_FILE);
-  if (!existsSync(envRegistryPath)) {
-    const initialEnvRegistry = {
+  // Create environment registry
+  const envRegistryPath = getEnvRegistryPath(repoRoot);
+  if (!fs.existsSync(envRegistryPath) && !dryRun) {
+    const envRegistry = {
       version: 1,
-      updatedAt: isoNow(),
-      environments: []
+      environments: [
+        {
+          id: 'dev',
+          description: 'Local development environment',
+          permissions: {
+            database: { read: true, write: true, migrate: true },
+            deploy: false
+          }
+        },
+        {
+          id: 'staging',
+          description: 'Staging/QA environment',
+          permissions: {
+            database: { read: true, write: true, migrate: true },
+            deploy: true
+          }
+        },
+        {
+          id: 'prod',
+          description: 'Production environment',
+          permissions: {
+            database: { read: true, write: false, migrate: false },
+            deploy: true
+          }
+        }
+      ]
     };
-    writeFileSync(envRegistryPath, JSON.stringify(initialEnvRegistry, null, 2));
-    console.log(`  Created: ${ENV_REGISTRY_FILE}`);
-    created = true;
+    writeJson(envRegistryPath, envRegistry);
+    actions.push({ op: 'write', path: envRegistryPath });
+  } else if (dryRun) {
+    actions.push({ op: 'write', path: envRegistryPath, mode: 'dry-run' });
   }
 
-  // Create INDEX.md if missing
-  const indexPath = join(repoRoot, INDEX_FILE);
-  if (!existsSync(indexPath)) {
-    const indexContent = `# Project Context Index (LLM-first)
+  // Create registry schema
+  const schemaPath = path.join(contextDir, 'registry.schema.json');
+  const schemaContent = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": ["version", "artifacts"],
+    "properties": {
+      "version": { "type": "integer", "minimum": 1 },
+      "lastUpdated": { "type": "string", "format": "date-time" },
+      "artifacts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "type", "path"],
+          "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string", "enum": ["openapi", "db", "bpmn", "json", "yaml", "markdown"] },
+            "path": { "type": "string" },
+            "checksum": { "type": "string" },
+            "description": { "type": "string" }
+          }
+        }
+      }
+    }
+  };
 
-## Conclusions (read first)
-
-- \`docs/context/\` is the **stable, curated context layer** for this repository.
-- The canonical index of all context artifacts is \`docs/context/registry.json\`.
-- Environment configurations are defined in \`docs/context/config/environment-registry.json\`.
-- When \`docs/context/\` exists, AI/LLM SHOULD prefer these artifacts over ad-hoc repository scanning.
-- Any change to context artifacts MUST be accompanied by an updated registry checksum:
-  - Run \`node .ai/scripts/contextctl.js touch\`
-  - Verify with \`node .ai/scripts/contextctl.js verify --strict\`
-
-## What lives here
-
-Typical artifacts (not exhaustive):
-
-- API contract: \`docs/context/api/openapi.yaml\`
-- Database schema mapping: \`docs/context/db/schema.json\`
-- Business processes: \`docs/context/process/*.bpmn\`
-- Environment configuration: \`docs/context/config/environment-registry.json\`
-
-All artifacts MUST be registered in \`docs/context/registry.json\`.
-
-## Environment Configuration
-
-Environment-specific configurations live in \`config/environments/\`:
-
-- \`config/environments/dev.yaml.template\`
-- \`config/environments/staging.yaml.template\`
-- \`config/environments/prod.yaml.template\`
-
-Copy templates to actual config files (without .template suffix) and fill in values.
-Actual config files should be in .gitignore.
-
-## How to load context (for AI/LLM)
-
-1. Open \`docs/context/registry.json\`.
-2. Select only the artifacts needed for the current task.
-3. Open those files by path (do not scan folders).
-4. Check \`docs/context/config/environment-registry.json\` for environment constraints.
-
-## How to update context (script-only)
-
-Use \`node .ai/scripts/contextctl.js\`:
-
-- Initialize (idempotent):
-  - \`node .ai/scripts/contextctl.js init\`
-- Register a new artifact:
-  - \`node .ai/scripts/contextctl.js add-artifact --id <id> --type <type> --path <repo-relative-path>\`
-- Update checksums after edits:
-  - \`node .ai/scripts/contextctl.js touch\`
-- Verify consistency (for CI):
-  - \`node .ai/scripts/contextctl.js verify --strict\`
-- Add environment:
-  - \`node .ai/scripts/contextctl.js add-env --id dev --description "Development"\`
-- List environments:
-  - \`node .ai/scripts/contextctl.js list-envs\`
-
-## Verification
-
-- Registry and artifacts are consistent:
-  - \`node .ai/scripts/contextctl.js verify --strict\`
-- Environment configuration is valid:
-  - \`node .ai/scripts/contextctl.js verify-config --env staging\`
-`;
-    writeFileSync(indexPath, indexContent);
-    console.log(`  Created: ${INDEX_FILE}`);
-    created = true;
+  if (dryRun) {
+    actions.push({ op: 'write', path: schemaPath, mode: 'dry-run' });
+  } else {
+    if (!fs.existsSync(schemaPath)) {
+      writeJson(schemaPath, schemaContent);
+      actions.push({ op: 'write', path: schemaPath });
+    } else {
+      actions.push({ op: 'skip', path: schemaPath, reason: 'exists' });
+    }
   }
 
-  if (!created) {
-    console.log('  Context layer already initialized (no changes).');
+  console.log('[ok] Context layer initialized.');
+  for (const action of actions) {
+    const mode = action.mode ? ` (${action.mode})` : '';
+    const reason = action.reason ? ` [${action.reason}]` : '';
+    console.log(`  ${action.op}: ${path.relative(repoRoot, action.path)}${mode}${reason}`);
   }
-
-  console.log('Done.');
-  return 0;
 }
 
-function cmdAddArtifact(repoRoot, flags) {
-  const { id, type, path: artifactPath, mode = 'contract', format, tags } = flags;
+function cmdAddArtifact(repoRoot, id, type, artifactPath) {
+  if (!id) die('[error] --id is required');
+  if (!type) die('[error] --type is required');
+  if (!artifactPath) die('[error] --path is required');
 
-  if (!id || !type || !artifactPath) {
-    console.error('Error: --id, --type, and --path are required.');
-    console.error('Usage: contextctl add-artifact --id <id> --type <type> --path <path> [--mode contract|generated] [--format <format>] [--tags <comma-separated>]');
-    return 1;
+  const validTypes = ['openapi', 'db', 'bpmn', 'json', 'yaml', 'markdown'];
+  if (!validTypes.includes(type)) {
+    die(`[error] --type must be one of: ${validTypes.join(', ')}`);
   }
 
-  // Validate id format
-  if (!/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(id)) {
-    console.error('Error: id must be 3-64 lowercase alphanumeric characters with hyphens, starting and ending with alphanumeric.');
-    return 1;
+  const fullPath = resolvePath(repoRoot, artifactPath);
+  if (!fs.existsSync(fullPath)) {
+    die(`[error] Artifact file not found: ${artifactPath}`);
   }
 
   const registry = loadRegistry(repoRoot);
-  if (!registry) {
-    console.error('Error: Registry not found. Run `contextctl init` first.');
-    return 1;
+  
+  // Check if artifact already exists
+  const existing = registry.artifacts.find(a => a.id === id);
+  if (existing) {
+    die(`[error] Artifact with id "${id}" already exists. Use remove-artifact first.`);
   }
 
-  // Check for duplicate id
-  if (registry.artifacts.some(a => a.id === id)) {
-    console.error(`Error: Artifact with id "${id}" already exists.`);
-    return 1;
-  }
+  const checksum = computeChecksum(fullPath);
+  const relativePath = path.relative(repoRoot, fullPath);
 
-  // Verify file exists
-  const fullPath = join(repoRoot, artifactPath);
-  if (!existsSync(fullPath)) {
-    console.error(`Error: File not found: ${artifactPath}`);
-    return 1;
-  }
-
-  // Calculate checksum
-  const content = readFileSync(fullPath);
-  const checksum = sha256(content);
-
-  const artifact = {
+  registry.artifacts.push({
     id,
     type,
-    path: artifactPath,
-    mode: mode === 'generated' ? 'generated' : 'contract'
-  };
+    path: relativePath,
+    checksum,
+    addedAt: new Date().toISOString()
+  });
 
-  if (format) artifact.format = format;
-  if (tags) artifact.tags = tags.split(',').map(t => t.trim());
-  artifact.checksumSha256 = checksum;
-  artifact.lastUpdated = isoNow();
-  artifact.source = {
-    kind: 'manual',
-    notes: 'Edit the file; then run contextctl touch.'
-  };
-
-  registry.artifacts.push(artifact);
   saveRegistry(repoRoot, registry);
-
-  console.log(`Added artifact: ${id}`);
-  console.log(`  path: ${artifactPath}`);
-  console.log(`  checksum: ${checksum.slice(0, 16)}...`);
-  return 0;
+  console.log(`[ok] Added artifact: ${id} (${type}) -> ${relativePath}`);
 }
 
-function cmdRemoveArtifact(repoRoot, flags) {
-  const { id } = flags;
-
-  if (!id) {
-    console.error('Error: --id is required.');
-    return 1;
-  }
+function cmdRemoveArtifact(repoRoot, id) {
+  if (!id) die('[error] --id is required');
 
   const registry = loadRegistry(repoRoot);
-  if (!registry) {
-    console.error('Error: Registry not found.');
-    return 1;
+  const index = registry.artifacts.findIndex(a => a.id === id);
+  
+  if (index === -1) {
+    die(`[error] Artifact with id "${id}" not found.`);
   }
 
-  const idx = registry.artifacts.findIndex(a => a.id === id);
-  if (idx === -1) {
-    console.error(`Error: Artifact with id "${id}" not found.`);
-    return 1;
-  }
-
-  registry.artifacts.splice(idx, 1);
+  const removed = registry.artifacts.splice(index, 1)[0];
   saveRegistry(repoRoot, registry);
-
-  console.log(`Removed artifact: ${id}`);
-  return 0;
+  console.log(`[ok] Removed artifact: ${id} (was at ${removed.path})`);
 }
 
 function cmdTouch(repoRoot) {
   const registry = loadRegistry(repoRoot);
-  if (!registry) {
-    console.error('Error: Registry not found. Run `contextctl init` first.');
-    return 1;
-  }
-
-  console.log('Updating checksums...');
   let updated = 0;
 
   for (const artifact of registry.artifacts) {
-    const fullPath = join(repoRoot, artifact.path);
-    if (!existsSync(fullPath)) {
-      console.warn(`  Warning: File not found: ${artifact.path}`);
-      continue;
-    }
-
-    const content = readFileSync(fullPath);
-    const newChecksum = sha256(content);
-
-    if (artifact.checksumSha256 !== newChecksum) {
-      artifact.checksumSha256 = newChecksum;
-      artifact.lastUpdated = isoNow();
-      console.log(`  Updated: ${artifact.id}`);
+    const fullPath = resolvePath(repoRoot, artifact.path);
+    const newChecksum = computeChecksum(fullPath);
+    
+    if (newChecksum && newChecksum !== artifact.checksum) {
+      artifact.checksum = newChecksum;
       updated++;
+      console.log(`  [updated] ${artifact.id}: ${newChecksum}`);
     }
   }
 
-  saveRegistry(repoRoot, registry);
-
-  if (updated === 0) {
-    console.log('No changes detected.');
+  if (updated > 0) {
+    saveRegistry(repoRoot, registry);
+    console.log(`[ok] Updated ${updated} checksum(s).`);
   } else {
-    console.log(`Updated ${updated} artifact(s).`);
+    console.log('[ok] All checksums are up to date.');
   }
-  return 0;
 }
 
-function cmdVerify(repoRoot, flags) {
-  const strict = flags.strict === true;
+function cmdList(repoRoot, format) {
   const registry = loadRegistry(repoRoot);
 
-  if (!registry) {
-    console.error('Error: Registry not found.');
-    return 1;
+  if (format === 'json') {
+    console.log(JSON.stringify(registry, null, 2));
+    return;
   }
 
-  console.log(`Verifying context registry (strict=${strict})...`);
-  let errors = 0;
-  let warnings = 0;
+  console.log(`Context Artifacts (${registry.artifacts.length} total):`);
+  console.log(`Last updated: ${registry.lastUpdated || 'unknown'}\n`);
 
-  // Check each artifact
+  if (registry.artifacts.length === 0) {
+    console.log('  (no artifacts registered)');
+    return;
+  }
+
   for (const artifact of registry.artifacts) {
-    const fullPath = join(repoRoot, artifact.path);
+    console.log(`  [${artifact.type}] ${artifact.id}`);
+    console.log(`    Path: ${artifact.path}`);
+    console.log(`    Checksum: ${artifact.checksum || 'none'}`);
+  }
+}
 
-    if (!existsSync(fullPath)) {
-      console.error(`  ERROR: File not found: ${artifact.path} (id: ${artifact.id})`);
-      errors++;
-      continue;
-    }
+function cmdVerify(repoRoot, strict) {
+  const errors = [];
+  const warnings = [];
+  const contextDir = getContextDir(repoRoot);
 
-    const content = readFileSync(fullPath);
-    const currentChecksum = sha256(content);
+  // Check context directory exists
+  if (!fs.existsSync(contextDir)) {
+    errors.push('docs/context directory does not exist. Run: contextctl init');
+  }
 
-    if (artifact.checksumSha256 && artifact.checksumSha256 !== currentChecksum) {
-      const msg = `  CHECKSUM MISMATCH: ${artifact.id} (${artifact.path})`;
-      if (strict) {
-        console.error(msg);
-        errors++;
-      } else {
-        console.warn(msg);
-        warnings++;
+  // Check registry exists
+  const registryPath = getRegistryPath(repoRoot);
+  if (!fs.existsSync(registryPath)) {
+    errors.push('registry.json does not exist. Run: contextctl init');
+  } else {
+    const registry = loadRegistry(repoRoot);
+
+    // Verify each artifact
+    for (const artifact of registry.artifacts) {
+      const fullPath = resolvePath(repoRoot, artifact.path);
+      
+      if (!fs.existsSync(fullPath)) {
+        errors.push(`Artifact file missing: ${artifact.path} (id: ${artifact.id})`);
+        continue;
+      }
+
+      const currentChecksum = computeChecksum(fullPath);
+      if (artifact.checksum && currentChecksum !== artifact.checksum) {
+        warnings.push(`Checksum mismatch for ${artifact.id}: expected ${artifact.checksum}, got ${currentChecksum}. Run: contextctl touch`);
       }
     }
   }
 
-  // Summary
-  if (errors > 0) {
-    console.error(`\nVerification FAILED: ${errors} error(s), ${warnings} warning(s).`);
-    console.error('Run `node .ai/scripts/contextctl.js touch` to update checksums.');
-    return 1;
-  } else if (warnings > 0) {
-    console.warn(`\nVerification passed with ${warnings} warning(s).`);
-    return 0;
+  // Check environment registry
+  const envRegistryPath = getEnvRegistryPath(repoRoot);
+  if (!fs.existsSync(envRegistryPath)) {
+    warnings.push('environment-registry.json does not exist.');
+  }
+
+  // Check INDEX.md
+  const indexPath = path.join(contextDir, 'INDEX.md');
+  if (!fs.existsSync(indexPath)) {
+    warnings.push('INDEX.md does not exist.');
+  }
+
+  // Report results
+  const ok = errors.length === 0 && (!strict || warnings.length === 0);
+
+  if (errors.length > 0) {
+    console.log('\nErrors:');
+    for (const e of errors) console.log(`  - ${e}`);
+  }
+
+  if (warnings.length > 0) {
+    console.log('\nWarnings:');
+    for (const w of warnings) console.log(`  - ${w}`);
+  }
+
+  if (ok) {
+    console.log('[ok] Context layer verification passed.');
   } else {
-    console.log(`\nVerification passed: ${registry.artifacts.length} artifact(s) OK.`);
-    return 0;
+    console.log('[error] Context layer verification failed.');
   }
+
+  process.exit(ok ? 0 : 1);
 }
 
-function cmdList(repoRoot) {
-  const registry = loadRegistry(repoRoot);
-  if (!registry) {
-    console.error('Error: Registry not found.');
-    return 1;
+function cmdAddEnv(repoRoot, id, description) {
+  if (!id) die('[error] --id is required');
+
+  const envRegistry = loadEnvRegistry(repoRoot);
+  
+  // Check if environment already exists
+  const existing = envRegistry.environments.find(e => e.id === id);
+  if (existing) {
+    die(`[error] Environment "${id}" already exists.`);
   }
 
-  if (registry.artifacts.length === 0) {
-    console.log('No artifacts registered.');
-    return 0;
-  }
-
-  console.log(`Registered artifacts (${registry.artifacts.length}):\n`);
-  for (const a of registry.artifacts) {
-    console.log(`  ${a.id}`);
-    console.log(`    type: ${a.type}, mode: ${a.mode}`);
-    console.log(`    path: ${a.path}`);
-    if (a.tags?.length) console.log(`    tags: ${a.tags.join(', ')}`);
-    console.log();
-  }
-  return 0;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Environment Commands
-// ─────────────────────────────────────────────────────────────────────────────
-
-function cmdAddEnv(repoRoot, flags) {
-  const { id, description } = flags;
-
-  if (!id || !description) {
-    console.error('Error: --id and --description are required.');
-    console.error('Usage: contextctl add-env --id <id> --description <description>');
-    return 1;
-  }
-
-  // Validate id format
-  if (!/^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$|^[a-z0-9]$/.test(id)) {
-    console.error('Error: id must be lowercase alphanumeric with optional hyphens.');
-    return 1;
-  }
-
-  let envRegistry = loadEnvRegistry(repoRoot);
-  if (!envRegistry) {
-    // Create new registry
-    envRegistry = {
-      version: 1,
-      updatedAt: isoNow(),
-      environments: []
-    };
-  }
-
-  // Check for duplicate id
-  if (envRegistry.environments.some(e => e.id === id)) {
-    console.error(`Error: Environment with id "${id}" already exists.`);
-    return 1;
-  }
-
-  const env = {
+  envRegistry.environments.push({
     id,
-    description,
-    database: {
-      writable: id === 'dev',
-      migrations: id === 'dev' ? true : 'review-required',
-      seedData: id === 'dev'
-    },
-    secrets: {
-      source: id === 'dev' ? '.env.local' : `vault://${id}/*`,
-      notes: id === 'dev' ? 'Use local .env file' : 'Secrets managed via vault or CI'
-    },
-    deployment: {
-      allowed: id !== 'dev',
-      approval: id === 'prod' ? 'required' : 'optional'
+    description: description || `${id} environment`,
+    permissions: {
+      database: { read: true, write: id !== 'prod', migrate: id !== 'prod' },
+      deploy: id !== 'dev'
     }
-  };
+  });
 
-  envRegistry.environments.push(env);
   saveEnvRegistry(repoRoot, envRegistry);
-
-  console.log(`Added environment: ${id}`);
-  console.log(`  description: ${description}`);
-  return 0;
+  console.log(`[ok] Added environment: ${id}`);
 }
 
-function cmdListEnvs(repoRoot) {
+function cmdListEnvs(repoRoot, format) {
   const envRegistry = loadEnvRegistry(repoRoot);
-  if (!envRegistry) {
-    console.error('Error: Environment registry not found.');
-    return 1;
+
+  if (format === 'json') {
+    console.log(JSON.stringify(envRegistry, null, 2));
+    return;
   }
 
-  if (envRegistry.environments.length === 0) {
-    console.log('No environments registered.');
-    return 0;
-  }
+  console.log(`Environments (${envRegistry.environments.length} total):\n`);
 
-  console.log(`Registered environments (${envRegistry.environments.length}):\n`);
-  for (const e of envRegistry.environments) {
-    console.log(`  ${e.id}`);
-    console.log(`    description: ${e.description}`);
-    if (e.database) {
-      console.log(`    database: writable=${e.database.writable}, migrations=${e.database.migrations}`);
-    }
-    if (e.deployment) {
-      console.log(`    deployment: allowed=${e.deployment.allowed}, approval=${e.deployment.approval || 'none'}`);
-    }
-    console.log();
+  for (const env of envRegistry.environments) {
+    console.log(`  [${env.id}] ${env.description || ''}`);
+    const perms = env.permissions || {};
+    const dbPerms = perms.database || {};
+    console.log(`    Database: read=${dbPerms.read ?? '-'}, write=${dbPerms.write ?? '-'}, migrate=${dbPerms.migrate ?? '-'}`);
+    console.log(`    Deploy: ${perms.deploy ?? '-'}`);
   }
-  return 0;
 }
 
-function cmdVerifyConfig(repoRoot, flags) {
-  const { env } = flags;
-
+function cmdVerifyConfig(repoRoot, envId) {
   const envRegistry = loadEnvRegistry(repoRoot);
-  if (!envRegistry) {
-    console.error('Error: Environment registry not found.');
-    return 1;
-  }
+  const errors = [];
+  const warnings = [];
 
-  console.log('Verifying environment configuration...');
-  let errors = 0;
-
-  // If specific env requested, verify just that one
-  const envsToVerify = env 
-    ? envRegistry.environments.filter(e => e.id === env)
+  const envsToCheck = envId 
+    ? envRegistry.environments.filter(e => e.id === envId)
     : envRegistry.environments;
 
-  if (env && envsToVerify.length === 0) {
-    console.error(`Error: Environment "${env}" not found in registry.`);
-    return 1;
+  if (envId && envsToCheck.length === 0) {
+    die(`[error] Environment "${envId}" not found.`);
   }
 
-  for (const e of envsToVerify) {
-    // Check if config template exists
-    const templatePath = join(repoRoot, CONFIG_ENVS_DIR, `${e.id}.yaml.template`);
-    const configPath = join(repoRoot, CONFIG_ENVS_DIR, `${e.id}.yaml`);
+  for (const env of envsToCheck) {
+    // Check for config template
+    const templatePath = path.join(repoRoot, 'config', 'environments', `${env.id}.yaml.template`);
+    const configPath = path.join(repoRoot, 'config', 'environments', `${env.id}.yaml`);
 
-    if (!existsSync(templatePath) && !existsSync(configPath)) {
-      console.warn(`  Warning: No config file for environment "${e.id}"`);
-      console.warn(`    Expected: ${CONFIG_ENVS_DIR}/${e.id}.yaml.template or ${e.id}.yaml`);
-    } else {
-      console.log(`  OK: ${e.id} - config file found`);
+    if (!fs.existsSync(templatePath) && !fs.existsSync(configPath)) {
+      warnings.push(`No config file found for environment "${env.id}".`);
     }
 
-    // Validate required fields
-    if (!e.description) {
-      console.error(`  ERROR: Environment "${e.id}" missing description`);
-      errors++;
+    // Check permissions are defined
+    if (!env.permissions) {
+      warnings.push(`Environment "${env.id}" has no permissions defined.`);
     }
   }
 
-  if (errors > 0) {
-    console.error(`\nVerification FAILED: ${errors} error(s).`);
-    return 1;
+  // Report results
+  if (errors.length > 0) {
+    console.log('\nErrors:');
+    for (const e of errors) console.log(`  - ${e}`);
   }
 
-  console.log(`\nVerification passed: ${envsToVerify.length} environment(s) OK.`);
-  return 0;
+  if (warnings.length > 0) {
+    console.log('\nWarnings:');
+    for (const w of warnings) console.log(`  - ${w}`);
+  }
+
+  if (errors.length === 0 && warnings.length === 0) {
+    console.log('[ok] Environment configuration verification passed.');
+  } else if (errors.length === 0) {
+    console.log('[ok] Environment configuration verification passed with warnings.');
+  } else {
+    console.log('[error] Environment configuration verification failed.');
+    process.exit(1);
+  }
 }
 
-function cmdHelp() {
-  console.log(`
-contextctl.js - Context Registry Management
-
-Usage: node .ai/scripts/contextctl.js <command> [options]
-
-Commands:
-  init                Initialize context directory structure (idempotent)
-  
-  add-artifact        Register a new artifact
-    --id <id>         Artifact identifier (required)
-    --type <type>     Artifact type, e.g. openapi, db-schema, bpmn (required)
-    --path <path>     Repo-relative path to file (required)
-    --mode <mode>     contract (default) or generated
-    --format <fmt>    Format hint, e.g. openapi-3.1
-    --tags <tags>     Comma-separated tags
-    
-  remove-artifact     Remove an artifact from registry
-    --id <id>         Artifact identifier (required)
-    
-  touch               Update checksums for all registered artifacts
-  
-  verify              Verify registry consistency
-    --strict          Fail on checksum mismatch (default: warn only)
-    
-  list                List all registered artifacts
-
-  add-env             Add an environment to the registry
-    --id <id>         Environment identifier, e.g. dev, staging, prod (required)
-    --description <d> Human-readable description (required)
-    
-  list-envs           List all registered environments
-  
-  verify-config       Verify environment configuration
-    --env <id>        Specific environment to verify (optional)
-    
-  help                Show this help message
-
-Global Options:
-  --repo-root <path>  Repository root (default: auto-detect)
-`);
-  return 0;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 // Main
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 
 function main() {
-  const args = process.argv.slice(2);
-  const parsed = parseArgs(args);
-  const command = parsed._[0] || 'help';
-  const repoRoot = resolveRepoRoot(parsed.flags['repo-root']);
+  const { command, opts } = parseArgs(process.argv);
+  const repoRoot = path.resolve(opts['repo-root'] || process.cwd());
+  const format = (opts['format'] || 'text').toLowerCase();
 
   switch (command) {
     case 'init':
-      return cmdInit(repoRoot);
+      cmdInit(repoRoot, !!opts['dry-run']);
+      break;
     case 'add-artifact':
-      return cmdAddArtifact(repoRoot, parsed.flags);
+      cmdAddArtifact(repoRoot, opts['id'], opts['type'], opts['path']);
+      break;
     case 'remove-artifact':
-      return cmdRemoveArtifact(repoRoot, parsed.flags);
+      cmdRemoveArtifact(repoRoot, opts['id']);
+      break;
     case 'touch':
-      return cmdTouch(repoRoot);
-    case 'verify':
-      return cmdVerify(repoRoot, parsed.flags);
+      cmdTouch(repoRoot);
+      break;
     case 'list':
-      return cmdList(repoRoot);
+      cmdList(repoRoot, format);
+      break;
+    case 'verify':
+      cmdVerify(repoRoot, !!opts['strict']);
+      break;
     case 'add-env':
-      return cmdAddEnv(repoRoot, parsed.flags);
+      cmdAddEnv(repoRoot, opts['id'], opts['description']);
+      break;
     case 'list-envs':
-      return cmdListEnvs(repoRoot);
+      cmdListEnvs(repoRoot, format);
+      break;
     case 'verify-config':
-      return cmdVerifyConfig(repoRoot, parsed.flags);
-    case 'help':
-    case '--help':
-    case '-h':
-      return cmdHelp();
+      cmdVerifyConfig(repoRoot, opts['env']);
+      break;
     default:
-      console.error(`Unknown command: ${command}`);
-      return cmdHelp() || 1;
+      console.error(`[error] Unknown command: ${command}`);
+      usage(1);
   }
 }
 
-process.exit(main());
+main();

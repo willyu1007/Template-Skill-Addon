@@ -17,48 +17,72 @@ It is designed for **robustness and auditability**:
 
 ### 0) Initialize state
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js start --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs start --repo-root .
 ```
 
 ### 1) Stage A: validate docs → approve
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs \
   --repo-root . \
   --docs-root docs/project \
   --strict
 
 # After the user explicitly approves Stage A:
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage A --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage A --repo-root .
 ```
 
 ### 2) Stage B: validate blueprint → approve
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js validate \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate \
   --repo-root . \
   --blueprint docs/project/project-blueprint.json
 
 # After the user explicitly approves Stage B:
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage B --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage B --repo-root .
 ```
 
 ### 3) Stage C: apply scaffold/configs/packs/addons/wrappers → approve
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply \
   --repo-root . \
   --blueprint docs/project/project-blueprint.json \
   --providers both
 
+# Optional: verify add-ons after installation (fail-fast by default).
+# Use --non-blocking-addons to continue despite verify failures.
+# node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply \
+#   --repo-root . \
+#   --blueprint docs/project/project-blueprint.json \
+#   --providers both \
+#   --verify-addons
+
 # After the user explicitly approves Stage C:
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage C --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage C --repo-root .
 ```
 
-### 4) Optional: remove `init/` once finished
+### 4) Optional: cleanup after init
+
+**Option A: Remove `init/` only** (repo retains add-on source directories)
+
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js cleanup-init \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
   --repo-root . \
   --apply \
   --i-understand
 ```
+
+**Option B: Remove `init/` + prune unused add-ons** (recommended for minimal final repo)
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
+  --repo-root . \
+  --apply \
+  --i-understand \
+  --cleanup-addons \
+  --blueprint docs/project/project-blueprint.json
+```
+
+This removes the `init/` directory and deletes add-on source directories under `addons/` that were not enabled in the blueprint.
 
 ---
 
@@ -94,23 +118,74 @@ In `project-blueprint.json`:
 }
 ```
 
-Or via capability configuration:
+**Important:** Only `addons.*` toggles trigger add-on installation. The top-level configuration blocks (`db`, `ci`, `packaging`, `deploy`, `release`, `observability`) are for **configuration parameters only** and do not trigger installation:
 
 ```json
 {
-  "db": { "enabled": true },
-  "ci": { "enabled": true, "platform": "github-actions" },
-  "packaging": { "enabled": true, "containerize": true },
-  "deploy": { "enabled": true, "model": "k8s" },
-  "release": { "enabled": true, "strategy": "semantic" },
-  "observability": { "enabled": true, "metrics": true }
+  "addons": {
+    "dbMirror": true,          // ← triggers db-mirror add-on installation
+    "ciTemplates": true        // ← triggers ci-templates add-on installation
+  },
+  "db": {
+    "kind": "postgres",        // ← configuration only, does NOT trigger installation
+    "migrationTool": "prisma"
+  },
+  "ci": {
+    "platform": "github-actions",  // ← configuration only, does NOT trigger installation
+    "features": ["lint", "test"]
+  }
 }
+```
+
+Use `suggest-addons` to get recommendations based on your blueprint capabilities:
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-addons \
+  --blueprint docs/project/project-blueprint.json --write
 ```
 
 See:
 - `ADDONS_DIRECTORY.md` - Add-on conventions
 - `ADDON_*.md` files - Individual add-on documentation
 - `addons/CONVENTION.md` - Full convention specification
+
+---
+
+## LLM 引导式初始化 (LLM-Guided Initialization)
+
+本 init kit 支持 AI 助手引导用户完成整个初始化流程。
+
+### 引导流程
+
+```
+需求访谈 → 技术栈选择 → Blueprint 生成 → Add-ons 推荐 → 配置文件生成 → apply
+```
+
+### 支持的语言
+
+| 语言 | 模板支持 | 配置生成方式 |
+|------|---------|-------------|
+| TypeScript/JavaScript | ✅ | 预置模板 |
+| Go | ✅ | 预置模板 |
+| C/C++ (xmake) | ✅ | 预置模板 |
+| React Native | ✅ | 预置模板 |
+| Python | ❌ | LLM 生成 |
+| Java/Kotlin | ❌ | LLM 生成 |
+| .NET (C#) | ❌ | LLM 生成 |
+| Rust | ❌ | LLM 生成 |
+| 其他 | ❌ | LLM 生成 |
+
+### 引导文档
+
+- `skills/initialize-project-from-requirements/templates/llm-init-guide.md` – LLM 完整引导指南
+- `skills/initialize-project-from-requirements/templates/conversation-prompts.md` – 对话问题库
+
+### 无模板语言的处理
+
+当用户选择没有预置模板的语言时：
+1. `scaffold-configs.cjs` 会输出提示信息和配置文件建议
+2. LLM 根据 `llm-init-guide.md` 中的规则生成配置文件
+3. 用户确认后继续执行 `apply` 命令
 
 ---
 
@@ -129,6 +204,10 @@ When add-ons are enabled, they provide more complete implementations with manage
 
 - `stages/` – stage guidance docs
 - `skills/initialize-project-from-requirements/` – the skill definition and scripts
+  - `templates/project-blueprint.example.json` – full example (all add-ons enabled)
+  - `templates/project-blueprint.min.example.json` – minimal example (backend only)
+  - `templates/llm-init-guide.md` – LLM 初始化引导指南
+  - `templates/conversation-prompts.md` – 对话问题库和分支模块
 - `reference.md` – end-to-end reference
 - `ADDON_*.md` – individual add-on documentation
 - `ADDONS_DIRECTORY.md` – add-on conventions

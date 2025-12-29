@@ -3,9 +3,9 @@
 Stage C applies the blueprint to the repository:
 
 - create minimal directory scaffold
-- generate configuration files (SSOT: `scripts/scaffold-configs.js`)
+- generate configuration files (SSOT: `scripts/scaffold-configs.cjs`)
 - enable skill packs (manifest / skillsctl scheme A)
-- sync provider wrappers (`.ai/scripts/sync-skills.js`)
+- sync provider wrappers (`.ai/scripts/sync-skills.cjs`)
 - optionally install/initialize add-ons (context awareness)
 - optionally create DevOps convention scaffold (`ops/`)
 
@@ -16,7 +16,7 @@ Stage C applies the blueprint to the repository:
 Before writing anything, you can preview the scaffold plan:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js scaffold \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs scaffold \
   --repo-root . \
   --blueprint docs/project/project-blueprint.json
 ```
@@ -24,7 +24,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js s
 To actually create the scaffold files/folders (minimal set only):
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js scaffold \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs scaffold \
   --repo-root . \
   --blueprint docs/project/project-blueprint.json \
   --apply
@@ -37,7 +37,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js s
 From repo root:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply \
   --repo-root . \
   --blueprint docs/project/project-blueprint.json \
   --providers both
@@ -48,7 +48,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js a
 1. Validates the blueprint (same as `validate`)
 2. Optionally validates Stage A docs (when `--require-stage-a` is set)
 3. Applies scaffold (idempotent; “write-if-missing” for docs)
-4. Generates config files via `scripts/scaffold-configs.js`
+4. Generates config files via `scripts/scaffold-configs.cjs`
 5. If context awareness is enabled in the blueprint:
    - installs missing add-on payload files from `addons/context-awareness/payload/` (copy-if-missing)
    - runs `.ai/scripts/contextctl.js init`
@@ -56,7 +56,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js a
 6. Enables skill packs:
    - If `.ai/scripts/skillsctl.js` exists: **scheme A** (packs enabled via skillsctl)
    - Else: additive update of `.ai/skills/_meta/sync-manifest.json` includePrefixes
-7. Syncs provider wrappers via `.ai/scripts/sync-skills.js`
+7. Syncs provider wrappers via `.ai/scripts/sync-skills.cjs`
 
 ---
 
@@ -76,12 +76,12 @@ These are provider-agnostic placeholders intended to be extended.
 After reviewing the resulting scaffold/configs/skills changes, record approval and mark init complete:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage C --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage C --repo-root .
 ```
 
 Optional: remove `init/` bootstrap kit after completion:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js cleanup-init --repo-root . --apply --i-understand
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init --repo-root . --apply --i-understand
 ```
 

@@ -64,7 +64,7 @@ Use this skill when:
 
 Notes:
 - Stubs contain only `SKILL.md` pointers back to `.ai/skills/`
-- Do not edit stub directories directly; regenerate with `.ai/scripts/sync-skills.js`
+- Do not edit stub directories directly; regenerate with `.ai/scripts/sync-skills.cjs`
 
 ### Other Top-Level Directories (Recommended)
 

@@ -27,7 +27,7 @@ In `project-blueprint.json`:
 Then run:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply --blueprint docs/project/project-blueprint.json
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --blueprint docs/project/project-blueprint.json
 ```
 
 ## What gets installed

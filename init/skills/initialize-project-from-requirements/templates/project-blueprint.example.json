@@ -45,9 +45,7 @@
     }
   },
   "skills": {
-    "packs": ["workflows", "backend", "frontend", "data", "diagrams", "ops"],
-    "includeSkillNames": [],
-    "excludeSkillNames": []
+    "packs": ["workflows", "backend", "frontend", "standards"]
   },
   "addons": {
     "contextAwareness": true,

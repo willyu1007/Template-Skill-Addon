@@ -44,7 +44,7 @@ Enable in your `project-blueprint.json`:
 
 Then run:
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply --blueprint docs/project/project-blueprint.json
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --blueprint docs/project/project-blueprint.json
 ```
 
 ### Option B: Install manually
@@ -85,6 +85,16 @@ node .ai/scripts/migrate.js list
 # Apply migrations (requires human confirmation for non-dev)
 node .ai/scripts/migrate.js apply --env staging
 ```
+
+### Context Awareness Bridge (optional)
+
+If the context-awareness add-on is enabled, sync the mirror into `docs/context/`:
+
+```bash
+node .ai/scripts/dbctl.js sync-to-context
+```
+
+This updates `docs/context/db/schema.json` and refreshes the registry checksum so `contextctl verify` passes.
 
 ### Environment Configuration
 
@@ -137,4 +147,3 @@ Delete these paths:
 - `.ai/scripts/dbctl.js`
 - `.ai/scripts/migrate.js`
 - `docs/addons/db-mirror/`
-

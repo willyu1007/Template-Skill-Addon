@@ -41,7 +41,7 @@ By default, the init pipeline expects:
 You can override the add-ons root directory via:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply --addons-root <path> ...
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --addons-root <path> ...
 ```
 
 ---

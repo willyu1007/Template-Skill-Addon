@@ -91,7 +91,7 @@ node .ai/scripts/<name>ctl.js verify
 node .ai/scripts/<name>ctl.js help
 ```
 
-## Integration with init-pipeline.js
+## Integration with init-pipeline.cjs
 
 The init pipeline detects and installs add-ons based on blueprint configuration:
 

@@ -1,637 +1,403 @@
 #!/usr/bin/env node
 /**
- * obsctl.js - Observability Management
+ * obsctl.js
  *
- * Manages observability contracts (metrics, logs, traces).
+ * Observability configuration management for the observability add-on.
  *
  * Commands:
- *   init                    Initialize observability configuration
- *   add-metric              Add a metric definition
- *   remove-metric           Remove a metric definition
- *   list-metrics            List all metrics
- *   add-log-field           Add a log field definition
- *   remove-log-field        Remove a log field
- *   list-log-fields         List all log fields
- *   generate-instrumentation Generate instrumentation hints
- *   verify                  Verify observability configuration
- *   help                    Show this help message
+ *   init              Initialize observability configuration (idempotent)
+ *   status            Show observability status
+ *   verify            Verify observability configuration
+ *   add-metric        Add a metric definition
+ *   list-metrics      List defined metrics
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// ============================================================================
+// CLI Argument Parsing
+// ============================================================================
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Configuration
-// ─────────────────────────────────────────────────────────────────────────────
+function usage(exitCode = 0) {
+  const msg = `
+Usage:
+  node .ai/scripts/obsctl.js <command> [options]
 
-const OBS_DIR = 'observability';
-const OBS_CONFIG_FILE = 'observability/config.json';
-const OBS_WORKDOCS_DIR = 'observability/workdocs';
-const CONTEXT_OBS_DIR = 'docs/context/observability';
-const METRICS_FILE = 'docs/context/observability/metrics-registry.json';
-const LOGS_FILE = 'docs/context/observability/logs-schema.json';
-const TRACES_FILE = 'docs/context/observability/traces-config.json';
+Commands:
+  init
+    --repo-root <path>          Repo root (default: cwd)
+    --dry-run                   Show what would be created
+    Initialize observability configuration.
 
-const METRIC_TYPES = ['counter', 'gauge', 'histogram', 'summary'];
+  status
+    --repo-root <path>          Repo root (default: cwd)
+    --format <text|json>        Output format (default: text)
+    Show observability status.
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Utilities
-// ─────────────────────────────────────────────────────────────────────────────
+  verify
+    --repo-root <path>          Repo root (default: cwd)
+    Verify observability configuration.
 
-function parseArgs(args) {
-  const result = { _: [], flags: {} };
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg.startsWith('--')) {
-      const key = arg.slice(2);
-      const nextArg = args[i + 1];
-      if (nextArg && !nextArg.startsWith('--')) {
-        result.flags[key] = nextArg;
-        i++;
+  add-metric
+    --name <string>             Metric name (required)
+    --type <counter|gauge|histogram>  Metric type (required)
+    --description <string>      Description (optional)
+    --repo-root <path>          Repo root (default: cwd)
+    Add a metric definition.
+
+  list-metrics
+    --repo-root <path>          Repo root (default: cwd)
+    --format <text|json>        Output format (default: text)
+    List defined metrics.
+
+Examples:
+  node .ai/scripts/obsctl.js init
+  node .ai/scripts/obsctl.js add-metric --name http_requests_total --type counter
+  node .ai/scripts/obsctl.js list-metrics
+`;
+  console.log(msg.trim());
+  process.exit(exitCode);
+}
+
+function die(msg, exitCode = 1) {
+  console.error(msg);
+  process.exit(exitCode);
+}
+
+function parseArgs(argv) {
+  const args = argv.slice(2);
+  if (args.length === 0 || args[0] === '-h' || args[0] === '--help') usage(0);
+
+  const command = args.shift();
+  const opts = {};
+
+  while (args.length > 0) {
+    const token = args.shift();
+    if (token === '-h' || token === '--help') usage(0);
+    if (token.startsWith('--')) {
+      const key = token.slice(2);
+      if (args.length > 0 && !args[0].startsWith('--')) {
+        opts[key] = args.shift();
       } else {
-        result.flags[key] = true;
+        opts[key] = true;
       }
-    } else {
-      result._.push(arg);
     }
   }
-  return result;
+
+  return { command, opts };
 }
 
-function resolveRepoRoot(flagValue) {
-  if (flagValue) return resolve(flagValue);
-  return resolve(__dirname, '..', '..');
-}
+// ============================================================================
+// File Utilities
+// ============================================================================
 
-function isoNow() {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-}
-
-function ensureDir(dirPath) {
-  if (!existsSync(dirPath)) {
-    mkdirSync(dirPath, { recursive: true });
-    return true;
-  }
-  return false;
-}
-
-function loadJson(filePath) {
-  if (!existsSync(filePath)) return null;
+function readJson(filePath) {
   try {
-    return JSON.parse(readFileSync(filePath, 'utf8'));
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch (e) {
-    console.error(`Error reading ${filePath}: ${e.message}`);
     return null;
   }
 }
 
-function saveJson(filePath, data) {
-  ensureDir(dirname(filePath));
-  writeFileSync(filePath, JSON.stringify(data, null, 2));
+function writeJson(filePath, data) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n', 'utf8');
+}
+
+function ensureDir(dirPath) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+    return { op: 'mkdir', path: dirPath };
+  }
+  return { op: 'skip', path: dirPath, reason: 'exists' };
+}
+
+function writeFileIfMissing(filePath, content) {
+  if (fs.existsSync(filePath)) {
+    return { op: 'skip', path: filePath, reason: 'exists' };
+  }
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, 'utf8');
+  return { op: 'write', path: filePath };
+}
+
+// ============================================================================
+// Observability Management
+// ============================================================================
+
+function getObsDir(repoRoot) {
+  return path.join(repoRoot, 'observability');
+}
+
+function getContextObsDir(repoRoot) {
+  return path.join(repoRoot, 'docs', 'context', 'observability');
+}
+
+function getConfigPath(repoRoot) {
+  return path.join(getObsDir(repoRoot), 'config.json');
+}
+
+function getMetricsPath(repoRoot) {
+  return path.join(getContextObsDir(repoRoot), 'metrics-registry.json');
+}
+
+function loadConfig(repoRoot) {
+  return readJson(getConfigPath(repoRoot)) || {
+    version: 1,
+    initialized: false
+  };
+}
+
+function saveConfig(repoRoot, config) {
+  config.lastUpdated = new Date().toISOString();
+  writeJson(getConfigPath(repoRoot), config);
 }
 
 function loadMetrics(repoRoot) {
-  return loadJson(join(repoRoot, METRICS_FILE));
+  return readJson(getMetricsPath(repoRoot)) || {
+    version: 1,
+    metrics: []
+  };
 }
 
 function saveMetrics(repoRoot, metrics) {
-  metrics.updatedAt = isoNow();
-  saveJson(join(repoRoot, METRICS_FILE), metrics);
+  metrics.lastUpdated = new Date().toISOString();
+  writeJson(getMetricsPath(repoRoot), metrics);
 }
 
-function loadLogs(repoRoot) {
-  return loadJson(join(repoRoot, LOGS_FILE));
-}
-
-function saveLogs(repoRoot, logs) {
-  logs.updatedAt = isoNow();
-  saveJson(join(repoRoot, LOGS_FILE), logs);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 // Commands
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 
-function cmdInit(repoRoot) {
-  console.log(`Initializing observability at ${repoRoot}...`);
-  let created = false;
+function cmdInit(repoRoot, dryRun) {
+  const obsDir = getObsDir(repoRoot);
+  const contextObsDir = getContextObsDir(repoRoot);
+  const actions = [];
 
-  // Create directories
-  const dirs = [OBS_DIR, OBS_WORKDOCS_DIR, CONTEXT_OBS_DIR];
+  const dirs = [
+    obsDir,
+    path.join(obsDir, 'workdocs'),
+    path.join(obsDir, 'workdocs', 'alert-runbooks'),
+    contextObsDir
+  ];
+
   for (const dir of dirs) {
-    const fullPath = join(repoRoot, dir);
-    if (ensureDir(fullPath)) {
-      console.log(`  Created: ${dir}/`);
-      created = true;
+    if (dryRun) {
+      actions.push({ op: 'mkdir', path: dir, mode: 'dry-run' });
+    } else {
+      actions.push(ensureDir(dir));
     }
   }
 
-  // Create config file
-  const configPath = join(repoRoot, OBS_CONFIG_FILE);
-  if (!existsSync(configPath)) {
-    const initialConfig = {
-      version: 1,
-      updatedAt: isoNow(),
-      metrics: true,
-      logs: true,
-      traces: true,
-      platform: null
-    };
-    saveJson(configPath, initialConfig);
-    console.log(`  Created: ${OBS_CONFIG_FILE}`);
-    created = true;
+  // Create config
+  const configPath = getConfigPath(repoRoot);
+  if (!fs.existsSync(configPath) && !dryRun) {
+    saveConfig(repoRoot, { version: 1, initialized: true });
+    actions.push({ op: 'write', path: configPath });
   }
 
   // Create metrics registry
-  const metricsPath = join(repoRoot, METRICS_FILE);
-  if (!existsSync(metricsPath)) {
-    const initialMetrics = {
-      version: 1,
-      updatedAt: isoNow(),
-      metrics: [
-        {
-          name: 'http_requests_total',
-          type: 'counter',
-          description: 'Total HTTP requests',
-          labels: ['method', 'path', 'status'],
-          unit: 'requests'
-        },
-        {
-          name: 'http_request_duration_seconds',
-          type: 'histogram',
-          description: 'HTTP request duration',
-          labels: ['method', 'path'],
-          unit: 'seconds',
-          buckets: [0.01, 0.05, 0.1, 0.5, 1, 5]
-        }
-      ]
-    };
-    saveJson(metricsPath, initialMetrics);
-    console.log(`  Created: ${METRICS_FILE}`);
-    created = true;
-  }
-
-  // Create logs schema
-  const logsPath = join(repoRoot, LOGS_FILE);
-  if (!existsSync(logsPath)) {
-    const initialLogs = {
-      version: 1,
-      updatedAt: isoNow(),
-      format: 'json',
-      levels: ['debug', 'info', 'warn', 'error'],
-      fields: [
-        { name: 'timestamp', type: 'string', format: 'iso8601', required: true },
-        { name: 'level', type: 'string', enum: ['debug', 'info', 'warn', 'error'], required: true },
-        { name: 'message', type: 'string', required: true },
-        { name: 'service', type: 'string', required: true },
-        { name: 'trace_id', type: 'string', required: false },
-        { name: 'span_id', type: 'string', required: false },
-        { name: 'user_id', type: 'string', required: false },
-        { name: 'request_id', type: 'string', required: false }
-      ]
-    };
-    saveJson(logsPath, initialLogs);
-    console.log(`  Created: ${LOGS_FILE}`);
-    created = true;
-  }
-
-  // Create traces config
-  const tracesPath = join(repoRoot, TRACES_FILE);
-  if (!existsSync(tracesPath)) {
-    const initialTraces = {
-      version: 1,
-      updatedAt: isoNow(),
-      sampling: {
-        default: 0.1,
-        errorRate: 1.0
-      },
-      spanNaming: {
-        http: '{method} {route}',
-        db: '{operation} {table}',
-        external: '{service}.{operation}'
-      },
-      requiredAttributes: [
-        'service.name',
-        'service.version',
-        'deployment.environment'
-      ]
-    };
-    saveJson(tracesPath, initialTraces);
-    console.log(`  Created: ${TRACES_FILE}`);
-    created = true;
+  const metricsPath = getMetricsPath(repoRoot);
+  if (!fs.existsSync(metricsPath) && !dryRun) {
+    saveMetrics(repoRoot, { version: 1, metrics: [] });
+    actions.push({ op: 'write', path: metricsPath });
   }
 
   // Create AGENTS.md
-  const agentsPath = join(repoRoot, OBS_DIR, 'AGENTS.md');
-  if (!existsSync(agentsPath)) {
-    const agentsContent = `# Observability - AI Guidance
+  const agentsPath = path.join(obsDir, 'AGENTS.md');
+  const agentsContent = `# Observability (LLM-first)
 
-## Conclusions (read first)
+## Commands
 
-- Observability contracts are defined in \`docs/context/observability/\`.
-- Use \`obsctl.js\` to manage metrics, logs, and traces definitions.
-- AI proposes instrumentation; humans implement.
+\`\`\`bash
+node .ai/scripts/obsctl.js init
+node .ai/scripts/obsctl.js add-metric --name http_requests_total --type counter
+node .ai/scripts/obsctl.js list-metrics
+node .ai/scripts/obsctl.js verify
+\`\`\`
 
-## Contract Files
+## Directory Structure
 
-- \`metrics-registry.json\` - Metric definitions
-- \`logs-schema.json\` - Structured log schema
-- \`traces-config.json\` - Tracing configuration
-
-## AI Workflow
-
-1. **Review** existing metrics/logs/traces contracts
-2. **Propose** new observability points via \`obsctl\`
-3. **Generate** instrumentation hints
-4. **Document** in \`workdocs/\`
+- \`observability/config.json\` - Configuration
+- \`observability/workdocs/alert-runbooks/\` - Alert runbooks
+- \`docs/context/observability/\` - Metrics/logs/traces contracts
 
 ## Metric Types
 
-- \`counter\` - Monotonically increasing value
-- \`gauge\` - Value that can go up and down
-- \`histogram\` - Distribution of values
-- \`summary\` - Similar to histogram, with quantiles
-
-## Log Levels
-
-- \`debug\` - Detailed debugging information
-- \`info\` - General operational information
-- \`warn\` - Warning conditions
-- \`error\` - Error conditions
-
-## Forbidden Actions
-
-- Adding metrics without proper naming convention
-- Logging sensitive data (PII, credentials)
-- High-cardinality labels on metrics
+- counter: Monotonically increasing value
+- gauge: Value that can go up or down
+- histogram: Distribution of values
 `;
-    writeFileSync(agentsPath, agentsContent);
-    console.log(`  Created: ${OBS_DIR}/AGENTS.md`);
-    created = true;
+
+  if (dryRun) {
+    actions.push({ op: 'write', path: agentsPath, mode: 'dry-run' });
+  } else {
+    actions.push(writeFileIfMissing(agentsPath, agentsContent));
   }
 
-  // Create workdocs
-  const workdocsReadme = join(repoRoot, OBS_WORKDOCS_DIR, 'alert-runbooks', 'README.md');
-  ensureDir(dirname(workdocsReadme));
-  if (!existsSync(workdocsReadme)) {
-    writeFileSync(workdocsReadme, '# Alert Runbooks\n\nPlace alert-specific runbooks here.\n');
-    console.log(`  Created: ${OBS_WORKDOCS_DIR}/alert-runbooks/README.md`);
-    created = true;
+  // Create logs schema
+  const logsSchemaPath = path.join(contextObsDir, 'logs-schema.json');
+  if (!fs.existsSync(logsSchemaPath) && !dryRun) {
+    writeJson(logsSchemaPath, {
+      version: 1,
+      fields: [
+        { name: 'timestamp', type: 'datetime', required: true },
+        { name: 'level', type: 'string', enum: ['debug', 'info', 'warn', 'error'] },
+        { name: 'message', type: 'string', required: true },
+        { name: 'service', type: 'string' },
+        { name: 'trace_id', type: 'string' }
+      ]
+    });
+    actions.push({ op: 'write', path: logsSchemaPath });
   }
 
-  if (!created) {
-    console.log('  Observability already initialized (no changes).');
+  // Create traces config
+  const tracesConfigPath = path.join(contextObsDir, 'traces-config.json');
+  if (!fs.existsSync(tracesConfigPath) && !dryRun) {
+    writeJson(tracesConfigPath, {
+      version: 1,
+      sampling: { default: 0.1, errors: 1.0 },
+      propagation: ['tracecontext', 'baggage']
+    });
+    actions.push({ op: 'write', path: tracesConfigPath });
   }
 
-  console.log('Done.');
-  return 0;
+  console.log('[ok] Observability configuration initialized.');
+  for (const a of actions) {
+    const mode = a.mode ? ` (${a.mode})` : '';
+    const reason = a.reason ? ` [${a.reason}]` : '';
+    console.log(`  ${a.op}: ${path.relative(repoRoot, a.path)}${mode}${reason}`);
+  }
 }
 
-function cmdAddMetric(repoRoot, flags) {
-  const { name, type, unit, description, labels } = flags;
-
-  if (!name || !type) {
-    console.error('Error: --name and --type are required.');
-    console.error(`Types: ${METRIC_TYPES.join(', ')}`);
-    return 1;
-  }
-
-  if (!METRIC_TYPES.includes(type)) {
-    console.error(`Error: Invalid type "${type}".`);
-    console.error(`Valid types: ${METRIC_TYPES.join(', ')}`);
-    return 1;
-  }
-
+function cmdStatus(repoRoot, format) {
+  const config = loadConfig(repoRoot);
   const metrics = loadMetrics(repoRoot);
-  if (!metrics) {
-    console.error('Error: Metrics registry not found. Run `obsctl init` first.');
-    return 1;
-  }
-
-  if (metrics.metrics.some(m => m.name === name)) {
-    console.error(`Error: Metric "${name}" already exists.`);
-    return 1;
-  }
-
-  const metric = {
-    name,
-    type,
-    description: description || `${name} metric`,
-    unit: unit || undefined,
-    labels: labels ? labels.split(',').map(l => l.trim()) : []
+  const status = {
+    initialized: fs.existsSync(getObsDir(repoRoot)),
+    metricsCount: metrics.metrics.length,
+    lastUpdated: config.lastUpdated
   };
 
-  metrics.metrics.push(metric);
-  saveMetrics(repoRoot, metrics);
-
-  console.log(`Added metric: ${name}`);
-  console.log(`  type: ${type}`);
-  if (unit) console.log(`  unit: ${unit}`);
-  return 0;
-}
-
-function cmdRemoveMetric(repoRoot, flags) {
-  const { name } = flags;
-
-  if (!name) {
-    console.error('Error: --name is required.');
-    return 1;
+  if (format === 'json') {
+    console.log(JSON.stringify(status, null, 2));
+    return;
   }
 
-  const metrics = loadMetrics(repoRoot);
-  if (!metrics) {
-    console.error('Error: Metrics registry not found.');
-    return 1;
-  }
-
-  const idx = metrics.metrics.findIndex(m => m.name === name);
-  if (idx === -1) {
-    console.error(`Error: Metric "${name}" not found.`);
-    return 1;
-  }
-
-  metrics.metrics.splice(idx, 1);
-  saveMetrics(repoRoot, metrics);
-
-  console.log(`Removed metric: ${name}`);
-  return 0;
-}
-
-function cmdListMetrics(repoRoot) {
-  const metrics = loadMetrics(repoRoot);
-  if (!metrics) {
-    console.error('Error: Metrics registry not found.');
-    return 1;
-  }
-
-  if (metrics.metrics.length === 0) {
-    console.log('No metrics defined.');
-    return 0;
-  }
-
-  console.log(`Metrics (${metrics.metrics.length}):\n`);
-  for (const m of metrics.metrics) {
-    console.log(`  ${m.name} (${m.type})`);
-    if (m.description) console.log(`    ${m.description}`);
-    if (m.unit) console.log(`    unit: ${m.unit}`);
-    if (m.labels?.length) console.log(`    labels: ${m.labels.join(', ')}`);
-    console.log();
-  }
-  return 0;
-}
-
-function cmdAddLogField(repoRoot, flags) {
-  const { name, type = 'string', required } = flags;
-
-  if (!name) {
-    console.error('Error: --name is required.');
-    return 1;
-  }
-
-  const logs = loadLogs(repoRoot);
-  if (!logs) {
-    console.error('Error: Logs schema not found. Run `obsctl init` first.');
-    return 1;
-  }
-
-  if (logs.fields.some(f => f.name === name)) {
-    console.error(`Error: Field "${name}" already exists.`);
-    return 1;
-  }
-
-  const field = {
-    name,
-    type,
-    required: required === 'true' || required === true
-  };
-
-  logs.fields.push(field);
-  saveLogs(repoRoot, logs);
-
-  console.log(`Added log field: ${name}`);
-  console.log(`  type: ${type}`);
-  return 0;
-}
-
-function cmdRemoveLogField(repoRoot, flags) {
-  const { name } = flags;
-
-  if (!name) {
-    console.error('Error: --name is required.');
-    return 1;
-  }
-
-  const logs = loadLogs(repoRoot);
-  if (!logs) {
-    console.error('Error: Logs schema not found.');
-    return 1;
-  }
-
-  const idx = logs.fields.findIndex(f => f.name === name);
-  if (idx === -1) {
-    console.error(`Error: Field "${name}" not found.`);
-    return 1;
-  }
-
-  logs.fields.splice(idx, 1);
-  saveLogs(repoRoot, logs);
-
-  console.log(`Removed log field: ${name}`);
-  return 0;
-}
-
-function cmdListLogFields(repoRoot) {
-  const logs = loadLogs(repoRoot);
-  if (!logs) {
-    console.error('Error: Logs schema not found.');
-    return 1;
-  }
-
-  if (logs.fields.length === 0) {
-    console.log('No log fields defined.');
-    return 0;
-  }
-
-  console.log(`Log Fields (${logs.fields.length}):\n`);
-  for (const f of logs.fields) {
-    const req = f.required ? ' (required)' : '';
-    console.log(`  ${f.name}: ${f.type}${req}`);
-  }
-  return 0;
-}
-
-function cmdGenerateInstrumentation(repoRoot, flags) {
-  const { lang = 'typescript' } = flags;
-
-  const metrics = loadMetrics(repoRoot);
-  if (!metrics) {
-    console.error('Error: Metrics registry not found.');
-    return 1;
-  }
-
-  console.log(`\n// Instrumentation hints for ${lang}`);
-  console.log(`// Generated by obsctl.js - ${isoNow()}\n`);
-
-  if (lang === 'typescript' || lang === 'javascript') {
-    console.log(`// Metrics`);
-    for (const m of metrics.metrics) {
-      const labels = m.labels?.length ? `{ ${m.labels.join(', ')} }` : '';
-      if (m.type === 'counter') {
-        console.log(`const ${m.name} = meter.createCounter('${m.name}', { description: '${m.description || ''}' });`);
-        console.log(`// Usage: ${m.name}.add(1${labels ? `, ${labels}` : ''});`);
-      } else if (m.type === 'histogram') {
-        console.log(`const ${m.name} = meter.createHistogram('${m.name}', { description: '${m.description || ''}', unit: '${m.unit || ''}' });`);
-        console.log(`// Usage: ${m.name}.record(value${labels ? `, ${labels}` : ''});`);
-      } else if (m.type === 'gauge') {
-        console.log(`const ${m.name} = meter.createObservableGauge('${m.name}', { description: '${m.description || ''}' });`);
-        console.log(`// Usage: ${m.name}.addCallback(observableResult => observableResult.observe(value${labels ? `, ${labels}` : ''}));`);
-      }
-      console.log();
-    }
-  }
-
-  return 0;
+  console.log('Observability Status:');
+  console.log(`  Initialized: ${status.initialized ? 'yes' : 'no'}`);
+  console.log(`  Metrics defined: ${status.metricsCount}`);
+  console.log(`  Last updated: ${status.lastUpdated || 'never'}`);
 }
 
 function cmdVerify(repoRoot) {
-  console.log('Verifying observability configuration...');
-  let errors = 0;
+  const errors = [];
+  const warnings = [];
 
-  // Check metrics
+  if (!fs.existsSync(getObsDir(repoRoot))) {
+    errors.push('observability/ not found. Run: obsctl init');
+  }
+
+  if (!fs.existsSync(getContextObsDir(repoRoot))) {
+    warnings.push('docs/context/observability/ not found');
+  }
+
   const metrics = loadMetrics(repoRoot);
-  if (!metrics) {
-    console.error('  ERROR: Metrics registry not found.');
-    errors++;
-  } else {
-    console.log(`  OK: ${metrics.metrics.length} metric(s) defined`);
-    
-    // Check for invalid types
-    for (const m of metrics.metrics) {
-      if (!METRIC_TYPES.includes(m.type)) {
-        console.error(`  ERROR: Invalid metric type "${m.type}" for "${m.name}"`);
-        errors++;
-      }
+  if (metrics.metrics.length === 0) {
+    warnings.push('No metrics defined');
+  }
+
+  if (errors.length > 0) {
+    console.log('\nErrors:');
+    for (const e of errors) console.log(`  - ${e}`);
+  }
+  if (warnings.length > 0) {
+    console.log('\nWarnings:');
+    for (const w of warnings) console.log(`  - ${w}`);
+  }
+
+  const ok = errors.length === 0;
+  console.log(ok ? '[ok] Observability configuration verified.' : '[error] Verification failed.');
+  process.exit(ok ? 0 : 1);
+}
+
+function cmdAddMetric(repoRoot, name, type, description) {
+  if (!name) die('[error] --name is required');
+  if (!type) die('[error] --type is required');
+
+  const validTypes = ['counter', 'gauge', 'histogram'];
+  if (!validTypes.includes(type)) {
+    die(`[error] --type must be one of: ${validTypes.join(', ')}`);
+  }
+
+  const metrics = loadMetrics(repoRoot);
+  if (metrics.metrics.find(m => m.name === name)) {
+    die(`[error] Metric "${name}" already exists`);
+  }
+
+  metrics.metrics.push({
+    name,
+    type,
+    description: description || '',
+    addedAt: new Date().toISOString()
+  });
+  saveMetrics(repoRoot, metrics);
+
+  console.log(`[ok] Added metric: ${name} (${type})`);
+}
+
+function cmdListMetrics(repoRoot, format) {
+  const metrics = loadMetrics(repoRoot);
+
+  if (format === 'json') {
+    console.log(JSON.stringify(metrics, null, 2));
+    return;
+  }
+
+  console.log(`Metrics (${metrics.metrics.length}):\n`);
+  if (metrics.metrics.length === 0) {
+    console.log('  (no metrics defined)');
+    return;
+  }
+
+  for (const m of metrics.metrics) {
+    console.log(`  [${m.type}] ${m.name}`);
+    if (m.description) {
+      console.log(`    ${m.description}`);
     }
   }
-
-  // Check logs
-  const logs = loadLogs(repoRoot);
-  if (!logs) {
-    console.error('  ERROR: Logs schema not found.');
-    errors++;
-  } else {
-    console.log(`  OK: ${logs.fields.length} log field(s) defined`);
-  }
-
-  // Check traces
-  const tracesPath = join(repoRoot, TRACES_FILE);
-  if (!existsSync(tracesPath)) {
-    console.warn('  Warning: Traces config not found.');
-  } else {
-    console.log(`  OK: Traces config exists`);
-  }
-
-  if (errors > 0) {
-    console.error(`\nVerification FAILED: ${errors} error(s).`);
-    return 1;
-  }
-
-  console.log('\nVerification passed.');
-  return 0;
 }
 
-function cmdHelp() {
-  console.log(`
-obsctl.js - Observability Management
-
-Usage: node .ai/scripts/obsctl.js <command> [options]
-
-Commands:
-  init                    Initialize observability configuration
-  
-  add-metric              Add a metric definition
-    --name <n>            Metric name (required)
-    --type <t>            Type: counter, gauge, histogram, summary (required)
-    --unit <u>            Unit (e.g., seconds, bytes)
-    --description <d>     Description
-    --labels <l>          Comma-separated label names
-    
-  remove-metric           Remove a metric definition
-    --name <n>            Metric name (required)
-    
-  list-metrics            List all metrics
-  
-  add-log-field           Add a log field definition
-    --name <n>            Field name (required)
-    --type <t>            Type (default: string)
-    --required <bool>     Required field (default: false)
-    
-  remove-log-field        Remove a log field
-    --name <n>            Field name (required)
-    
-  list-log-fields         List all log fields
-  
-  generate-instrumentation Generate instrumentation hints
-    --lang <l>            Language: typescript, javascript (default: typescript)
-    
-  verify                  Verify observability configuration
-  
-  help                    Show this help message
-
-Global Options:
-  --repo-root <path>      Repository root (default: auto-detect)
-
-Examples:
-  node .ai/scripts/obsctl.js init
-  node .ai/scripts/obsctl.js add-metric --name api_latency --type histogram --unit seconds
-  node .ai/scripts/obsctl.js add-log-field --name correlation_id --type string
-  node .ai/scripts/obsctl.js generate-instrumentation --lang typescript
-`);
-  return 0;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 // Main
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 
 function main() {
-  const args = process.argv.slice(2);
-  const parsed = parseArgs(args);
-  const command = parsed._[0] || 'help';
-  const repoRoot = resolveRepoRoot(parsed.flags['repo-root']);
+  const { command, opts } = parseArgs(process.argv);
+  const repoRoot = path.resolve(opts['repo-root'] || process.cwd());
+  const format = (opts['format'] || 'text').toLowerCase();
 
   switch (command) {
     case 'init':
-      return cmdInit(repoRoot);
-    case 'add-metric':
-      return cmdAddMetric(repoRoot, parsed.flags);
-    case 'remove-metric':
-      return cmdRemoveMetric(repoRoot, parsed.flags);
-    case 'list-metrics':
-      return cmdListMetrics(repoRoot);
-    case 'add-log-field':
-      return cmdAddLogField(repoRoot, parsed.flags);
-    case 'remove-log-field':
-      return cmdRemoveLogField(repoRoot, parsed.flags);
-    case 'list-log-fields':
-      return cmdListLogFields(repoRoot);
-    case 'generate-instrumentation':
-      return cmdGenerateInstrumentation(repoRoot, parsed.flags);
+      cmdInit(repoRoot, !!opts['dry-run']);
+      break;
+    case 'status':
+      cmdStatus(repoRoot, format);
+      break;
     case 'verify':
-      return cmdVerify(repoRoot);
-    case 'help':
-    case '--help':
-    case '-h':
-      return cmdHelp();
+      cmdVerify(repoRoot);
+      break;
+    case 'add-metric':
+      cmdAddMetric(repoRoot, opts['name'], opts['type'], opts['description']);
+      break;
+    case 'list-metrics':
+      cmdListMetrics(repoRoot, format);
+      break;
     default:
-      console.error(`Unknown command: ${command}`);
-      return cmdHelp() || 1;
+      console.error(`[error] Unknown command: ${command}`);
+      usage(1);
   }
 }
 
-process.exit(main());
-
+main();

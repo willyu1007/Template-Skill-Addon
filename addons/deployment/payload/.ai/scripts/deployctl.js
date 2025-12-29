@@ -1,709 +1,364 @@
 #!/usr/bin/env node
 /**
- * deployctl.js - Deployment Management
+ * deployctl.js
  *
- * Manages multi-environment deployment configuration.
+ * Deployment configuration management for the deployment add-on.
  *
  * Commands:
- *   init           Initialize deployment structure (idempotent)
- *   add-service    Register a service for deployment
- *   remove-service Remove a service
- *   list           List all deployment services
- *   plan           Generate deployment plan
- *   status         Show deployment status
- *   history        Show deployment history
- *   verify         Verify deployment configuration
- *   help           Show this help message
+ *   init              Initialize deployment configuration (idempotent)
+ *   list-envs         List deployment environments
+ *   add-env           Add a deployment environment
+ *   verify            Verify deployment configuration
+ *   status            Show deployment status
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// ============================================================================
+// CLI Argument Parsing
+// ============================================================================
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Configuration
-// ─────────────────────────────────────────────────────────────────────────────
+function usage(exitCode = 0) {
+  const msg = `
+Usage:
+  node .ai/scripts/deployctl.js <command> [options]
 
-const DEPLOY_DIR = 'ops/deploy';
-const HTTP_SERVICES_DIR = 'ops/deploy/http_services';
-const WORKLOADS_DIR = 'ops/deploy/workloads';
-const CLIENTS_DIR = 'ops/deploy/clients';
-const K8S_DIR = 'ops/deploy/k8s';
-const K8S_HELM_DIR = 'ops/deploy/k8s/helm';
-const K8S_KUSTOMIZE_DIR = 'ops/deploy/k8s/kustomize';
-const K8S_MANIFESTS_DIR = 'ops/deploy/k8s/manifests';
-const ENVS_DIR = 'ops/deploy/environments';
-const SCRIPTS_DIR = 'ops/deploy/scripts';
-const WORKDOCS_DIR = 'ops/deploy/workdocs';
-const CONFIG_FILE = 'ops/deploy/config.json';
-const HISTORY_FILE = 'ops/deploy/history.json';
+Commands:
+  init
+    --repo-root <path>          Repo root (default: cwd)
+    --dry-run                   Show what would be created
+    Initialize deployment configuration.
 
-const SUPPORTED_MODELS = ['k8s', 'serverless', 'vm', 'paas'];
-const K8S_TOOLS = ['helm', 'kustomize', 'manifests'];
+  list-envs
+    --repo-root <path>          Repo root (default: cwd)
+    --format <text|json>        Output format (default: text)
+    List deployment environments.
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Utilities
-// ─────────────────────────────────────────────────────────────────────────────
+  add-env
+    --id <string>               Environment ID (required)
+    --description <string>      Description (optional)
+    --repo-root <path>          Repo root (default: cwd)
+    Add a deployment environment.
 
-function parseArgs(args) {
-  const result = { _: [], flags: {} };
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg.startsWith('--')) {
-      const key = arg.slice(2);
-      const nextArg = args[i + 1];
-      if (nextArg && !nextArg.startsWith('--')) {
-        result.flags[key] = nextArg;
-        i++;
+  verify
+    --repo-root <path>          Repo root (default: cwd)
+    Verify deployment configuration.
+
+  status
+    --repo-root <path>          Repo root (default: cwd)
+    --format <text|json>        Output format (default: text)
+    Show deployment status.
+
+Examples:
+  node .ai/scripts/deployctl.js init
+  node .ai/scripts/deployctl.js add-env --id qa --description "QA environment"
+  node .ai/scripts/deployctl.js list-envs
+`;
+  console.log(msg.trim());
+  process.exit(exitCode);
+}
+
+function die(msg, exitCode = 1) {
+  console.error(msg);
+  process.exit(exitCode);
+}
+
+function parseArgs(argv) {
+  const args = argv.slice(2);
+  if (args.length === 0 || args[0] === '-h' || args[0] === '--help') usage(0);
+
+  const command = args.shift();
+  const opts = {};
+
+  while (args.length > 0) {
+    const token = args.shift();
+    if (token === '-h' || token === '--help') usage(0);
+    if (token.startsWith('--')) {
+      const key = token.slice(2);
+      if (args.length > 0 && !args[0].startsWith('--')) {
+        opts[key] = args.shift();
       } else {
-        result.flags[key] = true;
+        opts[key] = true;
       }
-    } else {
-      result._.push(arg);
     }
   }
-  return result;
+
+  return { command, opts };
 }
 
-function resolveRepoRoot(flagValue) {
-  if (flagValue) return resolve(flagValue);
-  return resolve(__dirname, '..', '..');
-}
+// ============================================================================
+// File Utilities
+// ============================================================================
 
-function isoNow() {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-}
-
-function ensureDir(dirPath) {
-  if (!existsSync(dirPath)) {
-    mkdirSync(dirPath, { recursive: true });
-    return true;
-  }
-  return false;
-}
-
-function loadJson(filePath) {
-  if (!existsSync(filePath)) return null;
+function readJson(filePath) {
   try {
-    return JSON.parse(readFileSync(filePath, 'utf8'));
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch (e) {
-    console.error(`Error reading ${filePath}: ${e.message}`);
     return null;
   }
 }
 
-function saveJson(filePath, data) {
-  ensureDir(dirname(filePath));
-  writeFileSync(filePath, JSON.stringify(data, null, 2));
+function writeJson(filePath, data) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n', 'utf8');
+}
+
+function ensureDir(dirPath) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+    return { op: 'mkdir', path: dirPath };
+  }
+  return { op: 'skip', path: dirPath, reason: 'exists' };
+}
+
+function writeFileIfMissing(filePath, content) {
+  if (fs.existsSync(filePath)) {
+    return { op: 'skip', path: filePath, reason: 'exists' };
+  }
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, 'utf8');
+  return { op: 'write', path: filePath };
+}
+
+// ============================================================================
+// Deployment Management
+// ============================================================================
+
+function getDeployDir(repoRoot) {
+  return path.join(repoRoot, 'ops', 'deploy');
+}
+
+function getEnvsDir(repoRoot) {
+  return path.join(getDeployDir(repoRoot), 'environments');
+}
+
+function getConfigPath(repoRoot) {
+  return path.join(getDeployDir(repoRoot), 'config.json');
 }
 
 function loadConfig(repoRoot) {
-  return loadJson(join(repoRoot, CONFIG_FILE));
+  return readJson(getConfigPath(repoRoot)) || {
+    version: 1,
+    environments: []
+  };
 }
 
 function saveConfig(repoRoot, config) {
-  config.updatedAt = isoNow();
-  saveJson(join(repoRoot, CONFIG_FILE), config);
+  config.lastUpdated = new Date().toISOString();
+  writeJson(getConfigPath(repoRoot), config);
 }
 
-function loadHistory(repoRoot) {
-  return loadJson(join(repoRoot, HISTORY_FILE)) || { deployments: [] };
-}
-
-function saveHistory(repoRoot, history) {
-  saveJson(join(repoRoot, HISTORY_FILE), history);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Templates
-// ─────────────────────────────────────────────────────────────────────────────
-
-const HELM_VALUES_TEMPLATE = `# Helm values template
-# Generated by deployctl.js
-
-replicaCount: 1
-
-image:
-  repository: ""
-  tag: "latest"
-  pullPolicy: IfNotPresent
-
-service:
-  type: ClusterIP
-  port: 80
-
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 10
-`;
-
-const K8S_DEPLOYMENT_TEMPLATE = `# Kubernetes Deployment Template
-# Generated by deployctl.js
-
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{SERVICE_NAME}}
-  labels:
-    app: {{SERVICE_NAME}}
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: {{SERVICE_NAME}}
-  template:
-    metadata:
-      labels:
-        app: {{SERVICE_NAME}}
-    spec:
-      containers:
-        - name: {{SERVICE_NAME}}
-          image: {{IMAGE}}:{{TAG}}
-          ports:
-            - containerPort: 3000
-          resources:
-            limits:
-              cpu: "500m"
-              memory: "512Mi"
-            requests:
-              cpu: "100m"
-              memory: "128Mi"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{SERVICE_NAME}}
-spec:
-  selector:
-    app: {{SERVICE_NAME}}
-  ports:
-    - port: 80
-      targetPort: 3000
-  type: ClusterIP
-`;
-
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 // Commands
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 
-function cmdInit(repoRoot, flags) {
-  const { model = 'k8s', tool = 'manifests' } = flags;
+function cmdInit(repoRoot, dryRun) {
+  const deployDir = getDeployDir(repoRoot);
+  const actions = [];
 
-  if (!SUPPORTED_MODELS.includes(model)) {
-    console.error(`Error: Unsupported model "${model}".`);
-    console.error(`Supported: ${SUPPORTED_MODELS.join(', ')}`);
-    return 1;
-  }
+  const dirs = [
+    deployDir,
+    path.join(deployDir, 'environments'),
+    path.join(deployDir, 'http_services'),
+    path.join(deployDir, 'workloads'),
+    path.join(deployDir, 'clients'),
+    path.join(deployDir, 'scripts'),
+    path.join(deployDir, 'workdocs'),
+    path.join(deployDir, 'workdocs', 'runbooks')
+  ];
 
-  console.log(`Initializing deployment at ${repoRoot}...`);
-  let created = false;
-
-  // Create base directories
-  const baseDirs = [DEPLOY_DIR, HTTP_SERVICES_DIR, WORKLOADS_DIR, CLIENTS_DIR, ENVS_DIR, SCRIPTS_DIR, WORKDOCS_DIR];
-  for (const dir of baseDirs) {
-    const fullPath = join(repoRoot, dir);
-    if (ensureDir(fullPath)) {
-      console.log(`  Created: ${dir}/`);
-      created = true;
+  for (const dir of dirs) {
+    if (dryRun) {
+      actions.push({ op: 'mkdir', path: dir, mode: 'dry-run' });
+    } else {
+      actions.push(ensureDir(dir));
     }
   }
 
-  // Create K8s directories if model is k8s
-  if (model === 'k8s') {
-    const k8sDirs = [K8S_DIR, K8S_HELM_DIR, K8S_KUSTOMIZE_DIR, K8S_MANIFESTS_DIR];
-    for (const dir of k8sDirs) {
-      const fullPath = join(repoRoot, dir);
-      if (ensureDir(fullPath)) {
-        console.log(`  Created: ${dir}/`);
-        created = true;
-      }
-    }
-  }
-
-  // Create config file
-  const configPath = join(repoRoot, CONFIG_FILE);
-  if (!existsSync(configPath)) {
-    const initialConfig = {
+  // Create config with default environments
+  const configPath = getConfigPath(repoRoot);
+  if (!fs.existsSync(configPath) && !dryRun) {
+    saveConfig(repoRoot, {
       version: 1,
-      updatedAt: isoNow(),
-      model,
-      k8s: model === 'k8s' ? { tool } : undefined,
-      services: [],
-      environments: ['dev', 'staging', 'prod']
-    };
-    saveJson(configPath, initialConfig);
-    console.log(`  Created: ${CONFIG_FILE}`);
-    created = true;
-  }
-
-  // Create history file
-  const historyPath = join(repoRoot, HISTORY_FILE);
-  if (!existsSync(historyPath)) {
-    saveJson(historyPath, { deployments: [] });
-    console.log(`  Created: ${HISTORY_FILE}`);
-    created = true;
+      environments: [
+        { id: 'dev', description: 'Development', canDeploy: true },
+        { id: 'staging', description: 'Staging', canDeploy: true },
+        { id: 'prod', description: 'Production', canDeploy: true, requiresApproval: true }
+      ]
+    });
+    actions.push({ op: 'write', path: configPath });
   }
 
   // Create AGENTS.md
-  const agentsPath = join(repoRoot, DEPLOY_DIR, 'AGENTS.md');
-  if (!existsSync(agentsPath)) {
-    const agentsContent = `# Deployment - AI Guidance
+  const agentsPath = path.join(deployDir, 'AGENTS.md');
+  const agentsContent = `# Deployment (LLM-first)
 
-## Conclusions (read first)
+## Commands
 
-- \`ops/deploy/\` contains all deployment configuration.
-- Use \`deployctl.js\` to manage deployments.
-- AI plans deployments; humans execute and approve.
-
-## Deployment Model: ${model}
-
-${model === 'k8s' ? `### Kubernetes (${tool})
-
-- Tool: ${tool}
-- Configs: \`ops/deploy/k8s/${tool}/\`
-` : ''}
-
-## AI Workflow
-
-1. **Register** services: \`deployctl add-service --id <id> --artifact <image:tag>\`
-2. **Plan** deployment: \`deployctl plan --service <id> --env <env>\`
-3. **Document** in \`workdocs/\`
-4. **Request human** to execute deployment
-
-## Environment Rules
-
-- \`dev\`: AI can propose direct deployment
-- \`staging\`: Requires review
-- \`prod\`: Requires formal approval
-
-## Forbidden Actions
-
-- Direct deployment execution
-- Credential handling
-- Production changes without approval
-`;
-    writeFileSync(agentsPath, agentsContent);
-    console.log(`  Created: ${DEPLOY_DIR}/AGENTS.md`);
-    created = true;
-  }
-
-  // Create environment config templates
-  for (const env of ['dev', 'staging', 'prod']) {
-    const envPath = join(repoRoot, ENVS_DIR, `${env}.yaml`);
-    if (!existsSync(envPath)) {
-      const envContent = `# ${env} environment configuration
-# Generated by deployctl.js
-
-environment: ${env}
-
-# Common settings
-replicas: ${env === 'prod' ? 3 : 1}
-resources:
-  limits:
-    cpu: ${env === 'prod' ? '1000m' : '500m'}
-    memory: ${env === 'prod' ? '1Gi' : '512Mi'}
-
-# Environment-specific overrides
-${env === 'prod' ? `
-autoscaling:
-  enabled: true
-  minReplicas: 2
-  maxReplicas: 10
-` : ''}
-`;
-      writeFileSync(envPath, envContent);
-      console.log(`  Created: ${ENVS_DIR}/${env}.yaml`);
-      created = true;
-    }
-  }
-
-  // Create K8s template if applicable
-  if (model === 'k8s') {
-    const templatePath = join(repoRoot, K8S_MANIFESTS_DIR, 'deployment.template.yaml');
-    if (!existsSync(templatePath)) {
-      writeFileSync(templatePath, K8S_DEPLOYMENT_TEMPLATE);
-      console.log(`  Created: ${K8S_MANIFESTS_DIR}/deployment.template.yaml`);
-      created = true;
-    }
-  }
-
-  // Create workdocs
-  const workdocsReadme = join(repoRoot, WORKDOCS_DIR, 'README.md');
-  if (!existsSync(workdocsReadme)) {
-    writeFileSync(workdocsReadme, '# Deployment Workdocs\n\nUse this directory for deployment plans and runbooks.\n');
-    console.log(`  Created: ${WORKDOCS_DIR}/README.md`);
-    created = true;
-  }
-
-  // Create runbooks directory
-  const runbooksDir = join(repoRoot, WORKDOCS_DIR, 'runbooks');
-  if (ensureDir(runbooksDir)) {
-    const rollbackPath = join(runbooksDir, 'rollback-procedure.md');
-    writeFileSync(rollbackPath, `# Rollback Procedure
-
-## Quick Steps
-
-1. Identify the issue
-2. Check deployment history: \`node .ai/scripts/deployctl.js history --service <id>\`
-3. Rollback: \`node .ai/scripts/rollback.js --service <id> --env <env>\`
-
-## Detailed Procedure
-
-### 1. Assess Impact
-
-- Check monitoring dashboards
-- Review error logs
-- Determine affected services
-
-### 2. Execute Rollback
-
-For Kubernetes:
 \`\`\`bash
-kubectl rollout undo deployment/<service-name> -n <namespace>
+node .ai/scripts/deployctl.js init
+node .ai/scripts/deployctl.js list-envs
+node .ai/scripts/deployctl.js verify
 \`\`\`
 
-### 3. Verify
+## Directory Structure
 
-- Check service health
-- Monitor error rates
-- Confirm user impact resolved
-`);
-    console.log(`  Created: ${WORKDOCS_DIR}/runbooks/rollback-procedure.md`);
-    created = true;
-  }
+- \`environments/\` - Environment-specific configs
+- \`http_services/\` - Service deployment descriptors
+- \`workloads/\` - Job/batch deployment descriptors
+- \`clients/\` - Client app deployment descriptors
+- \`scripts/\` - Deploy/rollback scripts
+- \`workdocs/runbooks/\` - Operational runbooks
+`;
 
-  // Create .gitkeep files
-  for (const dir of [HTTP_SERVICES_DIR, WORKLOADS_DIR, CLIENTS_DIR, SCRIPTS_DIR]) {
-    const gitkeep = join(repoRoot, dir, '.gitkeep');
-    if (!existsSync(gitkeep)) {
-      writeFileSync(gitkeep, '');
-    }
-  }
-
-  if (!created) {
-    console.log('  Deployment already initialized (no changes).');
-  }
-
-  console.log('Done.');
-  return 0;
-}
-
-function cmdAddService(repoRoot, flags) {
-  const { id, artifact, type = 'http' } = flags;
-
-  if (!id) {
-    console.error('Error: --id is required.');
-    return 1;
-  }
-
-  const config = loadConfig(repoRoot);
-  if (!config) {
-    console.error('Error: Config not found. Run `deployctl init` first.');
-    return 1;
-  }
-
-  if (config.services.some(s => s.id === id)) {
-    console.error(`Error: Service "${id}" already exists.`);
-    return 1;
-  }
-
-  const service = {
-    id,
-    type,
-    artifact: artifact || `${id}:latest`,
-    createdAt: isoNow()
-  };
-
-  config.services.push(service);
-  saveConfig(repoRoot, config);
-
-  console.log(`Added service: ${id}`);
-  console.log(`  type: ${type}`);
-  console.log(`  artifact: ${service.artifact}`);
-  return 0;
-}
-
-function cmdRemoveService(repoRoot, flags) {
-  const { id } = flags;
-
-  if (!id) {
-    console.error('Error: --id is required.');
-    return 1;
-  }
-
-  const config = loadConfig(repoRoot);
-  if (!config) {
-    console.error('Error: Config not found.');
-    return 1;
-  }
-
-  const idx = config.services.findIndex(s => s.id === id);
-  if (idx === -1) {
-    console.error(`Error: Service "${id}" not found.`);
-    return 1;
-  }
-
-  config.services.splice(idx, 1);
-  saveConfig(repoRoot, config);
-
-  console.log(`Removed service: ${id}`);
-  return 0;
-}
-
-function cmdList(repoRoot) {
-  const config = loadConfig(repoRoot);
-  if (!config) {
-    console.error('Error: Config not found.');
-    return 1;
-  }
-
-  console.log(`Deployment Model: ${config.model}`);
-  if (config.k8s) {
-    console.log(`K8s Tool: ${config.k8s.tool}`);
-  }
-  console.log(`Environments: ${config.environments.join(', ')}`);
-  console.log();
-
-  if (config.services.length === 0) {
-    console.log('No services registered.');
-    return 0;
-  }
-
-  console.log(`Services (${config.services.length}):\n`);
-  for (const s of config.services) {
-    console.log(`  ${s.id} (${s.type})`);
-    console.log(`    artifact: ${s.artifact}`);
-    console.log();
-  }
-  return 0;
-}
-
-function cmdPlan(repoRoot, flags) {
-  const { service, env } = flags;
-
-  if (!service || !env) {
-    console.error('Error: --service and --env are required.');
-    return 1;
-  }
-
-  const config = loadConfig(repoRoot);
-  if (!config) {
-    console.error('Error: Config not found.');
-    return 1;
-  }
-
-  const svc = config.services.find(s => s.id === service);
-  if (!svc) {
-    console.error(`Error: Service "${service}" not found.`);
-    return 1;
-  }
-
-  if (!config.environments.includes(env)) {
-    console.error(`Error: Environment "${env}" not configured.`);
-    return 1;
-  }
-
-  console.log(`\n📋 Deployment Plan`);
-  console.log(`${'─'.repeat(40)}`);
-  console.log(`Service:     ${service}`);
-  console.log(`Artifact:    ${svc.artifact}`);
-  console.log(`Environment: ${env}`);
-  console.log(`Model:       ${config.model}`);
-  if (config.k8s) {
-    console.log(`K8s Tool:    ${config.k8s.tool}`);
-  }
-  console.log(`${'─'.repeat(40)}`);
-  
-  console.log(`\n⚠️  This is a plan only. Deployment not executed.`);
-  console.log(`\nNext steps:`);
-  if (config.model === 'k8s') {
-    console.log(`1. Review/customize manifest in ops/deploy/k8s/`);
-    console.log(`2. Apply: kubectl apply -f <manifest>`);
+  if (dryRun) {
+    actions.push({ op: 'write', path: agentsPath, mode: 'dry-run' });
   } else {
-    console.log(`1. Review configuration in ops/deploy/environments/${env}.yaml`);
-    console.log(`2. Execute deployment according to your ${config.model} workflow`);
+    actions.push(writeFileIfMissing(agentsPath, agentsContent));
   }
-  
-  return 0;
+
+  console.log('[ok] Deployment configuration initialized.');
+  for (const a of actions) {
+    const mode = a.mode ? ` (${a.mode})` : '';
+    const reason = a.reason ? ` [${a.reason}]` : '';
+    console.log(`  ${a.op}: ${path.relative(repoRoot, a.path)}${mode}${reason}`);
+  }
 }
 
-function cmdStatus(repoRoot, flags) {
-  const { env } = flags;
+function cmdListEnvs(repoRoot, format) {
+  const config = loadConfig(repoRoot);
+
+  if (format === 'json') {
+    console.log(JSON.stringify({ environments: config.environments }, null, 2));
+    return;
+  }
+
+  console.log(`Deployment Environments (${config.environments.length}):\n`);
+  for (const env of config.environments) {
+    const flags = [];
+    if (env.requiresApproval) flags.push('requires-approval');
+    if (!env.canDeploy) flags.push('deploy-disabled');
+    const flagStr = flags.length > 0 ? ` [${flags.join(', ')}]` : '';
+    console.log(`  [${env.id}] ${env.description || ''}${flagStr}`);
+  }
+}
+
+function cmdAddEnv(repoRoot, id, description) {
+  if (!id) die('[error] --id is required');
 
   const config = loadConfig(repoRoot);
-  if (!config) {
-    console.error('Error: Config not found.');
-    return 1;
+  if (config.environments.find(e => e.id === id)) {
+    die(`[error] Environment "${id}" already exists`);
   }
 
-  console.log(`Deployment Status${env ? ` (${env})` : ''}:\n`);
-  console.log(`Model: ${config.model}`);
-  console.log(`Services: ${config.services.length}`);
-  console.log(`Environments: ${config.environments.join(', ')}`);
+  config.environments.push({
+    id,
+    description: description || `${id} environment`,
+    canDeploy: true,
+    addedAt: new Date().toISOString()
+  });
+  saveConfig(repoRoot, config);
 
-  console.log(`\n⚠️  Live status requires cluster access.`);
-  console.log(`For Kubernetes: kubectl get deployments -n <namespace>`);
-  return 0;
-}
+  // Create environment config file
+  const envFile = path.join(getEnvsDir(repoRoot), `${id}.yaml`);
+  if (!fs.existsSync(envFile)) {
+    const content = `# ${id} environment configuration
+# Generated: ${new Date().toISOString()}
 
-function cmdHistory(repoRoot, flags) {
-  const { service } = flags;
-
-  const history = loadHistory(repoRoot);
-  const deployments = service 
-    ? history.deployments.filter(d => d.service === service)
-    : history.deployments;
-
-  if (deployments.length === 0) {
-    console.log('No deployment history recorded.');
-    return 0;
+environment: ${id}
+# Add environment-specific settings here
+`;
+    fs.mkdirSync(path.dirname(envFile), { recursive: true });
+    fs.writeFileSync(envFile, content, 'utf8');
   }
 
-  console.log(`Deployment History${service ? ` (${service})` : ''}:\n`);
-  for (const d of deployments.slice(-10)) {
-    console.log(`  ${d.timestamp} - ${d.service}@${d.version} → ${d.env}`);
-    if (d.status) console.log(`    status: ${d.status}`);
-  }
-  return 0;
+  console.log(`[ok] Added environment: ${id}`);
 }
 
 function cmdVerify(repoRoot) {
+  const errors = [];
+  const warnings = [];
+
+  if (!fs.existsSync(getDeployDir(repoRoot))) {
+    errors.push('ops/deploy/ not found. Run: deployctl init');
+  }
+
   const config = loadConfig(repoRoot);
-  if (!config) {
-    console.error('Error: Config not found.');
-    return 1;
+  if (config.environments.length === 0) {
+    warnings.push('No environments defined');
   }
 
-  console.log('Verifying deployment configuration...');
-  let errors = 0;
-
-  // Check model
-  if (!SUPPORTED_MODELS.includes(config.model)) {
-    console.error(`  ERROR: Invalid model: ${config.model}`);
-    errors++;
-  } else {
-    console.log(`  OK: Model = ${config.model}`);
-  }
-
-  // Check K8s config if applicable
-  if (config.model === 'k8s' && config.k8s) {
-    if (!K8S_TOOLS.includes(config.k8s.tool)) {
-      console.error(`  ERROR: Invalid K8s tool: ${config.k8s.tool}`);
-      errors++;
-    } else {
-      console.log(`  OK: K8s tool = ${config.k8s.tool}`);
+  // Check environment config files exist
+  for (const env of config.environments) {
+    const envFile = path.join(getEnvsDir(repoRoot), `${env.id}.yaml`);
+    if (!fs.existsSync(envFile)) {
+      warnings.push(`Environment config missing: ${env.id}.yaml`);
     }
   }
 
-  // Check environments
-  console.log(`  OK: ${config.environments.length} environment(s) configured`);
-
-  // Check services
-  console.log(`  OK: ${config.services.length} service(s) registered`);
-
-  if (errors > 0) {
-    console.error(`\nVerification FAILED: ${errors} error(s).`);
-    return 1;
+  if (errors.length > 0) {
+    console.log('\nErrors:');
+    for (const e of errors) console.log(`  - ${e}`);
+  }
+  if (warnings.length > 0) {
+    console.log('\nWarnings:');
+    for (const w of warnings) console.log(`  - ${w}`);
   }
 
-  console.log('\nVerification passed.');
-  return 0;
+  const ok = errors.length === 0;
+  console.log(ok ? '[ok] Deployment configuration verified.' : '[error] Verification failed.');
+  process.exit(ok ? 0 : 1);
 }
 
-function cmdHelp() {
-  console.log(`
-deployctl.js - Deployment Management
+function cmdStatus(repoRoot, format) {
+  const config = loadConfig(repoRoot);
+  const status = {
+    initialized: fs.existsSync(getDeployDir(repoRoot)),
+    environments: config.environments.length,
+    lastUpdated: config.lastUpdated
+  };
 
-Usage: node .ai/scripts/deployctl.js <command> [options]
+  if (format === 'json') {
+    console.log(JSON.stringify(status, null, 2));
+    return;
+  }
 
-Commands:
-  init              Initialize deployment structure (idempotent)
-    --model <m>     Deployment model: k8s, serverless, vm, paas (default: k8s)
-    --tool <t>      K8s tool: helm, kustomize, manifests (default: manifests)
-    
-  add-service       Register a service for deployment
-    --id <id>       Service identifier (required)
-    --artifact <a>  Container image (default: <id>:latest)
-    --type <t>      Service type: http, workload, client (default: http)
-    
-  remove-service    Remove a service
-    --id <id>       Service identifier (required)
-    
-  list              List all deployment services
-  
-  plan              Generate deployment plan
-    --service <id>  Service to deploy (required)
-    --env <env>     Target environment (required)
-    
-  status            Show deployment status
-    --env <env>     Filter by environment
-    
-  history           Show deployment history
-    --service <id>  Filter by service
-    
-  verify            Verify deployment configuration
-  
-  help              Show this help message
-
-Global Options:
-  --repo-root <path>  Repository root (default: auto-detect)
-
-Examples:
-  node .ai/scripts/deployctl.js init --model k8s --tool helm
-  node .ai/scripts/deployctl.js add-service --id api --artifact api:v1.0.0
-  node .ai/scripts/deployctl.js plan --service api --env staging
-`);
-  return 0;
+  console.log('Deployment Status:');
+  console.log(`  Initialized: ${status.initialized ? 'yes' : 'no'}`);
+  console.log(`  Environments: ${status.environments}`);
+  console.log(`  Last updated: ${status.lastUpdated || 'never'}`);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 // Main
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
 
 function main() {
-  const args = process.argv.slice(2);
-  const parsed = parseArgs(args);
-  const command = parsed._[0] || 'help';
-  const repoRoot = resolveRepoRoot(parsed.flags['repo-root']);
+  const { command, opts } = parseArgs(process.argv);
+  const repoRoot = path.resolve(opts['repo-root'] || process.cwd());
+  const format = (opts['format'] || 'text').toLowerCase();
 
   switch (command) {
     case 'init':
-      return cmdInit(repoRoot, parsed.flags);
-    case 'add-service':
-      return cmdAddService(repoRoot, parsed.flags);
-    case 'remove-service':
-      return cmdRemoveService(repoRoot, parsed.flags);
-    case 'list':
-      return cmdList(repoRoot);
-    case 'plan':
-      return cmdPlan(repoRoot, parsed.flags);
-    case 'status':
-      return cmdStatus(repoRoot, parsed.flags);
-    case 'history':
-      return cmdHistory(repoRoot, parsed.flags);
+      cmdInit(repoRoot, !!opts['dry-run']);
+      break;
+    case 'list-envs':
+      cmdListEnvs(repoRoot, format);
+      break;
+    case 'add-env':
+      cmdAddEnv(repoRoot, opts['id'], opts['description']);
+      break;
     case 'verify':
-      return cmdVerify(repoRoot);
-    case 'help':
-    case '--help':
-    case '-h':
-      return cmdHelp();
+      cmdVerify(repoRoot);
+      break;
+    case 'status':
+      cmdStatus(repoRoot, format);
+      break;
     default:
-      console.error(`Unknown command: ${command}`);
-      return cmdHelp() || 1;
+      console.error(`[error] Unknown command: ${command}`);
+      usage(1);
   }
 }
 
-process.exit(main());
-
+main();

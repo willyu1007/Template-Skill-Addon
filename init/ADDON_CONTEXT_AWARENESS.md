@@ -8,9 +8,9 @@ The goal of the add-on is to introduce a consistent, auditable way to manage “
 
 ## How to enable
 
-Enable using either of the following blueprint switches:
+Enable using the blueprint switch below:
 
-### Option 1: blueprint.addons.contextAwareness (recommended for add-on repos)
+### blueprint.addons.contextAwareness
 ```json
 {
   "addons": {
@@ -19,15 +19,16 @@ Enable using either of the following blueprint switches:
 }
 ```
 
-### Option 2: blueprint.context.enabled (generic toggle)
+### Optional: blueprint.context.* (configuration only)
 ```json
 {
   "context": {
-    "enabled": true,
     "mode": "contract"
   }
 }
 ```
+
+`context.*` does not install the add-on; it is only read after `addons.contextAwareness` is enabled.
 
 Supported modes:
 - `contract` (default)
@@ -114,4 +115,3 @@ In add-on repos, skill pack enabling uses **pack definition files**:
 - `.ai/skills/_meta/packs/<packId>.json`
 
 If `context-core` (or any other requested pack) is missing, add the pack file or install the correct add-on payload version.
-

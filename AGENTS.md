@@ -44,19 +44,32 @@ See `init/ADDONS_DIRECTORY.md` for conventions.
 
 1. Create `.ai/skills/[skill-name]/SKILL.md`
 2. Add supporting files alongside `SKILL.md` (for example `reference.md`, `examples.md`, `scripts/`, `templates/`)
-3. Run `node .ai/scripts/sync-skills.js`
+3. Run `node .ai/scripts/sync-skills.cjs`
 
 ### Add New Workflow (as a skill)
 
 1. Create `.ai/skills/[workflow-name]/SKILL.md`
 2. Include YAML frontmatter with `name` and `description`
-3. Run `node .ai/scripts/sync-skills.js`
+3. Run `node .ai/scripts/sync-skills.cjs`
 
 ### Initialize a New Project
 
 1. Edit `docs/project/project-blueprint.json`
-2. Enable desired add-ons in `addons` section
-3. Run `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply --blueprint docs/project/project-blueprint.json`
+2. Enable desired add-ons in `addons` section (only `addons.*` toggles trigger installation)
+3. Run `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --blueprint docs/project/project-blueprint.json`
+
+### Cleanup After Initialization
+
+After initialization is complete, clean up the bootstrap kit:
+
+```bash
+# Recommended: remove init/ and prune unused add-on sources
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
+  --repo-root . --apply --i-understand \
+  --cleanup-addons --blueprint docs/project/project-blueprint.json
+```
+
+This removes `init/` and deletes unused add-on source directories under `addons/`.
 
 ## Available Workflows
 

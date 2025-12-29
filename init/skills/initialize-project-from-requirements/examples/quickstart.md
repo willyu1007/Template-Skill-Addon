@@ -7,7 +7,7 @@ Run these commands from repo root.
 ## 0) Initialize state
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js start --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs start --repo-root .
 ```
 
 ---
@@ -15,16 +15,27 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js s
 ## 1) Stage A: validate docs → approve
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs \
   --repo-root . \
   --docs-root docs/project \
   --strict
 ```
 
+Optional: record must-ask checklist progress:
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs mark-must-ask \
+  --repo-root . \
+  --key onePurpose \
+  --asked \
+  --answered \
+  --written-to docs/project/requirements.md
+```
+
 After the user explicitly approves Stage A:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage A --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage A --repo-root .
 ```
 
 ---
@@ -32,7 +43,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js a
 ## 2) Stage B: validate blueprint → approve
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js validate \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate \
   --repo-root . \
   --blueprint docs/project/project-blueprint.json
 ```
@@ -40,15 +51,21 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js v
 Optional: show recommended packs:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js suggest-packs \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-packs \
   --repo-root . \
   --blueprint docs/project/project-blueprint.json
+```
+
+Optional: record pack review:
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs review-packs --repo-root .
 ```
 
 After the user explicitly approves Stage B:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage B --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage B --repo-root .
 ```
 
 ---
@@ -56,7 +73,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js a
 ## 3) Stage C: apply → approve
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js apply \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply \
   --repo-root . \
   --blueprint docs/project/project-blueprint.json \
   --providers both
@@ -65,7 +82,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js a
 After the user explicitly approves Stage C:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage C --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage C --repo-root .
 ```
 
 ---
@@ -73,9 +90,8 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js a
 ## 4) Optional cleanup
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js cleanup-init \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
   --repo-root . \
   --apply \
   --i-understand
 ```
-

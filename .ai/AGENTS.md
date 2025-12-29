@@ -10,7 +10,7 @@
 ## Directory Overview
 
 - `.ai/skills/`: SSOT for skills and workflows (entry point is each skill's `SKILL.md`).
-- `.ai/scripts/`: maintenance scripts (for example `node .ai/scripts/sync-skills.js`).
+- `.ai/scripts/`: maintenance scripts (for example `node .ai/scripts/sync-skills.cjs`).
 - `.ai/AGENTS.md`: this file; defines `.ai/` navigation and constraints.
 
 ## Context Loading (guided; no traversal)
@@ -29,7 +29,7 @@ AI/LLM SHOULD:
 ## Verification (How to verify)
 
 - Inspect the `.ai/` top-level structure (non-recursive): `Get-ChildItem .ai` (PowerShell) or `ls .ai` (POSIX shell).
-- Sync provider wrappers (overwrites generated artifacts): `node .ai/scripts/sync-skills.js`.
+- Sync provider wrappers (overwrites generated artifacts): `node .ai/scripts/sync-skills.cjs`.
   - Blast radius: `.codex/skills/` and `.claude/skills/` are regenerated.
   - Idempotency: repeated runs with the same `.ai/skills/` input should produce the same stubs.
   - Rollback: restore `.codex/` / `.claude/` from VCS, or fix `.ai/skills/` and re-run the sync script.

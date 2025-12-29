@@ -12,7 +12,7 @@ This skill provides:
 - A repeatable workflow (manual + scripted).
 - A script (`./scripts/land_skills.py`) that performs a safe, auditable install/update with dry-run by default.
 
-**Note**: Provider stubs (for `.codex/skills/`, `.claude/skills/`, etc.) should be generated using `node .ai/scripts/sync-skills.js`, not this script.
+**Note**: Provider stubs (for `.codex/skills/`, `.claude/skills/`, etc.) should be generated using `node .ai/scripts/sync-skills.cjs`, not this script.
 
 ## When to use
 Use this skill when:
@@ -22,7 +22,7 @@ Use this skill when:
 Do **not** use this skill when:
 - You only need to author one new skill from scratch (use a skill-creator workflow instead).
 - You are not allowed to modify the target repository (run in `--plan` mode only).
-- You need to sync SSOT to provider roots (use `node .ai/scripts/sync-skills.js` instead).
+- You need to sync SSOT to provider roots (use `node .ai/scripts/sync-skills.cjs` instead).
 
 ## Inputs
 You MUST obtain:
@@ -94,7 +94,7 @@ The verifier checks:
 After landing skills into the SSOT, generate provider stubs:
 
 ```bash
-node .ai/scripts/sync-skills.js --scope current --providers both
+node .ai/scripts/sync-skills.cjs --scope current --providers both
 ```
 
 This generates lightweight wrapper stubs in `.codex/skills/` and `.claude/skills/` that point to the SSOT.

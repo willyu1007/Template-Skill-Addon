@@ -1,6 +1,7 @@
 # Reference: initialize-project-from-requirements
 
 This reference describes the behavior of the init pipeline skill implementation (scripts + templates).
+It is the SSOT; other references should link here.
 
 ---
 
@@ -11,7 +12,7 @@ This reference describes the behavior of the init pipeline skill implementation 
 - Pack selection is explicit:
   - declared in `docs/project/project-blueprint.json` (`skills.packs`)
   - materialized into `.ai/skills/_meta/sync-manifest.json` (flat schema)
-  - synced into provider wrappers by `node .ai/scripts/sync-skills.js`
+  - synced into provider wrappers by `node .ai/scripts/sync-skills.cjs`
 - Stage transitions require explicit approval (`approve`), not manual state edits.
 - In add-on repos, pack enabling must go through `.ai/scripts/skillsctl.js` (scheme A) when available.
 
@@ -27,7 +28,33 @@ Checks:
 Command:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js check-docs --repo-root . --docs-root docs/project --strict
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs --repo-root . --docs-root docs/project --strict
+```
+
+---
+
+## Stage A must-ask checklist (`mark-must-ask`)
+
+Use after asking each must-ask question to keep the state board accurate.
+
+Keys:
+- `onePurpose`
+- `userRoles`
+- `mustRequirements`
+- `outOfScope`
+- `userJourneys`
+- `constraints`
+- `successMetrics`
+
+Command:
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs mark-must-ask \
+  --repo-root . \
+  --key onePurpose \
+  --asked \
+  --answered \
+  --written-to docs/project/requirements.md
 ```
 
 ---
@@ -42,7 +69,17 @@ Checks:
 Command:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js validate --repo-root . --blueprint docs/project/project-blueprint.json
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root . --blueprint docs/project/project-blueprint.json
+```
+
+---
+
+## Stage B packs review (`review-packs`)
+
+Use after reviewing `skills.packs` so the state board reflects the review.
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs review-packs --repo-root .
 ```
 
 ---
@@ -53,17 +90,23 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js v
 1. validate blueprint
 2. optional docs check (when `--require-stage-a`)
 3. scaffold directories/files (idempotent; “write-if-missing” for docs)
-4. generate configs via `scripts/scaffold-configs.js` (SSOT)
+4. generate configs via `scripts/scaffold-configs.cjs` (SSOT)
 5. optional add-on setup (context awareness)
 6. enable packs (skillsctl when present; else manifest includePrefixes)
-7. sync wrappers via `.ai/scripts/sync-skills.js`
+7. sync wrappers via `.ai/scripts/sync-skills.cjs`
+
+Notes:
+- With `--verify-addons`, add-on verify failures are fail-fast by default.
+- Use `--non-blocking-addons` to continue despite verify failures.
 
 ---
 
 ## Add-on: context awareness
 
 Enable via blueprint:
-- `addons.contextAwareness: true` or `context.enabled: true`
+- `addons.contextAwareness: true`
+
+`context.*` is configuration only and does not trigger installation.
 
 Implications:
 - context awareness implies enabling the `context-core` pack
@@ -72,4 +115,3 @@ Implications:
 See:
 - `init/ADDONS_DIRECTORY.md`
 - `init/ADDON_CONTEXT_AWARENESS.md`
-

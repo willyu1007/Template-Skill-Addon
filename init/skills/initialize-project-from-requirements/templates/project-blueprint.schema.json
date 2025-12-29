@@ -232,29 +232,12 @@
               "workflows",
               "backend",
               "frontend",
-              "ops",
-              "data",
-              "diagrams"
+              "standards",
+              "scaffold",
+              "context-core"
             ]
-          }
-        },
-        "includeSkillNames": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "excludeSkillNames": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "excludePrefixes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+          },
+          "description": "Skill packs to enable. 'context-core' and 'scaffold' are provided by context-awareness add-on."
         }
       }
     },
@@ -311,7 +294,7 @@
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "Whether context management is enabled for this repo."
+          "description": "Context management config flag (does not install the add-on)."
         },
         "mode": {
           "type": "string",

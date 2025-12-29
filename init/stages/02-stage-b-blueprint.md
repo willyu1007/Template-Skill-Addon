@@ -26,7 +26,7 @@ Reference templates:
 From repo root:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js validate \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate \
   --repo-root . \
   --blueprint docs/project/project-blueprint.json
 ```
@@ -34,21 +34,68 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js v
 Optional: show recommended packs and whether they are installed:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js suggest-packs \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-packs \
   --repo-root . \
   --blueprint docs/project/project-blueprint.json
 ```
+
+## State tracking (recommended)
+
+After reviewing `skills.packs`, record the review in `init/.init-state.json`:
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs review-packs --repo-root .
+```
+
+---
+
+## 技术栈选择 (Technology Stack Selection)
+
+Blueprint 中需要指定技术栈相关字段：
+
+### repo 字段
+
+```json
+{
+  "repo": {
+    "layout": "single",           // 或 "monorepo"
+    "language": "typescript",     // 开发语言
+    "packageManager": "pnpm"      // 包管理器
+  }
+}
+```
+
+### 支持的语言
+
+| 语言 | 有预置模板 | 推荐包管理器 |
+|------|-----------|-------------|
+| typescript | ✅ | pnpm |
+| javascript | ✅ | pnpm |
+| go | ✅ | go |
+| python | ❌ (LLM生成) | poetry |
+| java | ❌ (LLM生成) | gradle |
+| dotnet | ❌ (LLM生成) | dotnet |
+| other | ❌ (LLM生成) | - |
+
+对于没有预置模板的语言，`apply` 命令会输出提示，LLM 应根据 `templates/llm-init-guide.md` 生成配置文件。
+
+### LLM 引导
+
+如果使用 AI 助手进行初始化，可参考：
+- `templates/conversation-prompts.md` 中的 E 模块（技术栈选择引导）
+- `templates/llm-init-guide.md` 中的 Phase 2 和 Phase 5
 
 ---
 
 ## Add-on flags (optional)
 
-If you want to enable the context-awareness add-on, set either:
-- `addons.contextAwareness: true` **or**
-- `context.enabled: true`
+If you want to enable the context-awareness add-on, set:
+- `addons.contextAwareness: true`
 
 Optional:
 - `context.mode: "contract" | "snapshot"` (default: `contract`)
+
+`context.*` is configuration only and does not trigger installation.
 
 Note: Stage C `apply` will attempt to install the add-on payload from:
 - `addons/context-awareness/payload/` (default; can be overridden via `apply --addons-root`)
@@ -60,6 +107,5 @@ Note: Stage C `apply` will attempt to install the add-on payload from:
 After the user explicitly approves the blueprint, record approval and advance:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.js approve --stage B --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage B --repo-root .
 ```
-
