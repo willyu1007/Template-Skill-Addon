@@ -113,5 +113,5 @@ Implications:
 - add-on payload is expected at `addons/context-awareness/payload/` (default)
 
 See:
-- `init/ADDONS_DIRECTORY.md`
-- `init/ADDON_CONTEXT_AWARENESS.md`
+- `init/addon-docs/README.md`
+- `init/addon-docs/context-awareness.md`

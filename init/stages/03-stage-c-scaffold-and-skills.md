@@ -1,5 +1,7 @@
 # Stage C: Scaffold + configs + skills
 
+> **SSOT**: For the complete command reference, see `init/skills/initialize-project-from-requirements/SKILL.md`.
+
 Stage C applies the blueprint to the repository:
 
 - create minimal directory scaffold
@@ -17,8 +19,7 @@ Before writing anything, you can preview the scaffold plan:
 
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs scaffold \
-  --repo-root . \
-  --blueprint docs/project/project-blueprint.json
+  --repo-root .
 ```
 
 To actually create the scaffold files/folders (minimal set only):
@@ -26,7 +27,6 @@ To actually create the scaffold files/folders (minimal set only):
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs scaffold \
   --repo-root . \
-  --blueprint docs/project/project-blueprint.json \
   --apply
 ```
 
@@ -39,7 +39,6 @@ From repo root:
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply \
   --repo-root . \
-  --blueprint docs/project/project-blueprint.json \
   --providers both
 ```
 

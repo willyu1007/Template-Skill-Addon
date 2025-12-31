@@ -36,7 +36,7 @@ Template repository. Users clone this to start new AI-friendly projects.
 
 Add-ons are enabled via `project-blueprint.json` and installed during initialization.
 
-See `init/ADDONS_DIRECTORY.md` for conventions.
+See `init/addon-docs/README.md` for conventions.
 
 ## Common Tasks
 

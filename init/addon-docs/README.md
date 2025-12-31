@@ -1,28 +1,28 @@
-# /addons directory convention
+# Add-on Documentation
 
-This repository supports an **optional add-on mechanism** that allows capabilities to be installed on-demand (without hard-coupling them into the base template).
-
-The init pipeline only uses add-ons when enabled in the blueprint.
+This directory contains documentation for each optional add-on supported by the init pipeline.
 
 ---
 
 ## Available Add-ons
 
-| Add-on ID | Purpose | Control Script |
-|-----------|---------|----------------|
-| `context-awareness` | API/DB/BPMN contracts for LLM context | `contextctl.js` |
-| `db-mirror` | Database schema mirroring | `dbctl.js` |
-| `ci-templates` | CI/CD configuration templates | `cictl.js` |
-| `packaging` | Container/artifact packaging | `packctl.js` |
-| `deployment` | Multi-environment deployment | `deployctl.js` |
-| `release` | Version and changelog management | `releasectl.js` |
-| `observability` | Metrics/logs/traces contracts | `obsctl.js` |
-
-See individual `ADDON_*.md` files for detailed documentation on each add-on.
+| Add-on ID | Purpose | Control Script | Documentation |
+|-----------|---------|----------------|---------------|
+| `context-awareness` | API/DB/BPMN contracts for LLM context | `contextctl.js` | [context-awareness.md](context-awareness.md) |
+| `db-mirror` | Database schema mirroring | `dbctl.js` | [db-mirror.md](db-mirror.md) |
+| `ci-templates` | CI/CD configuration templates | `cictl.js` | [ci-templates.md](ci-templates.md) |
+| `packaging` | Container/artifact packaging | `packctl.js` | [packaging.md](packaging.md) |
+| `deployment` | Multi-environment deployment | `deployctl.js` | [deployment.md](deployment.md) |
+| `release` | Version and changelog management | `releasectl.js` | [release.md](release.md) |
+| `observability` | Metrics/logs/traces contracts | `obsctl.js` | [observability.md](observability.md) |
 
 ---
 
-## Expected structure
+## Add-on Convention
+
+The init pipeline only uses add-ons when enabled in the blueprint.
+
+### Expected structure
 
 By default, the init pipeline expects:
 
@@ -112,3 +112,4 @@ To be compatible with this init kit, an add-on payload should:
 5. Include an `init` command that accepts `--repo-root` parameter
 
 See `addons/CONVENTION.md` for the full add-on convention specification.
+

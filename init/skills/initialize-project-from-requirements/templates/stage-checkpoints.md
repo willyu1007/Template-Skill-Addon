@@ -1,10 +1,19 @@
 # Stage Checkpoints (Mandatory User Approval)
 
+> **SSOT**: For the complete command reference, see `../SKILL.md`.
+> This document focuses specifically on checkpoint rules and approval workflow.
+
 This init kit enforces a strict checkpoint policy:
 
 - Every stage transition requires **explicit user approval**
-- Do not “assume approval”
-- Do not move to the next stage until the user clearly says: “approved / 继续 / 可以 / yes / go ahead” (or equivalent)
+- Do not "assume approval"
+- Do not move to the next stage until the user clearly says: "approved / yes / go ahead / continue / ok" (or equivalent)
+
+> **Note**: During initialization, working files are stored in `init/` directory:
+> - Stage A docs: `init/stage-a-docs/`
+> - Blueprint: `init/project-blueprint.json`
+> 
+> After completion, use `cleanup-init --archive` to move them to `docs/project/`.
 
 The **technical mechanism** to advance stages is:
 
@@ -20,14 +29,14 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 
 All of the following must be true:
 
-1. Stage A docs exist under `docs/project/`:
+1. Stage A docs exist under `init/stage-a-docs/`:
    - `requirements.md`
    - `non-functional-requirements.md`
    - `domain-glossary.md`
    - `risk-open-questions.md`
 2. Docs pass validation:
    ```bash
-   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs --repo-root . --docs-root docs/project --strict
+   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs --repo-root . --strict
    ```
 3. The user reviews the docs and explicitly approves Stage A.
 
@@ -39,7 +48,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
   --key onePurpose \
   --asked \
   --answered \
-  --written-to docs/project/requirements.md
+  --written-to init/stage-a-docs/requirements.md
 ```
 
 See `init/skills/initialize-project-from-requirements/reference.md` for the full key list.
@@ -58,10 +67,10 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 
 ### Preconditions
 
-1. `docs/project/project-blueprint.json` exists
+1. `init/project-blueprint.json` exists
 2. Blueprint passes validation:
    ```bash
-   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root . --blueprint docs/project/project-blueprint.json
+   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
    ```
 3. The user reviews the blueprint and explicitly approves Stage B.
 
@@ -87,7 +96,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 
 1. Stage C `apply` has been executed successfully:
    ```bash
-   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --repo-root . --blueprint docs/project/project-blueprint.json --providers both
+   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --repo-root . --providers both
    ```
 2. The user reviews the resulting changes (scaffold/configs/packs/wrappers) and explicitly approves.
 
@@ -102,7 +111,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 Optional: remove the bootstrap kit (only after completion and user confirmation):
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init --repo-root . --apply --i-understand
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init --repo-root . --apply --i-understand --archive
 ```
 
 ---

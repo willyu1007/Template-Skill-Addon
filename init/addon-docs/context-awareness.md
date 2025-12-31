@@ -1,8 +1,16 @@
 # Add-on: context awareness
 
+## Conclusions (read first)
+
+- Provides API/DB/BPMN contract management for LLM context
+- AI uses context artifacts to understand project structure and contracts
+- Enables consistent, auditable project context management
+
+## Overview
+
 This document describes the **context-awareness add-on** integration supported by the init pipeline.
 
-The goal of the add-on is to introduce a consistent, auditable way to manage “project context” (contracts, snapshots, registries, etc.) while keeping the base template lightweight.
+The goal of the add-on is to introduce a consistent, auditable way to manage "project context" (contracts, snapshots, registries, etc.) while keeping the base template lightweight.
 
 ---
 
@@ -48,7 +56,7 @@ The init pipeline can be pointed to a different add-ons root directory via:
 ... apply --addons-root <path>
 ```
 
-See `ADDONS_DIRECTORY.md`.
+See `addon-docs/README.md`.
 
 ---
 

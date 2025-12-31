@@ -226,7 +226,7 @@ function buildStub(skillName, sourceRelDirFromRepoRoot, sourceContent, relFromSk
   const pathParts = relFromSkillsRoot.split('/');
   const category = pathParts.length > 1 ? pathParts.slice(0, -1).join('/') : '';
 
-  // Build enhanced frontmatter with ssot_path and category (方案B)
+  // Build enhanced frontmatter with ssot_path and category (Option B)
   let enhancedFrontmatter;
   if (originalFrontmatter) {
     // Insert ssot_path and category before the closing ---
@@ -533,7 +533,7 @@ function sync() {
   console.log(colors.gray(`  mode: ${mode}${mode === 'update' && args.prune ? ' + prune' : ''}`));
   console.log(colors.gray(`  selected_skills: ${selectedSkills.length}`));
 
-  // Use relFromSkillsRoot (paths) for matching instead of flat names (方案A)
+  // Use relFromSkillsRoot (paths) for matching instead of flat names (Option A)
   const allPaths = new Set(allSkills.map((s) => s.relFromSkillsRoot));
   const selectedPaths = new Set(selectedSkills.map((s) => s.relFromSkillsRoot));
 
@@ -574,7 +574,7 @@ function sync() {
     for (const skill of selectedSkills) {
       const sourceRelDir = toPosix(path.relative(repoRoot, skill.dir));
       const stub = buildStub(skill.name, sourceRelDir, skill.content, skill.relFromSkillsRoot);
-      // 方案A: 保留层次结构，使用 relFromSkillsRoot 而不是扁平的 name
+      // Option A: keep hierarchy and use relFromSkillsRoot instead of a flattened name
       const targetDir = path.join(targetRoot, skill.relFromSkillsRoot);
       const targetSkillMd = path.join(targetDir, SKILL_MD);
 
@@ -596,4 +596,3 @@ function sync() {
 }
 
 sync();
-

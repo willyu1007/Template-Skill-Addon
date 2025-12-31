@@ -1,9 +1,12 @@
 # Stage B: Project blueprint
 
+> **SSOT**: For the complete command reference, see `init/skills/initialize-project-from-requirements/SKILL.md`.
+
 Stage B produces and validates a **project blueprint** that will drive Stage C scaffolding, config generation, and skill pack selection.
 
-Blueprint location:
-- `docs/project/project-blueprint.json`
+> **Working location**: `init/project-blueprint.json` (created by the `start` command)
+> 
+> **Final location**: `docs/project/project-blueprint.json` (archived by `cleanup-init --archive`)
 
 Reference templates:
 - `init/skills/initialize-project-from-requirements/templates/project-blueprint.example.json`
@@ -13,7 +16,7 @@ Reference templates:
 
 ## What must be true before leaving Stage B
 
-1. `docs/project/project-blueprint.json` exists
+1. `init/project-blueprint.json` exists and is properly configured
 2. The blueprint passes validation:
    - schema-level sanity checks
    - pack selection recommendation report (optional, but strongly recommended)
@@ -27,16 +30,14 @@ From repo root:
 
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate \
-  --repo-root . \
-  --blueprint docs/project/project-blueprint.json
+  --repo-root .
 ```
 
 Optional: show recommended packs and whether they are installed:
 
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-packs \
-  --repo-root . \
-  --blueprint docs/project/project-blueprint.json
+  --repo-root .
 ```
 
 ## State tracking (recommended)
@@ -49,41 +50,41 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 
 ---
 
-## 技术栈选择 (Technology Stack Selection)
+## Technology stack selection
 
-Blueprint 中需要指定技术栈相关字段：
+The blueprint must specify technology-stack related fields:
 
-### repo 字段
+### `repo` fields
 
 ```json
 {
   "repo": {
-    "layout": "single",           // 或 "monorepo"
-    "language": "typescript",     // 开发语言
-    "packageManager": "pnpm"      // 包管理器
+    "layout": "single",           // or "monorepo"
+    "language": "typescript",     // language
+    "packageManager": "pnpm"      // package manager
   }
 }
 ```
 
-### 支持的语言
+### Supported languages
 
-| 语言 | 有预置模板 | 推荐包管理器 |
+| Language | Has built-in template | Recommended package manager |
 |------|-----------|-------------|
 | typescript | ✅ | pnpm |
 | javascript | ✅ | pnpm |
 | go | ✅ | go |
-| python | ❌ (LLM生成) | poetry |
-| java | ❌ (LLM生成) | gradle |
-| dotnet | ❌ (LLM生成) | dotnet |
-| other | ❌ (LLM生成) | - |
+| python | ❌ (LLM-generated) | poetry |
+| java | ❌ (LLM-generated) | gradle |
+| dotnet | ❌ (LLM-generated) | dotnet |
+| other | ❌ (LLM-generated) | - |
 
-对于没有预置模板的语言，`apply` 命令会输出提示，LLM 应根据 `templates/llm-init-guide.md` 生成配置文件。
+For languages without built-in templates, the `apply` command will print guidance and the LLM should generate config files based on `templates/llm-init-guide.md`.
 
-### LLM 引导
+### LLM guidance
 
-如果使用 AI 助手进行初始化，可参考：
-- `templates/conversation-prompts.md` 中的 E 模块（技术栈选择引导）
-- `templates/llm-init-guide.md` 中的 Phase 2 和 Phase 5
+If you're using an AI assistant to guide initialization, refer to:
+- Module E in `templates/conversation-prompts.md` (technology stack selection)
+- Phase 2 and Phase 5 in `templates/llm-init-guide.md`
 
 ---
 
@@ -109,3 +110,9 @@ After the user explicitly approves the blueprint, record approval and advance:
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage B --repo-root .
 ```
+
+---
+
+## Note on blueprint location
+
+The blueprint is stored in `init/project-blueprint.json` during initialization. After Stage C completion, use `cleanup-init --archive` to archive it to `docs/project/project-blueprint.json` for long-term retention.

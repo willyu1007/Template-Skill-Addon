@@ -1,6 +1,11 @@
 # Quickstart (example)
 
+> **SSOT**: For the complete command reference, see `../SKILL.md`.
+> This document provides a minimal copy-paste example flow.
+
 Run these commands from repo root.
+
+> **Note**: During initialization, working files are stored in `init/` (Stage A docs in `init/stage-a-docs/`, blueprint in `init/project-blueprint.json`). After completion, use `cleanup-init --archive` to move them to `docs/project/`.
 
 ---
 
@@ -10,14 +15,20 @@ Run these commands from repo root.
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs start --repo-root .
 ```
 
+This creates:
+- `init/stage-a-docs/` - Stage A document templates
+- `init/project-blueprint.json` - Blueprint template
+- `init/.init-state.json` - State tracking file
+
 ---
 
 ## 1) Stage A: validate docs → approve
 
+Edit the templates in `init/stage-a-docs/`, then validate:
+
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs \
   --repo-root . \
-  --docs-root docs/project \
   --strict
 ```
 
@@ -29,7 +40,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
   --key onePurpose \
   --asked \
   --answered \
-  --written-to docs/project/requirements.md
+  --written-to init/stage-a-docs/requirements.md
 ```
 
 After the user explicitly approves Stage A:
@@ -42,18 +53,18 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 
 ## 2) Stage B: validate blueprint → approve
 
+Edit `init/project-blueprint.json`, then validate:
+
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate \
-  --repo-root . \
-  --blueprint docs/project/project-blueprint.json
+  --repo-root .
 ```
 
 Optional: show recommended packs:
 
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-packs \
-  --repo-root . \
-  --blueprint docs/project/project-blueprint.json
+  --repo-root .
 ```
 
 Optional: record pack review:
@@ -75,7 +86,6 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply \
   --repo-root . \
-  --blueprint docs/project/project-blueprint.json \
   --providers both
 ```
 
@@ -89,9 +99,21 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 
 ## 4) Optional cleanup
 
+**Option A: Remove init/ only**
+
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
   --repo-root . \
   --apply \
   --i-understand
+```
+
+**Option B: Archive to docs/project/ + remove init/** (recommended)
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
+  --repo-root . \
+  --apply \
+  --i-understand \
+  --archive
 ```

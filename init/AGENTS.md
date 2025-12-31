@@ -84,7 +84,7 @@ If the blueprint enables context awareness (`addons.contextAwareness: true`), `a
 
 `context.*` is configuration only and does not trigger installation.
 
-See `ADDON_CONTEXT_AWARENESS.md` for details.
+See `addon-docs/context-awareness.md` for details.
 
 ---
 
