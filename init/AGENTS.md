@@ -23,9 +23,24 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 ## Stage flow (validation + approval)
 
 ### Stage A (requirements docs)
-1) Validate docs structure:
+
+Run `start` to begin initialization. This automatically creates all templates:
+
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs --repo-root . --docs-root docs/project --strict
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs start --repo-root .
+```
+
+This creates:
+- `init/stage-a-docs/` - Stage A doc templates:
+  - `requirements.md`
+  - `non-functional-requirements.md`
+  - `domain-glossary.md`
+  - `risk-open-questions.md`
+- `init/project-blueprint.json` - Blueprint template
+
+1) Edit the Stage A doc templates, then validate:
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs --repo-root . --strict
 ```
 
 2) After user approval:
@@ -34,9 +49,10 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 ```
 
 ### Stage B (blueprint)
-1) Validate blueprint:
+
+1) Edit `init/project-blueprint.json`, then validate:
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root . --blueprint docs/project/project-blueprint.json
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
 ```
 
 2) After user approval:
@@ -45,10 +61,11 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 ```
 
 ### Stage C (apply)
+
 Apply scaffold/configs/skill packs/wrapper sync:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --repo-root . --blueprint docs/project/project-blueprint.json --providers both
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --repo-root . --providers both
 ```
 
 After user approval:
@@ -75,21 +92,30 @@ See `ADDON_CONTEXT_AWARENESS.md` for details.
 
 Only after completion and user confirmation:
 
-**Option A: Remove `init/` only**
-
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init --repo-root . --apply --i-understand
-```
-
-**Option B: Remove `init/` + prune unused add-ons** (recommended)
+**Option A: Remove `init/` only (all init files deleted)**
 
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
-  --repo-root . \
-  --apply \
-  --i-understand \
-  --cleanup-addons \
-  --blueprint docs/project/project-blueprint.json
+  --repo-root . --apply --i-understand
 ```
 
-Option B removes unused add-on source directories under `addons/` based on the blueprint, resulting in a cleaner final repository.
+**Option B: Archive all to `docs/project/` + remove `init/`** (recommended if maintaining docs)
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
+  --repo-root . --apply --i-understand --archive
+```
+
+This archives Stage A docs and blueprint from `init/` to `docs/project/` before removing `init/`.
+
+**Option C: Archive all + prune unused add-ons**
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
+  --repo-root . --apply --i-understand --archive --cleanup-addons
+```
+
+**Selective archive options:**
+- `--archive` - Archive all (docs + blueprint)
+- `--archive-docs` - Archive Stage A docs only
+- `--archive-blueprint` - Archive blueprint only

@@ -56,12 +56,12 @@ Commands:
     Record explicit user approval and advance state to the next stage.
 
   validate
-    --blueprint <path>          Blueprint JSON path (required)
+    --blueprint <path>          Blueprint JSON path (default: init/project-blueprint.json)
     --repo-root <path>          Repo root (default: cwd)
     --format <text|json>        Output format (default: text)
 
   check-docs
-    --docs-root <path>          Stage A docs root (default: <repo-root>/docs/project)
+    --docs-root <path>          Stage A docs root (default: <repo-root>/init/stage-a-docs)
     --repo-root <path>          Repo root (default: cwd)
     --strict                    Treat warnings as errors (exit non-zero)
     --format <text|json>        Output format (default: text)
@@ -78,24 +78,24 @@ Commands:
     --note <text>               Optional audit note
 
   suggest-packs
-    --blueprint <path>          Blueprint JSON path (required)
+    --blueprint <path>          Blueprint JSON path (default: init/project-blueprint.json)
     --repo-root <path>          Repo root (default: cwd)
     --format <text|json>        Output format (default: text)
     --write                      Add missing recommended packs into blueprint (safe-add only)
 
   suggest-addons
-    --blueprint <path>          Blueprint JSON path (required)
+    --blueprint <path>          Blueprint JSON path (default: init/project-blueprint.json)
     --repo-root <path>          Repo root (default: cwd)
     --format <text|json>        Output format (default: text)
     --write                      Add missing recommended add-ons into blueprint (safe-add only)
 
   scaffold
-    --blueprint <path>          Blueprint JSON path (required)
+    --blueprint <path>          Blueprint JSON path (default: init/project-blueprint.json)
     --repo-root <path>          Repo root (default: cwd)
     --apply                      Actually create directories/files (default: dry-run)
 
   apply
-    --blueprint <path>          Blueprint JSON path (required)
+    --blueprint <path>          Blueprint JSON path (default: init/project-blueprint.json)
     --repo-root <path>          Repo root (default: cwd)
     --providers <both|codex|claude|codex,claude>
     --addons-root <path>        Add-ons directory (default: addons)
@@ -112,16 +112,19 @@ Commands:
     --repo-root <path>          Repo root (default: cwd)
     --apply                      Actually remove init/ (default: dry-run)
     --i-understand              Required acknowledgement (refuses without it)
+    --archive                   Archive all (Stage A docs + blueprint) to docs/project/
+    --archive-docs              Archive Stage A docs only to docs/project/
+    --archive-blueprint         Archive blueprint only to docs/project/
     --cleanup-addons            Also remove unused add-on directories from addons/
     --addons-root <path>        Add-ons directory (default: addons)
-    --blueprint <path>          Blueprint JSON path (needed with --cleanup-addons)
 
 Examples:
   node .../init-pipeline.cjs start
   node .../init-pipeline.cjs status
-  node .../init-pipeline.cjs check-docs --docs-root docs/project
-  node .../init-pipeline.cjs validate --blueprint docs/project/project-blueprint.json
-  node .../init-pipeline.cjs apply --blueprint docs/project/project-blueprint.json --providers both
+  node .../init-pipeline.cjs check-docs --strict
+  node .../init-pipeline.cjs validate
+  node .../init-pipeline.cjs apply --providers both
+  node .../init-pipeline.cjs cleanup-init --apply --i-understand --archive
   node .../init-pipeline.cjs approve --stage A
 `;
   console.log(msg.trim());
@@ -343,7 +346,7 @@ function printStatus(state, repoRoot) {
   if (progress.stage === 'A') {
     if (!progress.stageA.validated) {
       console.log('│    1. 完成需求访谈并撰写文档');
-      console.log('│    2. 运行: check-docs --docs-root docs/project');
+      console.log('│    2. 运行: check-docs --strict');
     } else if (!progress.stageA.userApproved) {
       console.log('│    请用户审查 Stage A 文档并确认');
       console.log('│    确认后运行: advance');
@@ -595,6 +598,18 @@ function checkDocs(docsRoot) {
   const errors = [];
   const warnings = [];
 
+  // Check if docs directory exists
+  if (!fs.existsSync(docsRoot)) {
+    return {
+      ok: false,
+      errors: [
+        `Stage A docs directory not found: ${docsRoot}`,
+        `Run: scaffold --blueprint <path> --apply  to create templates`
+      ],
+      warnings: []
+    };
+  }
+
   const required = [
     { name: 'requirements.md', mustContain: ['# Requirements', '## Conclusions', '## Goals', '## Non-goals'] },
     { name: 'non-functional-requirements.md', mustContain: ['# Non-functional Requirements', '## Conclusions'] },
@@ -608,9 +623,11 @@ function checkDocs(docsRoot) {
     { re: /:\s*\.\.\.\s*$/gm, msg: 'placeholder value ": ..."' }
   ];
 
+  const missingFiles = [];
   for (const spec of required) {
     const fp = path.join(docsRoot, spec.name);
     if (!fs.existsSync(fp)) {
+      missingFiles.push(spec.name);
       errors.push(`Missing required Stage A doc: ${path.relative(process.cwd(), fp)}`);
       continue;
     }
@@ -638,6 +655,11 @@ function checkDocs(docsRoot) {
     }
   }
 
+  // Add hint if files are missing
+  if (missingFiles.length > 0) {
+    errors.push(`Hint: Run "scaffold --blueprint <path> --apply" to create missing template files`);
+  }
+
   return { ok: errors.length === 0, errors, warnings };
 }
 
@@ -654,6 +676,21 @@ function writeFileIfMissing(filePath, content, apply) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, 'utf8');
   return { op: 'write', path: filePath, mode: 'applied' };
+}
+
+function copyFileIfMissing(srcPath, destPath, apply) {
+  if (fs.existsSync(destPath)) {
+    return { op: 'skip', path: destPath, reason: 'exists' };
+  }
+  if (!fs.existsSync(srcPath)) {
+    return { op: 'skip', path: destPath, reason: 'source not found', srcPath };
+  }
+  if (!apply) {
+    return { op: 'copy-template', from: srcPath, path: destPath, mode: 'dry-run' };
+  }
+  fs.mkdirSync(path.dirname(destPath), { recursive: true });
+  fs.copyFileSync(srcPath, destPath);
+  return { op: 'copy-template', from: srcPath, path: destPath, mode: 'applied' };
 }
 
 function listFilesRecursive(dir) {
@@ -927,9 +964,23 @@ function planScaffold(repoRoot, blueprint, apply) {
   const caps = blueprint.capabilities || {};
   const layout = repo.layout;
 
-  // Always ensure docs directory exists (Stage A/B will live here)
+  // Always ensure docs directory exists (for blueprint and optional archived docs)
   results.push(ensureDir(path.join(repoRoot, 'docs'), apply));
   results.push(ensureDir(path.join(repoRoot, 'docs', 'project'), apply));
+
+  // Create init/stage-a-docs/ and copy Stage A templates
+  results.push(ensureDir(path.join(repoRoot, 'init', 'stage-a-docs'), apply));
+  const stageATemplates = [
+    { src: 'requirements.template.md', dest: 'requirements.md' },
+    { src: 'non-functional-requirements.template.md', dest: 'non-functional-requirements.md' },
+    { src: 'domain-glossary.template.md', dest: 'domain-glossary.md' },
+    { src: 'risk-open-questions.template.md', dest: 'risk-open-questions.md' }
+  ];
+  for (const t of stageATemplates) {
+    const srcPath = path.join(TEMPLATES_DIR, t.src);
+    const destPath = path.join(repoRoot, 'init', 'stage-a-docs', t.dest);
+    results.push(copyFileIfMissing(srcPath, destPath, apply));
+  }
 
   if (layout === 'monorepo') {
     results.push(ensureDir(path.join(repoRoot, 'apps'), apply));
@@ -1348,8 +1399,8 @@ function main() {
   const format = (opts['format'] || 'text').toLowerCase();
 
   const repoRoot = path.resolve(opts['repo-root'] || process.cwd());
-  const blueprintPath = resolvePath(repoRoot, opts['blueprint']);
-  const docsRoot = resolvePath(repoRoot, opts['docs-root'] || path.join('docs', 'project'));
+  const blueprintPath = resolvePath(repoRoot, opts['blueprint'] || path.join('init', 'project-blueprint.json'));
+  const docsRoot = resolvePath(repoRoot, opts['docs-root'] || path.join('init', 'stage-a-docs'));
 
   // ========== start ==========
   if (command === 'start') {
@@ -1365,7 +1416,44 @@ function main() {
     addHistoryEvent(state, 'init_started', 'Initialization started');
     saveState(repoRoot, state);
 
+    // Auto-create Stage A docs templates
+    const stageADocsDir = path.join(repoRoot, 'init', 'stage-a-docs');
+    fs.mkdirSync(stageADocsDir, { recursive: true });
+    const stageATemplates = [
+      { src: 'requirements.template.md', dest: 'requirements.md' },
+      { src: 'non-functional-requirements.template.md', dest: 'non-functional-requirements.md' },
+      { src: 'domain-glossary.template.md', dest: 'domain-glossary.md' },
+      { src: 'risk-open-questions.template.md', dest: 'risk-open-questions.md' }
+    ];
+    const createdFiles = [];
+    for (const t of stageATemplates) {
+      const srcPath = path.join(TEMPLATES_DIR, t.src);
+      const destPath = path.join(stageADocsDir, t.dest);
+      if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
+        fs.copyFileSync(srcPath, destPath);
+        createdFiles.push(t.dest);
+      }
+    }
+
+    // Auto-create blueprint template
+    const blueprintTemplateSrc = path.join(TEMPLATES_DIR, 'project-blueprint.min.example.json');
+    const blueprintDest = path.join(repoRoot, 'init', 'project-blueprint.json');
+    let blueprintCreated = false;
+    if (fs.existsSync(blueprintTemplateSrc) && !fs.existsSync(blueprintDest)) {
+      fs.copyFileSync(blueprintTemplateSrc, blueprintDest);
+      blueprintCreated = true;
+    }
+
     console.log('[ok] 初始化状态已创建: init/.init-state.json');
+    if (createdFiles.length > 0) {
+      console.log(`[ok] Stage A 文档模板已创建: init/stage-a-docs/`);
+      for (const f of createdFiles) {
+        console.log(`     - ${f}`);
+      }
+    }
+    if (blueprintCreated) {
+      console.log(`[ok] Blueprint 模板已创建: init/project-blueprint.json`);
+    }
     printStatus(state, repoRoot);
     process.exit(0);
   }
@@ -1953,10 +2041,56 @@ if (command === 'validate') {
   if (command === 'cleanup-init') {
     if (!opts['i-understand']) die('[error] cleanup-init requires --i-understand');
     const apply = !!opts['apply'];
+    const archiveAll = !!opts['archive'];
+    const archiveDocs = archiveAll || !!opts['archive-docs'];
+    const archiveBlueprint = archiveAll || !!opts['archive-blueprint'];
     const cleanupAddonsFlag = !!opts['cleanup-addons'];
     const addonsRoot = opts['addons-root'] || 'addons';
 
-    const results = { init: null, addons: null };
+    const results = { init: null, addons: null, archivedDocs: null, archivedBlueprint: null };
+    const destDir = path.join(repoRoot, 'docs', 'project');
+
+    // Archive Stage A docs if requested
+    const stageADocsDir = path.join(repoRoot, 'init', 'stage-a-docs');
+    if (fs.existsSync(stageADocsDir)) {
+      if (archiveDocs) {
+        if (!apply) {
+          results.archivedDocs = { from: stageADocsDir, to: destDir, mode: 'dry-run' };
+        } else {
+          fs.mkdirSync(destDir, { recursive: true });
+          const files = fs.readdirSync(stageADocsDir);
+          for (const file of files) {
+            const srcFile = path.join(stageADocsDir, file);
+            const destFile = path.join(destDir, file);
+            if (fs.statSync(srcFile).isFile()) {
+              fs.copyFileSync(srcFile, destFile);
+            }
+          }
+          results.archivedDocs = { from: stageADocsDir, to: destDir, mode: 'applied', files };
+        }
+      } else if (apply) {
+        console.log('[info] Stage A docs will be deleted with init/');
+        console.log('[hint] Use --archive or --archive-docs to preserve them in docs/project/');
+      }
+    }
+
+    // Archive blueprint if requested
+    const blueprintSrc = path.join(repoRoot, 'init', 'project-blueprint.json');
+    if (fs.existsSync(blueprintSrc)) {
+      if (archiveBlueprint) {
+        const blueprintDest = path.join(destDir, 'project-blueprint.json');
+        if (!apply) {
+          results.archivedBlueprint = { from: blueprintSrc, to: blueprintDest, mode: 'dry-run' };
+        } else {
+          fs.mkdirSync(destDir, { recursive: true });
+          fs.copyFileSync(blueprintSrc, blueprintDest);
+          results.archivedBlueprint = { from: blueprintSrc, to: blueprintDest, mode: 'applied' };
+        }
+      } else if (apply) {
+        console.log('[info] Blueprint will be deleted with init/');
+        console.log('[hint] Use --archive or --archive-blueprint to preserve it in docs/project/');
+      }
+    }
 
     // Cleanup init/ directory
     results.init = cleanupInit(repoRoot, apply);
@@ -1973,6 +2107,25 @@ if (command === 'validate') {
     if (format === 'json') {
       console.log(JSON.stringify({ ok: true, results }, null, 2));
     } else {
+      // Print archive results
+      if (results.archivedDocs) {
+        const arc = results.archivedDocs;
+        if (arc.mode === 'dry-run') {
+          console.log(`[plan] archive: Stage A docs → ${path.relative(repoRoot, arc.to)} (dry-run)`);
+        } else {
+          console.log(`[ok] archive: Stage A docs → ${path.relative(repoRoot, arc.to)}`);
+          if (arc.files) console.log(`  Files: ${arc.files.join(', ')}`);
+        }
+      }
+      if (results.archivedBlueprint) {
+        const arc = results.archivedBlueprint;
+        if (arc.mode === 'dry-run') {
+          console.log(`[plan] archive: Blueprint → ${path.relative(repoRoot, arc.to)} (dry-run)`);
+        } else {
+          console.log(`[ok] archive: Blueprint → ${path.relative(repoRoot, arc.to)}`);
+        }
+      }
+
       // Print init cleanup result
       if (results.init) {
         const res = results.init;
