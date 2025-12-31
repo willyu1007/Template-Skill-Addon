@@ -6,7 +6,17 @@ function checkAuth({ manifest, reqHeaders }) {
   if (kind === 'internal_gateway') return { ok: true }; // assumed handled upstream
 
   const apiKey = auth.env_var ? process.env[auth.env_var] : null;
-  if (!apiKey) return { ok: true }; // allow local dev when not set
+  if (!apiKey) {
+    const allowMissing = String(process.env.AUTH_ALLOW_MISSING_KEY || '').toLowerCase() === 'true'
+      || String(process.env.NODE_ENV || '').toLowerCase() === 'development';
+    if (allowMissing) return { ok: true };
+    return {
+      ok: false,
+      status: 503,
+      code: 'auth_misconfigured',
+      message: `Auth misconfigured: missing env var ${auth.env_var || '<<unset>>'}`
+    };
+  }
 
   // Accept either Authorization: Bearer <key> or x-api-key: <key>
   const h = {};

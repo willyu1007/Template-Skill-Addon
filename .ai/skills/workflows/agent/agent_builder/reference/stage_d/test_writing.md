@@ -24,13 +24,14 @@ Each scenario in `acceptance.scenarios[]` becomes a test case.
 }
 ```
 
-**Generated Test**:
+**Generated Test** (using Node.js built-in test runner):
 
 ```javascript
 // tests/acceptance.test.js
 
+const { test, describe, before, after } = require('node:test');
+const assert = require('node:assert');
 const { runAgent } = require('../src/core/run');
-const assert = require('assert');
 
 describe('Acceptance Scenarios', () => {
 
@@ -42,7 +43,7 @@ describe('Acceptance Scenarios', () => {
       process.env.LLM_API_KEY = process.env.LLM_API_KEY || 'test-key';
     });
 
-    it('should return RunResponse with status=ok', async () => {
+    test('should return RunResponse with status=ok', async () => {
       // When: POST /agents/example-agent/run with a valid RunRequest
       const request = {
         contract_version: '1.0.0',
@@ -61,7 +62,7 @@ describe('Acceptance Scenarios', () => {
       assert.strictEqual(response.status, 'ok', 'status should be ok');
 
       // Check: output is non-empty
-      assert(response.output && response.output.length > 0, 'output should be non-empty');
+      assert.ok(response.output && response.output.length > 0, 'output should be non-empty');
 
       // Check: contract_version preserved
       assert.strictEqual(response.contract_version, request.contract_version, 
@@ -79,7 +80,7 @@ describe('Acceptance Scenarios', () => {
       process.env.AGENT_ENABLED = 'true';
     });
 
-    it('should return AgentError with retryable=false', async () => {
+    test('should return AgentError with retryable=false', async () => {
       // When: POST /agents/example-agent/run
       const request = {
         contract_version: '1.0.0',
@@ -104,6 +105,8 @@ describe('Acceptance Scenarios', () => {
 
 });
 ```
+
+> **Note:** Uses `node:test` built-in module (Node.js 18+). Run with `node --test tests/`.
 
 ---
 

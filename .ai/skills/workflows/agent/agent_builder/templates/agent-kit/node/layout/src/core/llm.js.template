@@ -1,5 +1,14 @@
 const { nowIso } = require('./util');
 
+// Node.js 18+ is required for native fetch API
+const NODE_MAJOR = parseInt(process.version.slice(1), 10);
+if (NODE_MAJOR < 18) {
+  throw new Error(
+    `Node.js 18+ is required for this agent (native fetch API). ` +
+    `Current version: ${process.version}. Please upgrade Node.js.`
+  );
+}
+
 // Default LLM request timeout: 60 seconds
 const DEFAULT_LLM_TIMEOUT_MS = 60000;
 

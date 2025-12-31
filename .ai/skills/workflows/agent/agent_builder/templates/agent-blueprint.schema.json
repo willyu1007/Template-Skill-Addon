@@ -1084,6 +1084,21 @@
                   "type": "string"
                 }
               },
+              "kind": {
+                "type": "string",
+                "description": "Optional explicit scenario kind. If omitted, the verifier will infer the kind from title/when.",
+                "enum": [
+                  "http_health",
+                  "http_run",
+                  "http_conversation_debug",
+                  "ws_streaming",
+                  "sse_streaming",
+                  "pipeline",
+                  "cron",
+                  "worker",
+                  "sdk"
+                ]
+              },
               "priority": {
                 "type": "string",
                 "enum": [

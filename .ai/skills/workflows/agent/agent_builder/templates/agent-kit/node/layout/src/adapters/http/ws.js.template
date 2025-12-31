@@ -34,6 +34,19 @@ function writeHttpUpgradeResponse(socket, secWebSocketAccept) {
   socket.write(lines.join('\r\n'));
 }
 
+function writeHttpErrorResponse(socket, statusCode, statusText, body) {
+  const bodyStr = body ? JSON.stringify(body) : '';
+  const lines = [
+    `HTTP/1.1 ${statusCode} ${statusText}`,
+    'Content-Type: application/json',
+    `Content-Length: ${Buffer.byteLength(bodyStr)}`,
+    'Connection: close',
+    '',
+    bodyStr
+  ];
+  socket.write(lines.join('\r\n'));
+}
+
 function encodeTextFrame(text) {
   const payload = Buffer.from(String(text), 'utf8');
   const len = payload.length;
@@ -239,6 +252,8 @@ function createWebSocketServer({ server, pathname, authenticate, onConnection, m
       }
 
       if (authenticate && !authenticate(req)) {
+        // Return HTTP 401 before closing so clients can distinguish auth failure from network error
+        writeHttpErrorResponse(socket, 401, 'Unauthorized', { error: 'unauthorized', message: 'WebSocket authentication failed' });
         socket.destroy();
         return;
       }

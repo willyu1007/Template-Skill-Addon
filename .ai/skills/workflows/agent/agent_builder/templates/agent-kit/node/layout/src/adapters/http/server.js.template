@@ -130,7 +130,8 @@ function start() {
     // Auth (skip for health)
     const authRes = checkAuth({ manifest, reqHeaders: req.headers });
     if (!authRes.ok) {
-      const err = mkAgentError(manifest, 'unauthorized', authRes.message || 'Unauthorized', false, {});
+      const code = authRes.code || 'unauthorized';
+      const err = mkAgentError(manifest, code, authRes.message || 'Unauthorized', false, {});
       return jsonResponse(res, authRes.status || httpStatusFromAgentError(err), err);
     }
 
@@ -207,9 +208,9 @@ function start() {
         try {
           const result = await runAgent(body, { responseMode: 'streaming', emitEvent, requestContext });
           if (!result.ok) {
+            // NOTE: runAgent emits the final event for successful runs.
+            // For validation/contract failures, we emit an error event here.
             emitEvent({ type: 'error', timestamp: nowIso(), data: result.error });
-          } else {
-            emitEvent({ type: 'final', timestamp: nowIso(), data: { response: result.response } });
           }
         } catch (e) {
           emitEvent({ type: 'error', timestamp: nowIso(), data: { code: 'exception', message: String(e && e.message ? e.message : e) } });
@@ -256,10 +257,10 @@ function start() {
         try {
           const result = await runAgent(runRequest, { responseMode: 'streaming', emitEvent, requestContext });
           if (!result.ok) {
+            // NOTE: runAgent emits the final event for successful runs.
             emitEvent({ type: 'error', timestamp: nowIso(), data: result.error });
             return;
           }
-          emitEvent({ type: 'final', timestamp: nowIso(), data: { response: result.response } });
         } catch (e) {
           emitEvent({ type: 'error', timestamp: nowIso(), data: { code: 'exception', message: String(e && e.message ? e.message : e) } });
         }

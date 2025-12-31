@@ -19,7 +19,13 @@ function loadRuntimeConfig() {
 
 function isEnabled() {
   const v = process.env.AGENT_ENABLED;
-  if (v === undefined) return true; // allow missing for local dev, but blueprint requires it
+  if (v === undefined) {
+    // Fail-closed by default to reduce risk of accidental exposure in production.
+    // For local development, you may set NODE_ENV=development or AGENT_ALLOW_MISSING_ENABLED=true.
+    const allow = String(process.env.AGENT_ALLOW_MISSING_ENABLED || '').toLowerCase() === 'true'
+      || String(process.env.NODE_ENV || '').toLowerCase() === 'development';
+    return !!allow;
+  }
   return String(v).toLowerCase() === 'true' || v === '1';
 }
 

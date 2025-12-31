@@ -45,6 +45,7 @@ The blueprint defines tools in `tools.tools[]`. Each tool has:
 const { agentError } = require('./errors');
 
 async function search_documents(input, { manifest, contract_version, logger }) {
+  const startTime = Date.now();
   const spec = manifest.tools.tools.find(t => t.id === 'search_documents');
   const baseUrl = process.env.SEARCH_API_BASE_URL;
   const apiKey = process.env[spec.auth.env_var];

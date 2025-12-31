@@ -77,6 +77,7 @@ Examples:
   node .../agent-builder.js plan --workdir <WORKDIR> --repo-root .
   node .../agent-builder.js apply --workdir <WORKDIR> --repo-root . --apply
   node .../agent-builder.js verify --workdir <WORKDIR> --repo-root .
+  node .../agent-builder.js verify --workdir <WORKDIR> --repo-root . --skip-http  # for sandbox/CI
   node .../agent-builder.js finish --workdir <WORKDIR> --apply
 `;
   console.log(msg.trim());
@@ -752,11 +753,28 @@ function validateBlueprint(blueprint) {
   ];
   for (const b of mustBlocks) req(blueprint[b] && typeof blueprint[b] === 'object', `Missing required block: ${b}`);
 
+  // Meta
+  const meta = blueprint.meta || {};
+  req(typeof meta.generated_at === 'string' && meta.generated_at.trim(), 'meta.generated_at is required (ISO timestamp string).');
+
+  // Agent
   const agent = blueprint.agent || {};
   req(typeof agent.id === 'string' && agent.id.trim(), 'agent.id is required (string).');
   req(typeof agent.name === 'string' && agent.name.trim(), 'agent.name is required (string).');
   req(typeof agent.summary === 'string' && agent.summary.trim(), 'agent.summary is required (string).');
   req(Array.isArray(agent.owners) && agent.owners.length > 0, 'agent.owners must be a non-empty array.');
+  for (let i = 0; i < (agent.owners || []).length; i++) {
+    const o = agent.owners[i];
+    if (!o) continue;
+    req(['person','team','service'].includes(o.type), `agent.owners[${i}].type must be person|team|service.`);
+    req(typeof o.id === 'string' && o.id.trim(), `agent.owners[${i}].id is required (string).`);
+  }
+
+  // Scope
+  const scope = blueprint.scope || {};
+  req(Array.isArray(scope.in_scope) && scope.in_scope.length > 0, 'scope.in_scope must be a non-empty array.');
+  req(Array.isArray(scope.out_of_scope), 'scope.out_of_scope is required (array).');
+  req(typeof scope.definition_of_done === 'string' && scope.definition_of_done.trim(), 'scope.definition_of_done is required (string).');
 
   const integration = blueprint.integration || {};
   req(integration.primary === 'api', 'integration.primary must be "api" (v1).');
@@ -779,6 +797,13 @@ function validateBlueprint(blueprint) {
 
   const rollback = integration.rollback_or_disable || {};
   req(['feature_flag','config_toggle','route_switch','deployment_rollback'].includes(rollback.method), 'integration.rollback_or_disable.method must be a known enum.');
+
+  // Contract refs (schemaRef pattern: #/schemas/Name)
+  const schemaRefPattern = /^#\/schemas\/[A-Za-z0-9_]+$/;
+  req(typeof integration.upstream_contract_ref === 'string' && schemaRefPattern.test(integration.upstream_contract_ref),
+    'integration.upstream_contract_ref is required (format: #/schemas/Name).');
+  req(typeof integration.downstream_contract_ref === 'string' && schemaRefPattern.test(integration.downstream_contract_ref),
+    'integration.downstream_contract_ref is required (format: #/schemas/Name).');
 
   // API validation
   const api = blueprint.api || {};
@@ -803,9 +828,12 @@ function validateBlueprint(blueprint) {
     req(['run','health'].includes(r.name), `api.routes.name must be run|health (got ${r.name}).`);
     req(typeof r.path === 'string' && r.path.startsWith('/'), `api.routes[].path must start with "/": ${r.name}`);
     req(['get','post','put','patch','delete'].includes(String(r.method || '').toLowerCase()), `api.routes[].method invalid: ${r.name}`);
-    req(typeof r.request_schema_ref === 'string', `api.routes[].request_schema_ref required: ${r.name}`);
-    req(typeof r.response_schema_ref === 'string', `api.routes[].response_schema_ref required: ${r.name}`);
-    req(typeof r.error_schema_ref === 'string', `api.routes[].error_schema_ref required: ${r.name}`);
+    req(typeof r.request_schema_ref === 'string' && schemaRefPattern.test(r.request_schema_ref),
+      `api.routes[${r.name}].request_schema_ref must be format #/schemas/Name (got "${r.request_schema_ref}").`);
+    req(typeof r.response_schema_ref === 'string' && schemaRefPattern.test(r.response_schema_ref),
+      `api.routes[${r.name}].response_schema_ref must be format #/schemas/Name (got "${r.response_schema_ref}").`);
+    req(typeof r.error_schema_ref === 'string' && schemaRefPattern.test(r.error_schema_ref),
+      `api.routes[${r.name}].error_schema_ref must be format #/schemas/Name (got "${r.error_schema_ref}").`);
   }
 
   // Schemas must exist
@@ -822,8 +850,10 @@ function validateBlueprint(blueprint) {
   // Model
   const model = blueprint.model || {};
   req(model.primary && typeof model.primary === 'object', 'model.primary is required.');
-  req(model.primary && model.primary.provider && typeof model.primary.provider.type === 'string', 'model.primary.provider.type is required.');
-  req(typeof model.primary.model === 'string' && model.primary.model.trim(), 'model.primary.model is required (string).');
+  req(model.primary && model.primary.provider && typeof model.primary.provider === 'object', 'model.primary.provider is required.');
+  req(model.primary && model.primary.provider && ['openai','openai_compatible','azure_openai','internal_gateway','local'].includes(model.primary.provider.type),
+    'model.primary.provider.type must be openai|openai_compatible|azure_openai|internal_gateway|local.');
+  req(model.primary && typeof model.primary.model === 'string' && model.primary.model.trim(), 'model.primary.model is required (string).');
 
   // Configuration env vars
   const cfg = blueprint.configuration || {};
@@ -836,6 +866,7 @@ function validateBlueprint(blueprint) {
     req(typeof ev.description === 'string' && ev.description.trim(), `configuration.env_vars[${ev.name}].description is required.`);
     req(typeof ev.required === 'boolean', `configuration.env_vars[${ev.name}].required must be boolean.`);
     req(['public','internal','secret'].includes(ev.sensitivity), `configuration.env_vars[${ev.name}].sensitivity must be public|internal|secret.`);
+    req(typeof ev.example_placeholder === 'string', `configuration.env_vars[${ev.name}].example_placeholder is required.`);
     if (envNames.has(ev.name)) errors.push(`Duplicate env var name: ${ev.name}`);
     envNames.add(ev.name);
   }
@@ -861,6 +892,9 @@ function validateBlueprint(blueprint) {
   if (['summary','summary_buffer'].includes(conv.mode)) {
     const s = conv.summary || {};
     req(['llm','heuristic'].includes(s.update_method || 'llm'), 'conversation.summary.update_method must be llm|heuristic.');
+    if ((s.update_method || 'llm') === 'heuristic') {
+      warnings.push('[STAGE_D_REQUIRED] conversation.summary.update_method="heuristic" is not implemented in the scaffold. Summaries will NOT auto-update. You MUST implement heuristic summary logic in Stage D, or change to update_method="llm".');
+    }
     req(['every_turn','threshold','periodic'].includes(s.refresh_policy || 'threshold'), 'conversation.summary.refresh_policy must be every_turn|threshold|periodic.');
     req(['after_turn','async_post_turn'].includes(s.update_timing || 'after_turn'), 'conversation.summary.update_timing must be after_turn|async_post_turn.');
     if ((s.refresh_policy || 'threshold') === 'threshold') {
@@ -885,6 +919,11 @@ function validateBlueprint(blueprint) {
   // Data flow
   const df = blueprint.data_flow || {};
   req(Array.isArray(df.data_classes) && df.data_classes.length > 0, 'data_flow.data_classes must be a non-empty array.');
+  const allowedDataClasses = ['PII','confidential','internal','public','unknown'];
+  for (const dc of (df.data_classes || [])) {
+    req(allowedDataClasses.includes(dc), `data_flow.data_classes contains invalid value "${dc}". Must be PII|confidential|internal|public|unknown.`);
+  }
+  req(df.llm_egress && typeof df.llm_egress === 'object', 'data_flow.llm_egress is required.');
   req(df.llm_egress && typeof df.llm_egress.what_is_sent === 'string' && df.llm_egress.what_is_sent.trim(), 'data_flow.llm_egress.what_is_sent is required (string).');
 
   // Observability
@@ -903,10 +942,24 @@ function validateBlueprint(blueprint) {
   const acc = blueprint.acceptance || {};
   const scenarios = Array.isArray(acc.scenarios) ? acc.scenarios : [];
   req(scenarios.length >= 2, 'acceptance.scenarios must have at least 2 scenarios.');
-  for (const s of scenarios) {
+  const allowedScenarioKinds = [
+    'http_health','http_run','http_conversation_debug',
+    'ws_streaming','sse_streaming',
+    'pipeline','cron','worker','sdk'
+  ];
+  for (let si = 0; si < scenarios.length; si++) {
+    const s = scenarios[si];
     if (!s) continue;
-    req(typeof s.title === 'string' && s.title.trim(), 'acceptance.scenarios[].title is required.');
-    req(['P0','P1','P2'].includes(s.priority), 'acceptance.scenarios[].priority must be P0|P1|P2.');
+    req(typeof s.title === 'string' && s.title.trim(), `acceptance.scenarios[${si}].title is required.`);
+    req(typeof s.given === 'string' && s.given.trim(), `acceptance.scenarios[${si}].given is required.`);
+    req(typeof s.when === 'string' && s.when.trim(), `acceptance.scenarios[${si}].when is required.`);
+    req(typeof s.then === 'string' && s.then.trim(), `acceptance.scenarios[${si}].then is required.`);
+    req(Array.isArray(s.expected_output_checks) && s.expected_output_checks.length > 0,
+      `acceptance.scenarios[${si}].expected_output_checks must be a non-empty array.`);
+    req(['P0','P1','P2'].includes(s.priority), `acceptance.scenarios[${si}].priority must be P0|P1|P2.`);
+    if (s.kind !== undefined && s.kind !== null && String(s.kind).trim() !== '') {
+      req(allowedScenarioKinds.includes(String(s.kind).trim()), `acceptance.scenarios[${si}].kind must be a supported enum when provided.`);
+    }
   }
 
   // Deliverables
@@ -916,6 +969,33 @@ function validateBlueprint(blueprint) {
   req(typeof del.registry_path === 'string' && del.registry_path.trim(), 'deliverables.registry_path is required (string).');
   req(del.core_adapter_separation === 'required', 'deliverables.core_adapter_separation must be "required".');
 
+  // Tools validation (if present)
+  for (let ti = 0; ti < tools.length; ti++) {
+    const t = tools[ti];
+    if (!t) continue;
+    req(typeof t.id === 'string' && t.id.trim(), `tools.tools[${ti}].id is required.`);
+    req(['http_api','database','queue','filesystem','mcp_server','internal_service','other'].includes(t.kind),
+      `tools.tools[${ti}].kind must be a known enum.`);
+    req(['read_only','write','destructive'].includes(t.side_effect_level),
+      `tools.tools[${ti}].side_effect_level must be read_only|write|destructive.`);
+    req(typeof t.input_schema_ref === 'string' && schemaRefPattern.test(t.input_schema_ref),
+      `tools.tools[${ti}].input_schema_ref is required (format: #/schemas/Name).`);
+    req(typeof t.output_schema_ref === 'string' && schemaRefPattern.test(t.output_schema_ref),
+      `tools.tools[${ti}].output_schema_ref is required (format: #/schemas/Name).`);
+    req(typeof t.error_schema_ref === 'string' && schemaRefPattern.test(t.error_schema_ref),
+      `tools.tools[${ti}].error_schema_ref is required (format: #/schemas/Name).`);
+    req(t.timeouts && Number.isInteger(t.timeouts.timeout_ms) && t.timeouts.timeout_ms >= 0,
+      `tools.tools[${ti}].timeouts.timeout_ms is required (integer >= 0).`);
+    req(t.retry && Number.isInteger(t.retry.max_attempts) && t.retry.max_attempts >= 0,
+      `tools.tools[${ti}].retry.max_attempts is required (integer >= 0).`);
+    req(t.retry && ['fixed','exponential','exponential_jitter'].includes(t.retry.backoff),
+      `tools.tools[${ti}].retry.backoff must be fixed|exponential|exponential_jitter.`);
+    req(t.idempotency && ['none','header','payload_field','hash_payload','external_key'].includes(t.idempotency.strategy),
+      `tools.tools[${ti}].idempotency.strategy must be a known enum.`);
+    req(t.audit && typeof t.audit.required === 'boolean',
+      `tools.tools[${ti}].audit.required is required (boolean).`);
+  }
+
   // Attachment blocks required if enabled
   function hasAttach(x) { return attach.includes(x); }
   if (hasAttach('worker')) req(blueprint.worker && typeof blueprint.worker === 'object', 'worker block required when attach includes worker.');
@@ -923,16 +1003,96 @@ function validateBlueprint(blueprint) {
   if (hasAttach('cron')) req(blueprint.cron && typeof blueprint.cron === 'object', 'cron block required when attach includes cron.');
   if (hasAttach('pipeline')) req(blueprint.pipeline && typeof blueprint.pipeline === 'object', 'pipeline block required when attach includes pipeline.');
 
+  // Worker block validation
+  if (hasAttach('worker') && blueprint.worker) {
+    const w = blueprint.worker;
+    req(w.source && ['file_queue','queue','topic','task_table','cron','webhook'].includes(w.source.kind),
+      'worker.source.kind must be a known enum.');
+    req(w.source && typeof w.source.name === 'string' && w.source.name.trim(),
+      'worker.source.name is required (string).');
+    req(w.execution && Number.isInteger(w.execution.max_concurrency) && w.execution.max_concurrency >= 0,
+      'worker.execution.max_concurrency is required (integer >= 0).');
+    req(w.execution && Number.isInteger(w.execution.timeout_ms) && w.execution.timeout_ms >= 0,
+      'worker.execution.timeout_ms is required (integer >= 0).');
+    req(w.retry && Number.isInteger(w.retry.max_attempts) && w.retry.max_attempts >= 0,
+      'worker.retry.max_attempts is required (integer >= 0).');
+    req(w.retry && ['fixed','exponential','exponential_jitter'].includes(w.retry.backoff),
+      'worker.retry.backoff must be fixed|exponential|exponential_jitter.');
+    req(w.idempotency && ['none','header','payload_field','hash_payload','external_key'].includes(w.idempotency.strategy),
+      'worker.idempotency.strategy must be a known enum.');
+    req(w.failure && w.failure.dead_letter && ['none','queue','topic','table','directory'].includes(w.failure.dead_letter.kind),
+      'worker.failure.dead_letter.kind must be a known enum.');
+    req(w.failure && ['always','after_retries','never'].includes(w.failure.alert_on),
+      'worker.failure.alert_on must be always|after_retries|never.');
+  }
+
+  // SDK block validation
+  if (hasAttach('sdk') && blueprint.sdk) {
+    const s = blueprint.sdk;
+    req(['typescript','python','go','java','dotnet'].includes(s.language),
+      'sdk.language must be typescript|python|go|java|dotnet.');
+    req(s.package && typeof s.package.name === 'string' && s.package.name.trim(),
+      'sdk.package.name is required (string).');
+    req(s.package && typeof s.package.version === 'string' && s.package.version.trim(),
+      'sdk.package.version is required (string).');
+    req(Array.isArray(s.exports) && s.exports.length > 0,
+      'sdk.exports must be a non-empty array.');
+    for (let ei = 0; ei < (s.exports || []).length; ei++) {
+      const e = s.exports[ei];
+      if (!e) continue;
+      req(typeof e.name === 'string' && e.name.trim(), `sdk.exports[${ei}].name is required.`);
+      req(typeof e.input_schema_ref === 'string' && schemaRefPattern.test(e.input_schema_ref),
+        `sdk.exports[${ei}].input_schema_ref is required.`);
+      req(typeof e.output_schema_ref === 'string' && schemaRefPattern.test(e.output_schema_ref),
+        `sdk.exports[${ei}].output_schema_ref is required.`);
+      req(typeof e.error_schema_ref === 'string' && schemaRefPattern.test(e.error_schema_ref),
+        `sdk.exports[${ei}].error_schema_ref is required.`);
+    }
+    req(s.compatibility && ['strict','relaxed'].includes(s.compatibility.semver),
+      'sdk.compatibility.semver must be strict|relaxed.');
+    req(s.compatibility && typeof s.compatibility.breaking_change_policy === 'string' && s.compatibility.breaking_change_policy.trim(),
+      'sdk.compatibility.breaking_change_policy is required (string).');
+  }
+
+  // Cron block validation
+  if (hasAttach('cron') && blueprint.cron) {
+    const c = blueprint.cron;
+    req(typeof c.schedule === 'string' && c.schedule.trim(),
+      'cron.schedule is required (cron expression or schedule descriptor).');
+    req(c.input && ['env_json','file','none'].includes(c.input.kind),
+      'cron.input.kind must be env_json|file|none.');
+    req(c.output && ['stdout','file','none'].includes(c.output.kind),
+      'cron.output.kind must be stdout|file|none.');
+  }
+
+  // Pipeline block validation
+  if (hasAttach('pipeline') && blueprint.pipeline) {
+    const p = blueprint.pipeline;
+    req(['ci','etl','data_pipeline','build','deploy','other'].includes(p.context),
+      'pipeline.context must be ci|etl|data_pipeline|build|deploy|other.');
+    req(['stdin','file'].includes(p.input_channel),
+      'pipeline.input_channel must be stdin|file.');
+    req(['stdout','file'].includes(p.output_channel),
+      'pipeline.output_channel must be stdout|file.');
+  }
+
   // Interfaces must include http and each attachment type.
   const ifaces = Array.isArray(blueprint.interfaces) ? blueprint.interfaces : [];
   const ifaceTypes = new Set(ifaces.map(i => i && i.type));
   req(ifaceTypes.has('http'), 'interfaces must include a type="http" interface.');
   for (const a of attach) req(ifaceTypes.has(a), `interfaces must include a type="${a}" interface because attach includes ${a}.`);
 
-  // Streaming defaults and requirements
+  // Interfaces validation
   for (const i of ifaces) {
     if (!i) continue;
     req(['http','worker','sdk','cron','pipeline','cli'].includes(i.type), `interfaces[].type invalid: ${i.type}`);
+    req(typeof i.entrypoint === 'string' && i.entrypoint.trim(), `interfaces[${i.type}].entrypoint is required (string).`);
+    req(typeof i.request_schema_ref === 'string' && schemaRefPattern.test(i.request_schema_ref),
+      `interfaces[${i.type}].request_schema_ref is required (format: #/schemas/Name).`);
+    req(typeof i.response_schema_ref === 'string' && schemaRefPattern.test(i.response_schema_ref),
+      `interfaces[${i.type}].response_schema_ref is required (format: #/schemas/Name).`);
+    req(typeof i.error_schema_ref === 'string' && schemaRefPattern.test(i.error_schema_ref),
+      `interfaces[${i.type}].error_schema_ref is required (format: #/schemas/Name).`);
     req(['blocking','streaming','async'].includes(i.response_mode), `interfaces[${i.type}].response_mode invalid.`);
     req(['none','progress','debug'].includes(i.exposure_level), `interfaces[${i.type}].exposure_level invalid.`);
     if (i.type === 'http' && i.response_mode === 'streaming') {
@@ -1540,6 +1700,7 @@ async function commandVerify(args) {
   ensureWorkdir(workdir);
   const repoRoot = args['repo-root'] ? path.resolve(args['repo-root']) : process.cwd();
   const fmt = args.format || 'text';
+  const skipHttp = !!args['skip-http']; // Skip HTTP server-based scenarios (for sandbox/CI)
 
   const state = loadState(workdir);
   if (!state.stageC.applied) {
@@ -1595,33 +1756,68 @@ async function commandVerify(args) {
     const whenLc = String(when || '').toLowerCase();
     const exp = Array.isArray(expectedChecks) ? expectedChecks.map(x => String(x || '').toLowerCase()) : [];
 
-    const wantsWs = whenLc.includes('/ws') || whenLc.includes('websocket') || titleLc.includes('websocket') || titleLc.includes('ws ');
-    const wantsSse = whenLc.includes('sse') || whenLc.includes('server-sent') || 
-                     titleLc.includes('sse') || titleLc.includes('server-sent events') ||
-                     whenLc.includes('text/event-stream') || titleLc.includes('event-stream');
-    const wantsPipeline = whenLc.includes('pipeline') || whenLc.includes('stdin') || titleLc.includes('pipeline');
-    const wantsCron = whenLc.includes('cron') || titleLc.includes('cron');
-    const wantsWorker = whenLc.includes('worker') || titleLc.includes('worker');
-    const wantsSdk = whenLc.includes('sdk') || titleLc.includes('sdk') || whenLc.includes("require('");
-    const wantsHealth = whenLc.includes('get') && whenLc.includes('/health');
-    const wantsHttpRun = whenLc.includes('post') && whenLc.includes('/run');
+    // IMPORTANT: Avoid naive substring matching that can misclassify scenarios.
+    // Example: "processes" contains "sse" as a substring; we must not treat it as SSE.
+    function hasWord(haystack, word) {
+      const w = String(word || '').toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(`(^|[^a-z0-9])${w}($|[^a-z0-9])`, 'i');
+      return re.test(String(haystack || '').toLowerCase());
+    }
+
+    const wantsWs = whenLc.includes('/ws') || hasWord(whenLc, 'websocket') || hasWord(titleLc, 'websocket') || hasWord(whenLc, 'ws') || hasWord(titleLc, 'ws');
+    const wantsSse =
+      // Prefer strong signals.
+      whenLc.includes('/run/stream') || whenLc.includes('text/event-stream') || whenLc.includes('server-sent') ||
+      titleLc.includes('server-sent') || titleLc.includes('event-stream') ||
+      // Fall back to an actual "sse" token.
+      hasWord(whenLc, 'sse') || hasWord(titleLc, 'sse');
+
+    // HTTP endpoints (explicit method/path) should take precedence over descriptive words.
+    const wantsHealth = /\bget\b/.test(whenLc) && whenLc.includes('/health');
+    const wantsHttpRun = /\bpost\b/.test(whenLc) && whenLc.includes('/run');
 
     const wantsConversationDebug =
       exp.some(c => c.includes('messages_count')) ||
       exp.some(c => c.includes('conversation')) ||
       titleLc.includes('conversation');
 
+    const wantsPipeline = hasWord(whenLc, 'pipeline') || hasWord(whenLc, 'stdin') || hasWord(titleLc, 'pipeline');
+    const wantsCron = hasWord(whenLc, 'cron') || hasWord(titleLc, 'cron');
+    const wantsWorker = hasWord(whenLc, 'worker') || hasWord(titleLc, 'worker');
+    const wantsSdk = hasWord(whenLc, 'sdk') || hasWord(titleLc, 'sdk') || whenLc.includes("require('");
+
+    // Precedence order:
+    // 1) Explicit streaming endpoints
+    // 2) Explicit HTTP endpoints
+    // 3) Non-HTTP adapters
     if (wantsWs) return 'ws_streaming';
     if (wantsSse) return 'sse_streaming';
+    if (wantsHealth) return 'http_health';
+    if (wantsHttpRun && wantsConversationDebug) return 'http_conversation_debug';
+    if (wantsHttpRun) return 'http_run';
     if (wantsPipeline) return 'pipeline';
     if (wantsCron) return 'cron';
     if (wantsWorker) return 'worker';
     if (wantsSdk) return 'sdk';
-    if (wantsHealth) return 'http_health';
-    if (wantsHttpRun && wantsConversationDebug) return 'http_conversation_debug';
-    if (wantsHttpRun) return 'http_run';
 
     return 'unsupported';
+  }
+
+  const VALID_SCENARIO_KINDS = new Set([
+    'http_health','http_run','http_conversation_debug',
+    'ws_streaming','sse_streaming',
+    'pipeline','cron','worker','sdk'
+  ]);
+
+  function resolveScenarioKind(scenario) {
+    const explicit = scenario && scenario.kind !== undefined && scenario.kind !== null
+      ? String(scenario.kind).trim()
+      : '';
+    if (explicit && VALID_SCENARIO_KINDS.has(explicit)) return explicit;
+    const title = String(scenario?.title || '');
+    const when = String(scenario?.when || '');
+    const expectedChecks = Array.isArray(scenario?.expected_output_checks) ? scenario.expected_output_checks : [];
+    return inferScenarioKind({ title, when, expectedChecks });
   }
 
   function safeParseJson(txt) {
@@ -1678,11 +1874,7 @@ async function commandVerify(args) {
 
   // Determine whether we need a mock LLM server (health-only scenarios can skip).
   const needsMock = scenarios.some(s => {
-    const title = String(s?.title || '');
-    const given = String(s?.given || '');
-    const when = String(s?.when || '');
-    const expectedChecks = Array.isArray(s?.expected_output_checks) ? s.expected_output_checks : [];
-    const kind = inferScenarioKind({ title, when, expectedChecks });
+    const kind = resolveScenarioKind(s);
     if (kind === 'http_health') return false;
     // Kill switch can be tested without LLM, but it's harmless to provide it.
     return kind !== 'unsupported';
@@ -1725,7 +1917,7 @@ async function commandVerify(args) {
       });
       if (!hasKillSwitch) status = 'failed';
 
-      const kind = inferScenarioKind({ title, when: whenText, expectedChecks: expected });
+      const kind = resolveScenarioKind(scenario);
       execution.kind = kind;
 
       const attach = Array.isArray(bp.integration?.attach) ? bp.integration.attach : [];
@@ -1797,7 +1989,20 @@ async function commandVerify(args) {
         // ----------------------------
         // HTTP server-based scenarios
         // ----------------------------
-        if (kind === 'http_health' || kind === 'http_run' || kind === 'http_conversation_debug' || kind === 'ws_streaming' || kind === 'sse_streaming') {
+        const isHttpScenario = kind === 'http_health' || kind === 'http_run' || kind === 'http_conversation_debug' || kind === 'ws_streaming' || kind === 'sse_streaming';
+
+        if (isHttpScenario && skipHttp) {
+          status = 'skipped';
+          checks.push({
+            check: 'HTTP scenario skipped (--skip-http)',
+            result: true,
+            actual: 'skipped_by_flag'
+          });
+          results.push({ title, priority: scenario?.priority, status, checks, execution, duration_ms: Date.now() - startTime });
+          continue;
+        }
+
+        if (isHttpScenario) {
           const port = await findFreePort();
 
           // Degradation env

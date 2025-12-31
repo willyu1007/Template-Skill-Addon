@@ -612,7 +612,7 @@
   },
   "prompting": {
     "complexity_tier": "tier2",
-    "examples_strategy": "Include 3–6 examples covering common success and failure branches.",
+    "examples_strategy": "Include 3\u20136 examples covering common success and failure branches.",
     "prompt_modules": [
       "base",
       "safety",
@@ -629,7 +629,8 @@
         "expected_output_checks": [
           "http status == 200"
         ],
-        "priority": "P1"
+        "priority": "P1",
+        "kind": "http_health"
       },
       {
         "title": "HTTP run returns a structured response",
@@ -641,7 +642,8 @@
           "output is non-empty",
           "contract_version preserved"
         ],
-        "priority": "P0"
+        "priority": "P0",
+        "kind": "http_run"
       },
       {
         "title": "WebSocket streaming returns delta events and final response",
@@ -653,7 +655,20 @@
           "ws no error",
           "final response status == ok"
         ],
-        "priority": "P1"
+        "priority": "P1",
+        "kind": "ws_streaming"
+      },
+      {
+        "title": "SDK adapter returns a structured response",
+        "kind": "sdk",
+        "given": "AGENT_ENABLED=true",
+        "when": "SDK adapter calls runAgent via require('src/adapters/sdk')",
+        "then": "SDK returns RunResponse status=ok with non-empty output",
+        "expected_output_checks": [
+          "status == ok",
+          "output is non-empty"
+        ],
+        "priority": "P2"
       },
       {
         "title": "Pipeline adapter returns a structured response",
@@ -665,7 +680,8 @@
           "status == ok",
           "output is non-empty"
         ],
-        "priority": "P1"
+        "priority": "P1",
+        "kind": "pipeline"
       },
       {
         "title": "Cron adapter returns a structured response",
@@ -676,7 +692,8 @@
           "exit code == 0",
           "status == ok"
         ],
-        "priority": "P1"
+        "priority": "P1",
+        "kind": "cron"
       },
       {
         "title": "Worker adapter processes an input file and produces output",
@@ -688,7 +705,8 @@
           "output file exists",
           "moved to .done"
         ],
-        "priority": "P1"
+        "priority": "P1",
+        "kind": "worker"
       },
       {
         "title": "Degraded API routes to worker queue",
@@ -699,7 +717,8 @@
           "http status == 202",
           "queued_file exists"
         ],
-        "priority": "P1"
+        "priority": "P1",
+        "kind": "http_run"
       },
       {
         "title": "Conversation memory increases message count on subsequent turns",
@@ -709,7 +728,8 @@
         "expected_output_checks": [
           "messages_count increases"
         ],
-        "priority": "P1"
+        "priority": "P1",
+        "kind": "http_conversation_debug"
       },
       {
         "title": "Kill switch returns unavailable",
@@ -720,7 +740,8 @@
           "http status == 503",
           "retryable == false"
         ],
-        "priority": "P0"
+        "priority": "P0",
+        "kind": "http_run"
       }
     ]
   },

@@ -101,25 +101,27 @@ Type "approve B" to proceed to scaffolding.
 
 **Output**: List of generated files organized by category (code, docs, config).
 
-### Phase 4: Stage D — Implement (Automatic)
+### Phase 4: Stage D — Implement (Manual / LLM-assisted)
 
-**Actions**:
+> **Note:** Stage D is manual; the scaffold generates placeholders that require implementation.
+
+**Actions** (performed by developer or LLM):
 1. **Implement Tools**: For each tool in `blueprint.tools.tools[]`:
    - Read tool specification (kind, schemas, timeouts, auth)
-   - Generate implementation in `src/core/tools.js` using patterns from `reference/stage_d_implementation_guide.md`
+   - Implement logic in `src/core/tools.js` using patterns from `reference/stage_d_implementation_guide.md`
    - Add required env vars to `.env.example` if not present
 
 2. **Write Prompt Pack**: Based on `agent.summary`, `scope`, and `security`:
-   - Generate `prompts/system.md` with role, capabilities, boundaries
-   - Generate `prompts/examples.md` with in-scope and out-of-scope examples
-   - Generate `prompts/developer.md` with internal instructions
+   - Write `prompts/system.md` with role, capabilities, boundaries
+   - Write `prompts/examples.md` with in-scope and out-of-scope examples
+   - Write `prompts/developer.md` with internal instructions
 
 3. **Expand Tests**: For each scenario in `acceptance.scenarios[]`:
-   - Generate test case in `tests/acceptance.test.js`
+   - Write test case in `tests/acceptance.test.js`
    - Include given/when/then structure
    - Include expected_output_checks as assertions
 
-**Output**: Summary of implemented components with file paths.
+**Output**: Implemented components with file paths.
 
 ### Phase 5: Stage E — Verify
 
@@ -179,12 +181,14 @@ Type "approve B" to proceed to scaffolding.
 3. Create/update registry at `agents/registry.json`.
 4. Do not overwrite existing files; skip and report.
 
-### Stage D — Implement (automatic)
+### Stage D — Implement (manual / LLM-assisted)
 
 1. Implement real tool logic in `src/core/tools.js` based on blueprint tool definitions.
 2. Write prompt pack content (`prompts/*.md`) based on agent scope and security policy.
-3. Generate acceptance test cases based on `acceptance.scenarios[]`.
+3. Write acceptance test cases based on `acceptance.scenarios[]`.
 4. See `reference/stage_d_implementation_guide.md` for patterns and best practices.
+
+> Stage D is performed manually by the developer or with LLM assistance. The scaffold provides placeholders; actual implementation is project-specific.
 
 ### Stage E — Verify + Cleanup
 
