@@ -201,6 +201,24 @@ Type "approve B" to proceed to scaffolding.
 
 ---
 
+## Verification
+
+- [ ] Stage A docs exist in the temporary workdir and **not** in the repo.
+- [ ] Stage B blueprint validates (`validate-blueprint`).
+- [ ] Stage C scaffold created expected files without overwriting.
+- [ ] Stage E verification completed and evidence files generated.
+- [ ] Registry entry created/updated as specified.
+
+## Boundaries
+
+- MUST NOT write to the repo during Stage A.
+- MUST NOT proceed from Stage A→B or Stage B→C without explicit user approval.
+- MUST NOT commit secrets to the repo.
+- MUST NOT change fixed API route names (`run`, `health`).
+- SHOULD NOT skip verification evidence generation.
+
+---
+
 ## Helper Tool Commands
 
 Use the dependency-free helper script:

@@ -18,6 +18,7 @@ Template repository. Users clone this to start new AI-friendly projects.
 | `addons/` | Optional add-on payloads (installed on-demand) |
 | `.ai/skills/` | Single Source of Truth for skills (including workflows) |
 | `.ai/scripts/` | Sync scripts and control scripts (Node.js) |
+| `.ai/llm/` | LLM engineering governance entry (see `.ai/llm/AGENTS.md`) |
 | `.codex/` | Codex skill entry stubs |
 | `.claude/` | Claude skill entry stubs |
 | `dev/` | Working documentation for complex tasks |
@@ -89,6 +90,7 @@ Workflow skills live under `.ai/skills/`
 ## Rules
 
 - Always edit `.ai/skills/` (SSOT), never edit `.codex/` or `.claude/` directly
+- For LLM engineering tasks, open `.ai/llm/AGENTS.md`
 - Keep SKILL.md files under 500 lines
 - Use supporting files (`reference.md`, `examples.md`, `scripts/`, `templates/`) for detailed reference content
 - Do not create a `resources/` subdirectory inside skills
