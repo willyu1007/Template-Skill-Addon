@@ -14,6 +14,7 @@ Use this skill when:
 - You are handing off work to another contributor
 - You are about to compress context or close a long-running thread
 - A refactor changed the plan and decisions must be recorded
+- A task is completed and ready to archive
 
 ## Inputs
 - Task directory (e.g., `dev/active/<task-name>/`)
@@ -45,6 +46,9 @@ Use this skill when:
 5. Update `04-verification.md`:
    - record what checks were run
    - record failures and next steps to resolve
+6. **If status=done and all verification passes**:
+   - Move `dev/active/<task-name>/` to `dev/archive/<task-name>/`
+   - Ensure `dev/archive/` directory exists before moving
 
 ## Verification
 
@@ -54,6 +58,7 @@ Use this skill when:
 - [ ] Verification section records what checks were run
 - [ ] Handoff docs are sufficient for another contributor to continue
 - [ ] No secrets or credentials in documentation
+- [ ] If status=done: task moved to `dev/archive/`
 
 ## Boundaries
 

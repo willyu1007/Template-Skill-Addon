@@ -1,0 +1,70 @@
+# Dev Docs
+
+Persistent task documentation for context preservation across sessions.
+
+## Trigger Conditions
+
+| Condition | Action |
+|-----------|--------|
+| Complex task (multi-module, multi-session, >2 hours) | Create task bundle |
+| Context reset on ongoing work | Read `00-overview.md` first |
+| Task paused or handed off | Update docs via `update-dev-docs-for-handoff` |
+| Task completed and verified | Archive via `update-dev-docs-for-handoff` with status=done |
+
+## Directory Structure
+
+```
+dev/
+  active/<task-name>/     # Current work
+    00-overview.md        # Goal, non-goals, status
+    01-plan.md            # Phases, milestones, acceptance criteria
+    02-architecture.md    # Boundaries, interfaces, risks
+    03-implementation-notes.md  # Decisions, changes, rationale
+    04-verification.md    # Checks run, results
+  archive/                # Completed tasks
+```
+
+## File Purposes
+
+| File | Contains | Update Frequency |
+|------|----------|------------------|
+| `00-overview.md` | Goal, non-goals, current status | On status change |
+| `01-plan.md` | Phases, steps, acceptance criteria | On scope change |
+| `02-architecture.md` | Boundaries, interfaces, key risks | On design decision |
+| `03-implementation-notes.md` | What changed and why | After each milestone |
+| `04-verification.md` | Checks run and results | After each check |
+
+## AI Instructions
+
+### On Context Reset
+
+1. Read `dev/active/<task-name>/00-overview.md`
+2. Read `01-plan.md`
+3. Consult other files as needed
+
+### During Work
+
+- Update `00-overview.md` status field on state change
+- Append to `03-implementation-notes.md` after milestones
+- Record all verification runs in `04-verification.md`
+
+### Workflows
+
+| Workflow | Use When |
+|----------|----------|
+| `create-dev-docs-plan` | Starting new complex task |
+| `update-dev-docs-for-handoff` | Pausing, resuming, handing off, or completing |
+
+### Archive Rules
+
+When task status changes to "done" and all verification passes:
+1. Move `dev/active/<task-name>/` to `dev/archive/<task-name>/`
+2. This is handled by `update-dev-docs-for-handoff` when status=done
+
+## Skip Conditions
+
+Do NOT create dev docs for:
+- Single-file changes
+- Trivial fixes (<30 min)
+- Simple refactors with clear scope
+
