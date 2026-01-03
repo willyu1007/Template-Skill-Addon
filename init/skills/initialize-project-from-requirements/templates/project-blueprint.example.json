@@ -45,7 +45,7 @@
     }
   },
   "skills": {
-    "packs": ["workflows", "backend", "frontend", "standards"]
+    "packs": ["workflows", "backend", "frontend", "standards", "context-core"]
   },
   "addons": {
     "contextAwareness": true,
