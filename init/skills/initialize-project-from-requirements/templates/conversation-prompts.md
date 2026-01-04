@@ -25,16 +25,16 @@ Ask these before writing the first draft of `docs/project/requirements.md`:
    - "In one sentence, what problem does this project solve, for whom, and what is the main outcome?"
 
 2. **Primary user roles**
-   - "Who are the primary users (2–5 roles)?"
+   - "Who are the primary users (2-5 roles)?"
    - "Who is NOT a user?"
 
-3. **In-scope MUST requirements (3–10)**
+3. **In-scope MUST requirements (3-10)**
    - "List the MUST-have capabilities. Each MUST should be testable."
 
 4. **Out-of-scope (explicit OUT)**
    - "List what we will NOT do in this version."
 
-5. **Top user journeys (2–5)**
+5. **Top user journeys (2-5)**
    - "Describe the top user journeys end-to-end."
    - For each journey: "What is the acceptance criterion (AC)?"
 
@@ -347,7 +347,7 @@ target-version = "py311"
 ### F5. Other languages
 
 For other languages, the LLM should:
-1. Identify the language’s standard project layout
+1. Identify the language's standard project layout
 2. Generate appropriate configs (build system, linter, formatter)
 3. Create a minimal directory structure
 4. Add `.gitignore` rules

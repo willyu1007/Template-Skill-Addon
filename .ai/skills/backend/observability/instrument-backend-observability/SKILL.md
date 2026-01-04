@@ -18,7 +18,7 @@ Use this skill when you are:
 ## Inputs
 - The runtime environment(s) and deployment model
 - Current logging and monitoring stack (if any)
-- What “good” looks like: SLOs, latency targets, error budgets
+- What "good" looks like: SLOs, latency targets, error budgets
 
 ## Outputs
 - A consistent logging and error tracking plan

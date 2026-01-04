@@ -11,7 +11,7 @@ Provide practical patterns for safe data access and persistence: transactional w
 ## When to use
 Use this skill when you are:
 - Implementing repository methods or complex queries
-- Adding transactional “all-or-nothing” workflows
+- Adding transactional "all-or-nothing" workflows
 - Debugging performance issues (slow queries, N+1)
 - Introducing pagination, filtering, or sorting
 - Designing idempotent writes for retries
@@ -62,7 +62,7 @@ Soft delete is appropriate when:
 
 When using soft delete:
 - queries MUST consistently filter out deleted rows unless explicitly requested
-- unique constraints MAY need to include “deleted” flags
+- unique constraints MAY need to include "deleted" flags
 
 ### Avoid N+1 queries
 - Fetch related entities via joins/includes when appropriate.

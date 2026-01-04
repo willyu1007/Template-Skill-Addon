@@ -1,4 +1,4 @@
-# Manage Project State — Reference
+# Manage Project State - Reference
 
 ## Why this exists
 

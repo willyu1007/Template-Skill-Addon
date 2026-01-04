@@ -1,4 +1,4 @@
-# Manage Skill Packs — Reference
+# Manage Skill Packs - Reference
 
 ## Files and roles
 

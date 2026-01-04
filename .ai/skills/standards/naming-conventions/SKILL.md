@@ -34,7 +34,7 @@ Use this skill when:
 ## Steps
 1. Identify what you are naming (file, directory, module, component, hook, API surface, configuration key, or data entity).
 2. Choose the most relevant convention section below and follow the MUST rules first.
-3. Propose 2–3 candidates and select the one that matches existing local conventions and avoids ambiguous abbreviations.
+3. Propose 2-3 candidates and select the one that matches existing local conventions and avoids ambiguous abbreviations.
 4. Apply the chosen name consistently across declarations and references (imports, exports, docs, and tests).
 5. Verify that the resulting names are searchable, unambiguous, and do not collide with existing names.
 

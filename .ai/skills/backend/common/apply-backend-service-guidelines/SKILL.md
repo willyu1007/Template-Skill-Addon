@@ -37,7 +37,7 @@ This skill produces one or more of:
 - A minimal test plan (unit + integration) with verifiable acceptance criteria
 
 ## Architecture rules
-These rules prevent “everything everywhere” backends.
+These rules prevent "everything everywhere" backends.
 
 1. **Routes MUST only wire HTTP to handlers**
    - Register middleware and delegate to a controller.
@@ -96,7 +96,7 @@ These rules prevent “everything everywhere” backends.
 
 5. **Implement data access**
    - Use repositories for complex queries and persistence workflows.
-   - Add transactions where “all-or-nothing” semantics are required.
+   - Add transactions where "all-or-nothing" semantics are required.
 
 6. **Add observability**
    - Add structured logs around boundaries (start/end, key identifiers).

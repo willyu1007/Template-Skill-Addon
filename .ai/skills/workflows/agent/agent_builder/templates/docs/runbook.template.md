@@ -1,4 +1,4 @@
-# {{agent_name}} — Runbook
+# {{agent_name}} - Runbook
 
 ## Kill switch
 - Env: `AGENT_ENABLED`

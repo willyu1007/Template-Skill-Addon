@@ -139,7 +139,7 @@ During initialization, write the answers into these files (working location):
 
 ## Phase 3: Blueprint generation
 
-Based on Phases 1–2, generate `init/project-blueprint.json` (working location during initialization).
+Based on Phases 1-2, generate `init/project-blueprint.json` (working location during initialization).
 
 ### Minimal blueprint template
 

@@ -1,6 +1,6 @@
 ---
 name: author-developer-documentation
-description: Author or update developer documentation by gathering context, structuring content progressively, and providing verifiable examples.
+description: Author or update developer documentation with progressive disclosure, explicit requirements, examples/templates, and actionable verification steps.
 category: workflows/documentation
 ssot_path: .ai/skills/workflows/documentation/author-developer-documentation
 ---

@@ -38,7 +38,7 @@ Move deep detail to `reference.md`, `examples/`, and `templates/`.
 python scripts/skillgen.py lint --skills-root out/skills
 ```
 
-Fix all errors. Treat warnings as “should fix” unless you have a clear reason not to.
+Fix all errors. Treat warnings as "should fix" unless you have a clear reason not to.
 
 ## 5) Package (optional)
 ```bash

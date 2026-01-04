@@ -1,4 +1,4 @@
-# {{agent_name}} — Integration
+# {{agent_name}} - Integration
 
 ## Integration target
 - kind: {{integration_target_kind}}

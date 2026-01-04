@@ -1,4 +1,4 @@
-# Example: Refactor “fat route” into layers
+# Example: Refactor "fat route" into layers
 
 ## Scenario
 A route handler accumulated permission checks, validation, and persistence logic. You want to make it testable and maintainable.

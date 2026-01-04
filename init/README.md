@@ -219,8 +219,8 @@ requirements interview → tech stack selection → blueprint generation → add
 
 ### Guidance docs
 
-- `skills/initialize-project-from-requirements/templates/llm-init-guide.md` – full guide for LLM-driven initialization
-- `skills/initialize-project-from-requirements/templates/conversation-prompts.md` – question bank / conversation modules
+- `skills/initialize-project-from-requirements/templates/llm-init-guide.md` - full guide for LLM-driven initialization
+- `skills/initialize-project-from-requirements/templates/conversation-prompts.md` - question bank / conversation modules
 
 ### Handling languages without templates
 
@@ -244,13 +244,13 @@ When add-ons are enabled, they provide more complete implementations with manage
 
 ## Files in this init kit
 
-- `stages/` – stage guidance docs
-- `skills/initialize-project-from-requirements/` – the skill definition and scripts
-  - `templates/project-blueprint.example.json` – full example (all add-ons enabled)
-  - `templates/project-blueprint.min.example.json` – minimal example (backend only)
-  - `templates/llm-init-guide.md` – LLM initialization guide
-  - `templates/conversation-prompts.md` – question bank and conversation modules
-- `addon-docs/` – add-on documentation
-  - `README.md` – add-on conventions and index
-  - `*.md` – individual add-on documentation
-- `.init-kit` – marker file
+- `stages/` - stage guidance docs
+- `skills/initialize-project-from-requirements/` - the skill definition and scripts
+  - `templates/project-blueprint.example.json` - full example (all add-ons enabled)
+  - `templates/project-blueprint.min.example.json` - minimal example (backend only)
+  - `templates/llm-init-guide.md` - LLM initialization guide
+  - `templates/conversation-prompts.md` - question bank and conversation modules
+- `addon-docs/` - add-on documentation
+  - `README.md` - add-on conventions and index
+  - `*.md` - individual add-on documentation
+- `.init-kit` - marker file

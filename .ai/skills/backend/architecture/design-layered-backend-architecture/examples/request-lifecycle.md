@@ -1,7 +1,7 @@
 # Example: Request lifecycle map
 
 ## Scenario
-You want a consistent mental model for “how a request becomes a database write”.
+You want a consistent mental model for "how a request becomes a database write".
 
 ## Lifecycle (conceptual)
 1. **HTTP request arrives**

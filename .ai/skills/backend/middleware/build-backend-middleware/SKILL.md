@@ -15,10 +15,10 @@ Use this skill when you are:
 - Validating requests before controller execution
 - Implementing rate limiting or feature flags
 - Introducing error boundaries for async handlers
-- Debugging “middleware order” issues
+- Debugging "middleware order" issues
 
 ## Inputs
-- The middleware’s responsibility and scope (global vs route-specific)
+- The middleware's responsibility and scope (global vs route-specific)
 - Where it should run in the request lifecycle (before/after auth, before validation, etc.)
 - What context it reads/writes (e.g., user identity, request ID)
 

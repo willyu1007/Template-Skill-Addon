@@ -1,6 +1,6 @@
 ---
 name: create-dev-docs-plan
-description: Create a structured development plan and task documentation bundle (goals, scope, approach, acceptance criteria) under a consistent dev-docs directory layout.
+description: Create a structured dev-docs task bundle (overview/plan/architecture/notes/verification/pitfalls) with clear scope, acceptance criteria, and handoff-ready artifacts.
 category: workflows/dev-docs
 ssot_path: .ai/skills/workflows/dev-docs/create-dev-docs-plan
 ---

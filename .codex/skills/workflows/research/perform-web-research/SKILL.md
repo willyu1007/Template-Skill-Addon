@@ -1,6 +1,6 @@
 ---
 name: perform-web-research
-description: Perform targeted web research by defining questions, finding primary sources, extracting evidence, and producing a cited, decision-oriented summary.
+description: Perform targeted web research by defining the question, prioritizing primary sources, capturing evidence in a table, and producing a cited, decision-oriented summary.
 category: workflows/research
 ssot_path: .ai/skills/workflows/research/perform-web-research
 ---

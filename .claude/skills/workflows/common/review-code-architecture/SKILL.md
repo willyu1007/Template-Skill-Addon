@@ -1,6 +1,6 @@
 ---
 name: review-code-architecture
-description: Review code for architectural consistency, best practices, and integration risks across backend and frontend changes.
+description: Review code changes for architectural consistency, correctness risks, security/performance concerns, and verification gaps; produce a prioritized, actionable review report.
 category: workflows/common
 ssot_path: .ai/skills/workflows/common/review-code-architecture
 ---

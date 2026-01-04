@@ -1,6 +1,6 @@
 ---
 name: review-implementation-plans
-description: Review implementation plans for completeness, feasibility, risks, dependencies, and verification criteria before execution.
+description: Review implementation plans for completeness, feasibility, risks, dependencies, rollout/rollback, and concrete verification before execution.
 category: workflows/planning
 ssot_path: .ai/skills/workflows/planning/review-implementation-plans
 ---

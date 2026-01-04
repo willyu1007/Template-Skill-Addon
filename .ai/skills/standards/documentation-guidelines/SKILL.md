@@ -35,7 +35,7 @@ Use this skill when:
 
 
 ## Steps
-1. Confirm the document’s purpose and target reader (who will use it, and for what decision or task).
+1. Confirm the document's purpose and target reader (who will use it, and for what decision or task).
 2. Write the main path first (the smallest set of steps or facts needed to succeed) and defer deep detail to later sections.
 3. Add explicit inputs/outputs, and include verification criteria whenever the document describes a process or checklist.
 4. Run a readability pass: short paragraphs, scannable headings, consistent terminology, and minimal jargon.

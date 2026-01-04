@@ -26,4 +26,4 @@ Guidance:
 - `api/` contains typed API calls for this feature.
 - `hooks/` contains query/mutation hooks and feature logic.
 - `components/` are feature-scoped by default.
-- `index.ts` re-exports the feature’s public API.
+- `index.ts` re-exports the feature's public API.

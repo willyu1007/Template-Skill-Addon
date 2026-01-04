@@ -1,4 +1,4 @@
-# {{agent_name}} (`{{agent_id}}`) — Overview
+# {{agent_name}} (`{{agent_id}}`) - Overview
 
 ## Summary
 {{agent_summary}}

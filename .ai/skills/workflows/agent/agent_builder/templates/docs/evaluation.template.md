@@ -1,4 +1,4 @@
-# {{agent_name}} — Evaluation
+# {{agent_name}} - Evaluation
 
 ## Acceptance scenarios
 {{acceptance_scenarios_list}}

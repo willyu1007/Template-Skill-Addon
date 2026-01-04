@@ -23,7 +23,7 @@ It is the SSOT; other references should link here.
 Checks:
 - required files exist under `docs/project/` (or `--docs-root`)
 - required headings exist
-- template placeholders (e.g. “TBD”, “<fill>”) are not left unresolved (warn or error depending on `--strict`)
+- template placeholders (e.g. "TBD", "<fill>") are not left unresolved (warn or error depending on `--strict`)
 
 Command:
 
@@ -89,7 +89,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 `apply` performs:
 1. validate blueprint
 2. optional docs check (when `--require-stage-a`)
-3. scaffold directories/files (idempotent; “write-if-missing” for docs)
+3. scaffold directories/files (idempotent; "write-if-missing" for docs)
 4. generate configs via `scripts/scaffold-configs.cjs` (SSOT)
 5. optional add-on setup (context awareness)
 6. enable packs (skillsctl when present; else manifest includePrefixes)

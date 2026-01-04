@@ -1,4 +1,4 @@
-# Examples — Tier 1
+# Examples - Tier 1
 
 ## Successful Request
 

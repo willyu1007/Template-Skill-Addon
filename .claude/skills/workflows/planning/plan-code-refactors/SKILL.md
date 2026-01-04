@@ -1,6 +1,6 @@
 ---
 name: plan-code-refactors
-description: Plan code refactors by defining goals, mapping dependencies, sequencing steps, and defining verification/rollback checkpoints.
+description: Plan code refactors by defining goals/non-goals, mapping dependencies, sequencing phases, and specifying verification and rollback checkpoints.
 category: workflows/planning
 ssot_path: .ai/skills/workflows/planning/plan-code-refactors
 ---

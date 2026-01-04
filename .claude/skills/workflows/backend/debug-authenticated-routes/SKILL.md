@@ -1,6 +1,6 @@
 ---
 name: debug-authenticated-routes
-description: Debug authenticated API route failures (401/403/404) by reproducing requests, inspecting auth middleware, route registration, and permission logic.
+description: Debug authenticated API route failures (401/403/404) by capturing a reproducible request, tracing auth and routing layers, applying minimal fixes with approval gates, and verifying with negative tests.
 category: workflows/backend
 ssot_path: .ai/skills/workflows/backend/debug-authenticated-routes
 ---

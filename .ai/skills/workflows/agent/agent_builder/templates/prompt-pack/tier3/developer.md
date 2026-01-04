@@ -1,4 +1,4 @@
-# Developer Instructions — Tier 3
+# Developer Instructions - Tier 3
 
 ## Internal Context
 

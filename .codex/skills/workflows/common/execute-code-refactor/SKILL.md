@@ -1,6 +1,6 @@
 ---
 name: execute-code-refactor
-description: Execute safe, dependency-aware code refactors (file moves, component extraction, import rewrites) with verification at each step.
+description: Execute dependency-aware code refactors (moves, extraction, import rewrites) incrementally with approval gates, rollback points, and continuous verification.
 category: workflows/common
 ssot_path: .ai/skills/workflows/common/execute-code-refactor
 ---

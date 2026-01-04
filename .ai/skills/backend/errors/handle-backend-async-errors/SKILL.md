@@ -19,7 +19,7 @@ Use this skill when you are:
 ## Inputs
 - The async operation(s) (controller/service/repository)
 - Desired error contract (operational vs unknown errors)
-- The framework’s error handling mechanism (e.g., Express `next(err)`)
+- The framework's error handling mechanism (e.g., Express `next(err)`)
 
 ## Outputs
 - A consistent async handler pattern that forwards errors correctly

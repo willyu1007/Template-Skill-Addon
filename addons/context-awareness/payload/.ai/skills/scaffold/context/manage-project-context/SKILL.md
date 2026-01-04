@@ -7,7 +7,7 @@ description: Maintain docs/context (API, DB schema mapping, BPMN) via contextctl
 
 ## Purpose
 
-Provide a script-driven workflow to create, update, and verify the repository’s curated context artifacts under `docs/context/`.
+Provide a script-driven workflow to create, update, and verify the repository's curated context artifacts under `docs/context/`.
 
 ## When to use
 
@@ -58,7 +58,7 @@ Do NOT use this skill if:
 
 - You MUST NOT edit `docs/context/registry.json` by hand.
 - You MUST keep artifact paths under `docs/context/` (no external paths).
-- You SHOULD prefer “contract mode” unless you have a reliable generator command and CI support.
+- You SHOULD prefer "contract mode" unless you have a reliable generator command and CI support.
 - You MUST NOT store secrets in context artifacts; store only non-secret contracts/mappings.
 
 ## References

@@ -109,15 +109,15 @@ The init pipeline only requires `contextctl.js` for the add-on to be considered 
 
 ## Troubleshooting
 
-### “payload not found”
+### "payload not found"
 If you see an error like:
-- “Context awareness is enabled, but add-on payload is not found ...”
+- "Context awareness is enabled, but add-on payload is not found ..."
 
 Confirm:
 - `addons/context-awareness/payload/` exists
 - or pass the correct root via `apply --addons-root <path>`
 
-### “pack file is missing”
+### "pack file is missing"
 In add-on repos, skill pack enabling uses **pack definition files**:
 
 - `.ai/skills/_meta/packs/<packId>.json`

@@ -5,7 +5,7 @@ A page needs `user`, `settings`, and `permissions`.
 
 ## Pattern
 - Use parallel queries when data is independent.
-- Use dependent queries when one requires another’s output.
+- Use dependent queries when one requires another's output.
 - Prefer a single composed API endpoint only when it reduces complexity and latency meaningfully.
 
 ## Verification

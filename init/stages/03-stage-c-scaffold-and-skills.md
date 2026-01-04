@@ -46,7 +46,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 
 1. Validates the blueprint (same as `validate`)
 2. Optionally validates Stage A docs (when `--require-stage-a` is set)
-3. Applies scaffold (idempotent; “write-if-missing” for docs)
+3. Applies scaffold (idempotent; "write-if-missing" for docs)
 4. Generates config files via `scripts/scaffold-configs.cjs`
 5. If context awareness is enabled in the blueprint:
    - installs missing add-on payload files from `addons/context-awareness/payload/` (copy-if-missing)

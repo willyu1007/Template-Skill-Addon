@@ -1,4 +1,4 @@
-# Manage Project Context — Reference
+# Manage Project Context - Reference
 
 ## Design goals
 

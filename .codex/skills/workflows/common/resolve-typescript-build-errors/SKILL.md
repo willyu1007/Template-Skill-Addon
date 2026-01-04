@@ -1,6 +1,6 @@
 ---
 name: resolve-typescript-build-errors
-description: Resolve TypeScript compilation errors by triaging diagnostics, fixing root causes, and verifying via a clean compile.
+description: Resolve TypeScript compilation errors by grouping diagnostics, fixing root causes first, applying safe fix patterns, and verifying via a clean compile.
 category: workflows/common
 ssot_path: .ai/skills/workflows/common/resolve-typescript-build-errors
 ---

@@ -21,6 +21,7 @@ dev/
     02-architecture.md    # Boundaries, interfaces, risks
     03-implementation-notes.md  # Decisions, changes, rationale
     04-verification.md    # Checks run, results
+    05-pitfalls.md        # Resolved failures, historical lessons, "do-not-repeat" notes
   archive/                # Completed tasks
 ```
 
@@ -31,8 +32,9 @@ dev/
 | `00-overview.md` | Goal, non-goals, current status | On status change |
 | `01-plan.md` | Phases, steps, acceptance criteria | On scope change |
 | `02-architecture.md` | Boundaries, interfaces, key risks | On design decision |
-| `03-implementation-notes.md` | What changed and why | After each milestone |
+| `03-implementation-notes.md` | What changed, why, and open issues (actionable TODOs) | After each milestone |
 | `04-verification.md` | Checks run and results | After each check |
+| `05-pitfalls.md` | Resolved failures, dead ends, historical lessons (not current issues) | After issue is resolved |
 
 ## AI Instructions
 
@@ -40,13 +42,16 @@ dev/
 
 1. Read `dev/active/<task-name>/00-overview.md`
 2. Read `01-plan.md`
-3. Consult other files as needed
+3. Read `05-pitfalls.md` (scan the `do-not-repeat` summary first)
+4. Consult other files as needed
 
 ### During Work
 
 - Update `00-overview.md` status field on state change
 - Append to `03-implementation-notes.md` after milestones
 - Record all verification runs in `04-verification.md`
+- Record pitfalls in `05-pitfalls.md` after resolving a significant error/bug/dead-end (historical lessons, not current issues):
+  - MUST include: symptom, root cause, what was tried, fix/workaround, and a prevention note
 
 ### Workflows
 

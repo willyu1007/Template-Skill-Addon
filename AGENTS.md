@@ -14,8 +14,8 @@ Template repository. Users clone this to start new AI-friendly projects.
 | `addons/` | Optional add-on payloads | `addons/AGENTS.md` |
 | `.ai/` | Skills, scripts, LLM governance | `.ai/AGENTS.md` |
 | `dev/` | Complex task documentation | `dev/AGENTS.md` |
-| `.codex/` | Codex skill stubs (generated) | — |
-| `.claude/` | Claude skill stubs (generated) | — |
+| `.codex/` | Codex skill stubs (generated) | - |
+| `.claude/` | Claude skill stubs (generated) | - |
 
 ## Routing
 

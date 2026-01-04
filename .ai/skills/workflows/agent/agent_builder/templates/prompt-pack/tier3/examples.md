@@ -1,4 +1,4 @@
-# Examples — Tier 3
+# Examples - Tier 3
 
 ## 1. Multi-Step Workflow with Planning
 

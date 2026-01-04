@@ -1,6 +1,6 @@
 ---
 name: test-authenticated-routes
-description: Execute and record end-to-end smoke tests for authenticated API routes, verify database side effects, and add a lightweight implementation review.
+description: Execute and record end-to-end smoke tests for authenticated API routes with sanitized evidence, side-effect verification, and a lightweight implementation review.
 category: workflows/backend
 ssot_path: .ai/skills/workflows/backend/test-authenticated-routes
 ---

@@ -20,7 +20,7 @@ Run this checklist after drafting all Stage A docs, **before** requesting user a
 
 ### A2. User Roles
 
-- [ ] Are all primary users explicitly named (2–5 roles)?
+- [ ] Are all primary users explicitly named (2-5 roles)?
 - [ ] Is there at least one explicit **non-user** (who this is NOT for)?
 - [ ] Are user roles distinguishable (not overlapping or redundant)?
 
@@ -28,7 +28,7 @@ Run this checklist after drafting all Stage A docs, **before** requesting user a
 
 - [ ] Does each MUST requirement have a **testable** acceptance criterion?
 - [ ] Are MUST requirements **independent** (not duplicating each other)?
-- [ ] Are there **3–10** MUST requirements (not too few, not too many)?
+- [ ] Are there **3-10** MUST requirements (not too few, not too many)?
 - [ ] Would a developer know when this requirement is "done"?
 
 ### A4. Out-of-Scope (OUT)

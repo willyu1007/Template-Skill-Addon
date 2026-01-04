@@ -1,6 +1,6 @@
 ---
 name: fix-frontend-runtime-errors
-description: Fix frontend runtime errors by reproducing the issue, inspecting stacks and network calls, applying minimal fixes, and verifying behavior.
+description: Fix frontend runtime errors (console exceptions, blank screens) by capturing repro steps and diagnostics, applying a minimal targeted fix, and verifying user-visible behavior.
 category: workflows/common
 ssot_path: .ai/skills/workflows/common/fix-frontend-runtime-errors
 ---

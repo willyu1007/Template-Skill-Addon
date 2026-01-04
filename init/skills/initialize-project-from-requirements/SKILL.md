@@ -6,7 +6,7 @@ This skill connects the end-to-end initialization flow:
 
 It records an auditable init state throughout the workflow so that each stage has an explicit **validate + user approval** checkpoint.
 
-Goal: a robust, repeatable, rollback-friendly initialization workflow (not “fastest possible”).
+Goal: a robust, repeatable, rollback-friendly initialization workflow (not "fastest possible").
 
 ---
 
@@ -75,7 +75,7 @@ When Context Awareness is enabled and `apply` runs successfully, you will typica
 
 1. Every stage transition requires **validation + explicit user approval**.
    - Validation is recorded in `init/.init-state.json` by pipeline commands
-   - Stage advancement must use `approve` (do not hand-edit the state file to “skip” stages)
+   - Stage advancement must use `approve` (do not hand-edit the state file to "skip" stages)
 2. Do not advance stages without explicit user approval.
 3. Context Awareness add-on is installed **on demand**:
    - Only when `blueprint.addons.contextAwareness: true` will the pipeline attempt installation from `/addons/<addonId>/payload`
@@ -114,7 +114,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
   --written-to init/stage-a-docs/requirements.md
 ```
 
-After the user reviews Stage A docs and explicitly says “approved”, run:
+After the user reviews Stage A docs and explicitly says "approved", run:
 
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage A --repo-root .
@@ -195,7 +195,7 @@ This init pipeline supports add-ons in a minimally invasive way:
 - Default add-on location: `/addons/context-awareness/payload/`
 - `apply --addons-root <path>` changes the add-on root (for example, `third_party/addons`)
 
-The payload is merged into the repo root using a “copy missing only” policy (non-destructive; does not overwrite existing files) to reduce the blast radius.
+The payload is merged into the repo root using a "copy missing only" policy (non-destructive; does not overwrite existing files) to reduce the blast radius.
 
 ---
 
@@ -231,7 +231,7 @@ Phase 1: requirements interview -> Phase 2: tech stack selection -> Phase 3: blu
     -> Phase 4: add-on recommendations -> Phase 5: configuration generation -> run apply
 ```
 
-### Phase 1–4: guided conversation
+### Phase 1-4: guided conversation
 
 Follow the question order in `conversation-prompts.md`:
 
@@ -262,7 +262,7 @@ For these languages, the LLM should generate configs based on `llm-init-guide.md
 - Kotlin -> `build.gradle.kts`
 - .NET -> `*.csproj`, `global.json`
 - Rust -> `Cargo.toml`
-- Other -> follow the language’s standard tooling conventions
+- Other -> follow the language's standard tooling conventions
 
 **LLM generation flow**:
 
