@@ -19,11 +19,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
           
-      - run: npm ci
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
       - name: Security audit
-        run: npm audit --audit-level=high
+        run: pnpm audit --audit-level=high
         
   codeql:
     runs-on: ubuntu-latest
@@ -39,4 +40,3 @@ jobs:
           
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
-

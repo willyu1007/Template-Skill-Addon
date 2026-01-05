@@ -16,14 +16,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
           
-      - run: npm ci
-      - run: npm run build
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       
       # Add your publish steps here
-      # - run: npm publish
+      # - run: pnpm publish
       #   env:
       #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-

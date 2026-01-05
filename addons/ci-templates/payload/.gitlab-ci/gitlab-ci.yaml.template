@@ -14,31 +14,33 @@ variables:
   cache:
     key: ${CI_COMMIT_REF_SLUG}
     paths:
-      - node_modules/
+      - .pnpm-store/
 
 lint:
   extends: .node_template
   stage: lint
   script:
-    - npm ci
-    - npm run lint
+    - corepack enable
+    - pnpm install --frozen-lockfile --store-dir .pnpm-store
+    - pnpm lint
 
 test:
   extends: .node_template
   stage: test
   script:
-    - npm ci
-    - npm test
+    - corepack enable
+    - pnpm install --frozen-lockfile --store-dir .pnpm-store
+    - pnpm test
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
 
 build:
   extends: .node_template
   stage: build
   script:
-    - npm ci
-    - npm run build
+    - corepack enable
+    - pnpm install --frozen-lockfile --store-dir .pnpm-store
+    - pnpm build
   artifacts:
     paths:
       - dist/
     expire_in: 1 week
-
