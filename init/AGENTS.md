@@ -88,6 +88,63 @@ See `addon-docs/context-awareness.md` for details.
 
 ---
 
+## Post-init: Update Root AGENTS.md
+
+After Stage C completes, ask the user if they want to update the root `AGENTS.md` with project-specific info.
+
+### When to ask
+
+At Stage C completion checkpoint, present option: "update agents" to record tech stack in root AGENTS.md.
+
+### What to preserve
+
+The root `AGENTS.md` contains template repo structure that MUST be kept:
+
+| Section | Keep? | Reason |
+|---------|-------|--------|
+| Key Directories table | YES | LLM navigation |
+| Routing table | YES | Task dispatch |
+| Global Rules | YES | Cross-cutting constraints |
+| `.ai/` reference | YES | SSOT location |
+| `dev-docs/` reference | YES | Complex task pattern |
+
+### What to add
+
+From `init/project-blueprint.json`:
+
+| Add | Source field | Example |
+|-----|--------------|---------|
+| Project Type | `project.name`, `project.description` | "my-app - E-commerce platform" |
+| Tech Stack table | `repo.language`, `repo.packageManager`, `repo.layout` | TypeScript, pnpm, monorepo |
+| Enabled capabilities | `capabilities.frontend.enabled`, etc. | frontend, backend, database |
+| Project directories | derived from `repo.layout` | `apps/`, `packages/` or `src/` |
+
+### How to update
+
+1. Read current root `AGENTS.md` and treat the document as a **project doc** (not a template doc).
+2. Replace the template intro paragraph (the one that says this repo is a template) with a 1-2 line project summary.
+3. Update the existing `## Project Type` section body (do NOT add a duplicate section):
+   - `{{project.name}} - {{project.description}}` (one line)
+4. Ensure there is exactly one `## Tech Stack` section:
+   - If the `## Tech Stack` section exists: replace the table with the latest values from the blueprint.
+   - If the `## Tech Stack` section does not exist: insert the `## Tech Stack` section immediately after `## Project Type`.
+5. Update the existing `## Key Directories` table:
+   - Add project code directories first (`src/` or `apps/`/`packages/` based on `repo.layout`).
+   - Preserve the template navigation rows (`.ai/`, `dev-docs/`, etc.) and their entry points.
+6. Preserve `## Routing` and `## Global Rules` content unchanged (these are the critical constraints).
+7. Show a diff and get explicit user approval before writing.
+
+Idempotency: re-running the update SHOULD only refresh values and MUST NOT create duplicate sections/tables.
+
+### Format rules
+
+- One fact per line (semantic density)
+- Use tables for structured data (tech stack, directories)
+- Prefer short terms in tables ("TS" over "TypeScript" is acceptable)
+- No redundant prose; headers provide context
+
+---
+
 ## Cleanup
 
 Only after completion and user confirmation:

@@ -183,7 +183,7 @@ Use `suggest-addons` to get recommendations based on your blueprint capabilities
 
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-addons \
-  --blueprint docs/project/project-blueprint.json --write
+  --blueprint init/project-blueprint.json --write
 ```
 
 See:

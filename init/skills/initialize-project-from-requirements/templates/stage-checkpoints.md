@@ -98,7 +98,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
    ```bash
    node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --repo-root . --providers both
    ```
-2. The user reviews the resulting changes (scaffold/configs/packs/wrappers) and explicitly approves.
+2. The user reviews the resulting changes (scaffold/configs/packs/wrappers/`README.md`) and explicitly approves.
 
 ### Action
 
@@ -107,6 +107,30 @@ Record approval and mark init complete:
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage C --repo-root .
 ```
+
+### Post-init options
+
+After Stage C approval, explicitly ask whether to record key project facts in `AGENTS.md`, then present options:
+
+> Do you want to record the project type, tech stack, and key directories in the root `AGENTS.md`? Reply `"update agents"` to proceed, or reply `"done"` to skip.
+
+| User reply | Action |
+|------------|--------|
+| `"update agents"` | Update root `AGENTS.md` with project info (recommended) |
+| `"cleanup init"` | Archive docs and remove the init kit |
+| `"done"` | Complete initialization without further changes |
+
+**If user says "update agents"**:
+
+1. Read current root `AGENTS.md`
+2. Preserve template repo structure (Key Directories, Routing, Global Rules, `.ai/` reference, `dev-docs/` reference)
+3. Add project-specific info from blueprint:
+   - Replace template intro paragraph + update Project Type section body (`project.name` + `project.description`)
+   - Tech Stack table (`repo.language`, `repo.packageManager`, `repo.layout`, frameworks)
+   - Update Key Directories with project-specific paths
+4. Ensure idempotency: do NOT create duplicate sections/tables on re-run
+5. Follow LLM-friendly doc rules: moderate semantic density, structured tables, token-efficient
+6. Show diff to user before applying
 
 Optional: remove the bootstrap kit (only after completion and user confirmation):
 

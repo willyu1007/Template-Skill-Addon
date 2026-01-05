@@ -14,16 +14,16 @@ Define naming conventions for directories, files, and identifiers with these goa
 
 ## When to use
 
-Use this skill when:
+Use the `naming-conventions` skill when:
 - Creating new directories or files
 - Naming skills, workflows, or commands
 - Reviewing code for naming consistency
 - Setting up CI checks for naming standards
-- **Scripts generating files**: scripts that create new files/directories MUST read this skill first
+- **Scripts generating files**: scripts that create new files/directories MUST read `naming-conventions` first
 
 ### For Scripts
 
-If your script generates files or directories, import or reference this skill to ensure consistent naming:
+If your script generates files or directories, import or reference the `naming-conventions` skill to ensure consistent naming:
 - Skill path: `.ai/skills/standards/naming-conventions/SKILL.md`
 - Apply kebab-case rules to all generated paths
 - Validate output names against the conventions before writing

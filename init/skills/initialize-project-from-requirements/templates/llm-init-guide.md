@@ -18,6 +18,7 @@ The document provides **step-by-step guidance** for an AI assistant to help a us
 4. [Phase 3: Blueprint generation](#phase-3-blueprint-generation)
 5. [Phase 4: Add-on recommendations](#phase-4-add-on-recommendations)
 6. [Phase 5: Configuration generation](#phase-5-configuration-generation)
+7. [Post-init: Record key info in AGENTS.md](#post-init-record-key-info-in-agentsmd)
 7. [Decision tree reference](#decision-tree-reference)
 
 ---
@@ -424,6 +425,22 @@ check capabilities
     ├── multi-environment → deployment
     └── versioning → release
 ```
+
+---
+
+## Post-init: Record key info in AGENTS.md
+
+After the user approves the Stage C results (scaffold/config/packs/wrappers/`README.md`), explicitly ask:
+
+> Do you want to record the project type, tech stack, and key directories in the root `AGENTS.md`? (yes/no)
+
+If user says "yes":
+
+1. Update root `AGENTS.md` with project-specific facts from the blueprint.
+2. Preserve the template repo structure and constraints (Key Directories, Routing, Global Rules, `.ai/`, `dev-docs/`).
+3. Show a diff and request explicit approval before writing.
+
+If user says "no": proceed without changing `AGENTS.md`.
 
 ---
 

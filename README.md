@@ -56,7 +56,7 @@ This template includes opt-in add-ons under `addons/` (kept out of the default p
 
 - `addons/context-awareness/` provides a context layer (`docs/context/`) and scripts that force all context updates through reproducible commands.
 
-Enable via `docs/project/project-blueprint.json`:
+Enable via `init/project-blueprint.json`:
 
 ```json
 {

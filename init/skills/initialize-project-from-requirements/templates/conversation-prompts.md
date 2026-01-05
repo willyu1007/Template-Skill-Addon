@@ -19,7 +19,7 @@
 
 ## A. MUST-ask (minimal set)
 
-Ask the following questions before writing the first draft of `docs/project/requirements.md`:
+Ask the following questions before writing the first draft of `init/stage-a-docs/requirements.md`:
 
 1. **One-line purpose**
    - "In one sentence, what problem does this project solve, for whom, and what is the main outcome?"
@@ -59,7 +59,7 @@ Ask if the project has `capabilities.api.style != "none"` or has external integr
 - Rate limiting / abuse controls (if public)
 
 Write to:
-- Stage A: `docs/project/requirements.md` (high-level)
+- Stage A: `init/stage-a-docs/requirements.md` (high-level)
 - Stage B: `capabilities.api.*`
 
 ### B2. Database module (if persistent data exists)
@@ -73,7 +73,7 @@ Ask if `capabilities.database.enabled == true`.
 - Backup / restore requirements
 
 Write to:
-- Stage A: `docs/project/non-functional-requirements.md` + `requirements.md` (entities)
+- Stage A: `init/stage-a-docs/non-functional-requirements.md` + `requirements.md` (entities)
 - Stage B: `capabilities.database.*`
 
 ### B3. BPMN / process module (if business workflows matter)
@@ -87,7 +87,7 @@ Ask if `capabilities.bpmn.enabled == true`.
 - Audit needs (who did what, when)
 
 Write to:
-- Stage A: `docs/project/requirements.md` + `risk-open-questions.md`
+- Stage A: `init/stage-a-docs/requirements.md` + `risk-open-questions.md`
 - Optional future artifact: `docs/context/process/*.bpmn`
 
 ### B4. CI / quality module (if the project will be maintained)
@@ -101,7 +101,7 @@ Ask if `quality.ci.enabled == true` or `quality.testing.enabled == true`.
 - Release cadence expectations
 
 Write to:
-- Stage A: `docs/project/non-functional-requirements.md`
+- Stage A: `init/stage-a-docs/non-functional-requirements.md`
 - Stage B: `quality.*`
 
 ## C. Answer → Artifact mapping cheat sheet
@@ -189,7 +189,7 @@ Ask if:
 → If YES: Enable `addons.observability: true`
 
 Write add-on decisions to:
-- Stage B: `addons.*` section in `docs/project/project-blueprint.json`
+- Stage B: `addons.*` section in `init/project-blueprint.json`
 
 ## E. Technology Stack Selection
 

@@ -106,7 +106,7 @@ Run the checklist after `apply` command, **before** cleanup.
 
 - [ ] Does the generated directory structure match `repo.layout`?
 - [ ] Are placeholder READMEs meaningful (not just "TODO")?
-- [ ] Are no existing files overwritten?
+- [ ] Are no existing files overwritten unexpectedly? (Root `README.md` rewrite is expected.)
 
 ### C2. Skills Sync
 

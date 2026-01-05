@@ -4,8 +4,8 @@
  *
  * Dependency-free helper for a 3-stage, verifiable init pipeline:
  *
- *   Stage A: requirements docs under `docs/project/`
- *   Stage B: blueprint JSON at `docs/project/project-blueprint.json`
+ *   Stage A: requirements docs under `init/stage-a-docs/` (archived to `docs/project/` via cleanup-init --archive)
+ *   Stage B: blueprint JSON at `init/project-blueprint.json` (archived to `docs/project/project-blueprint.json` via cleanup-init --archive)
  *   Stage C: minimal scaffold + skill pack manifest update + wrapper sync
  *
  * Commands:
@@ -356,15 +356,15 @@ function printStatus(state, repoRoot) {
     }
   } else if (progress.stage === 'B') {
     if (!stage_b.validated) {
-      console.log('│    1. Create docs/project/project-blueprint.json');
-      console.log('│    2. Run: validate --blueprint docs/project/project-blueprint.json');
+      console.log('│    1. Edit init/project-blueprint.json');
+      console.log('│    2. Run: validate --blueprint init/project-blueprint.json');
     } else if (!stage_b.userApproved) {
       console.log('│    Have the user review the blueprint and explicitly approve');
       console.log('│    Then run: advance');
     }
   } else if (progress.stage === 'C') {
     if (!stage_c.wrappersSynced) {
-      console.log('│    Run: apply --blueprint docs/project/project-blueprint.json');
+      console.log('│    Run: apply --blueprint init/project-blueprint.json');
     } else if (!stage_c.userApproved) {
       console.log('│    Initialization is mostly complete; ask the user to confirm');
       console.log('│    Then optionally run: cleanup-init --apply --i-understand');
@@ -719,6 +719,12 @@ function generateProjectReadme(repoRoot, blueprint, apply) {
   conditionalBlock('BACKEND_FRAMEWORK', caps.backend?.framework, caps.backend?.enabled);
   conditionalBlock('DATABASE_KIND', caps.database?.kind, caps.database?.enabled);
   conditionalBlock('API_STYLE', caps.api?.style, !!caps.api?.style);
+
+  // Table-friendly values (avoid empty cells in README templates)
+  replace('FRONTEND_FRAMEWORK', caps.frontend?.enabled ? (caps.frontend?.framework || 'TBD') : 'none');
+  replace('BACKEND_FRAMEWORK', caps.backend?.enabled ? (caps.backend?.framework || 'TBD') : 'none');
+  replace('DATABASE_KIND', caps.database?.enabled ? (caps.database?.kind || 'TBD') : 'none');
+  replace('API_STYLE', caps.api?.style || 'none');
   
   // Language-specific blocks
   const isNode = ['typescript', 'javascript'].includes(repo.language);
@@ -1606,7 +1612,7 @@ function main() {
 	    const stage_c = progress['stage-c'] || {};
 	    const self = path.relative(repoRoot, __filename);
 	    const docsRel = path.relative(repoRoot, docsRoot);
-	    const bpRel = blueprintPath ? path.relative(repoRoot, blueprintPath) : 'docs/project/project-blueprint.json';
+	    const bpRel = blueprintPath ? path.relative(repoRoot, blueprintPath) : 'init/project-blueprint.json';
 
 	    if (progress.stage === 'A') {
 	      if (!stage_a.validated) {
