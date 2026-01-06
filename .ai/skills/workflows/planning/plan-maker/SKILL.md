@@ -1,35 +1,21 @@
 ---
 name: plan-maker
-description: Create a goal-aligned macro-level roadmap (dev-docs/active/<task>/roadmap.md) by asking clarifying questions when needed; planning only (no code changes).
+description: Create a goal-aligned macro-level roadmap (dev-docs/active/<task>/roadmap.md) by asking clarifying questions when needed; planning only (no code changes); triggers: plan/roadmap/milestones/implementation plan.
 ---
 
 # Plan Maker
 
 ## Purpose
-Produce a single, goal-aligned **roadmap** as a Markdown document that can guide execution without modifying the codebase. The roadmap captures "what to do, how to phase it, and how to verify success" at the macro level.
-
-## Relationship to dev-docs
-
-The plan-maker skill produces a **macro-level roadmap**; the `create-dev-docs-plan` skill produces **implementation-level documentation**. They are upstream/downstream:
-
-| Dimension | plan-maker (roadmap.md) | dev-docs (01-plan.md etc.) |
-|-----------|-------------------------|----------------------------|
-| Level | Macro planning | Implementation execution |
-| Content | Goals, non-goals, milestones, acceptance criteria, risks, rollback | Step details, architecture, decisions, verification evidence |
-| Timing | Before task starts | During implementation |
-| Update frequency | Low (directional changes only) | High (progress, decisions, issues) |
-| Audience | Decision-makers, collaborators | Implementers, handoff recipients |
-
-**Do not duplicate**: if a `roadmap.md` exists, `dev-docs` should reference it rather than redefine goals and milestones.
+Produce a single, goal-aligned macro-level roadmap as a Markdown document that can guide execution without modifying the codebase.
 
 ## When to use
-Use this skill when:
-- The user asks for a plan, roadmap, milestones, or an implementation plan before coding
+Use the plan-maker skill when:
+- The user asks for a plan/roadmap/milestones/implementation plan (规划/方案/路线图/里程碑/实施计划) before coding
 - The task is large/ambiguous and benefits from staged execution and verification
 - You need a roadmap artifact saved under `dev-docs/active/` for collaboration and handoff
 
-Avoid plan-maker when:
-- The user explicitly wants you to implement changes immediately (plan-maker is planning-only)
+Avoid the skill when:
+- The change is trivial (<30 min) and does not benefit from staged execution/verification
 - A roadmap already exists and only minor edits are needed (update the existing roadmap instead)
 
 ## Inputs
@@ -48,9 +34,8 @@ Avoid plan-maker when:
 3. Propose a `<task>` slug and confirm it with the user.
    - Use kebab-case; avoid dates unless requested.
 4. Draft the roadmap using `./templates/roadmap.md`.
-   - Keep the roadmap macro-level: phases, milestones, deliverables, verification, risks, rollback.
+   - Keep it macro-level: phases, milestones, deliverables, verification, risks, rollback.
    - Only include specific file paths/APIs when you have evidence; otherwise add a discovery step.
-   - Include an explicit "Open questions / Assumptions" section.
    - Include an "Optional detailed documentation layout (convention)" section that declares the expected file layout under `dev-docs/active/<task>/` without creating those files.
 5. Save the roadmap to `dev-docs/active/<task>/roadmap.md`.
 6. Return a short handoff message to the user:
@@ -70,8 +55,13 @@ Avoid plan-maker when:
 - MUST NOT modify application/source code, project configuration, or database state
 - MUST ask clarifying questions when the goal or constraints are ambiguous
 - MUST NOT invent project-specific facts (APIs, file paths, schemas) without evidence
-- SHOULD keep the roadmap macro-level; deep design details belong in separate documentation artifacts (dev-docs)
+- If the user asks to implement immediately but the task is non-trivial, produce the roadmap first, then ask for confirmation to proceed with execution in a follow-up turn.
+- If the task meets the dev-docs Decision Gate, `roadmap.md` SHOULD be treated as an input to `create-dev-docs-plan` (the roadmap is not a substitute for the full bundle).
+- SHOULD keep the roadmap macro-level; deep design details belong in separate documentation artifacts
 - SHOULD NOT include secrets (credentials, tokens, private keys) in the roadmap
+- PRODUCES macro-level roadmaps: milestones, phases, scope, impact, risks, rollback strategy
+- DOES NOT produce implementation-level documentation (architecture diagrams, step-by-step code guides, pitfalls logs)
+- The roadmap is a planning artifact; detailed implementation docs belong to a separate documentation bundle
 
 ## Included assets
 - Template: `./templates/roadmap.md`

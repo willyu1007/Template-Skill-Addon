@@ -1,6 +1,6 @@
 ---
 name: plan-code-refactors
-description: Plan code refactors by defining goals/non-goals, mapping dependencies, sequencing phases, and specifying verification and rollback checkpoints.
+description: Plan code refactors by defining goals/non-goals, mapping dependencies, sequencing phases, and specifying verification and rollback checkpoints; triggers: refactor plan/restructure/rename/move modules.
 ---
 
 # Plan Code Refactors
@@ -44,7 +44,7 @@ Use this skill when:
    - introduce new abstractions
 5. Sequence phases:
    - small, buildable increments
-   - explicit checkpoints where the codebase is "green"
+   - explicit checkpoints where the codebase is “green”
 6. Define verification per phase:
    - commands to run
    - expected outcomes

@@ -1,6 +1,6 @@
 ---
 name: review-implementation-plans
-description: Review implementation plans for completeness, feasibility, risks, dependencies, rollout/rollback, and concrete verification before execution.
+description: Review implementation plans for completeness, feasibility, risks, dependencies, rollout/rollback, and concrete verification before execution; triggers: plan review/design review.
 ---
 
 # Review Implementation Plans
@@ -79,7 +79,7 @@ Avoid using this skill when:
 - MUST NOT approve a plan with undefined verification or success criteria
 - MUST NOT ignore auth/permission, privacy, or data migration risk
 - MUST NOT omit rollback/backout for high-risk changes
-- SHOULD keep feedback concrete (avoid vague "consider X")
+- SHOULD keep feedback concrete (avoid vague “consider X”)
 - SHOULD prioritize high-risk gaps over minor style issues
 
 ## Included assets

@@ -1,6 +1,6 @@
 ---
 name: update-dev-docs-for-handoff
-description: Update an existing dev-docs task bundle with progress, decisions, pitfalls, and verification evidence to enable clean handoff, context recovery, or archival.
+description: Update an existing dev-docs task bundle with progress, decisions, pitfalls, and verification evidence to enable clean handoff, context recovery, or archival; triggers: handoff/update task docs/context reset/archive.
 category: workflows/dev-docs
 ssot_path: .ai/skills/workflows/dev-docs/update-dev-docs-for-handoff
 ---

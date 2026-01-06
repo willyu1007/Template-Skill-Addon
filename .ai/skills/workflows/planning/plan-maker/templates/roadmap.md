@@ -1,4 +1,4 @@
-# <Task Title> - Roadmap
+# <Task Title> — Roadmap
 
 ## Goal
 - <One-sentence goal statement>
@@ -31,7 +31,7 @@
 ## Step-by-step plan (phased)
 > Keep each step small, verifiable, and reversible.
 
-### Phase 0 - Discovery (if needed)
+### Phase 0 — Discovery (if needed)
 - Objective: <what you need to learn/confirm>
 - Deliverables:
   - <notes, diagrams, list of files>
@@ -40,7 +40,7 @@
 - Rollback:
   - N/A (no code changes)
 
-### Phase 1 - <name>
+### Phase 1 — <name>
 - Objective:
 - Deliverables:
   - <...>
@@ -49,7 +49,7 @@
 - Rollback:
   - <how to revert if this phase causes issues>
 
-### Phase 2 - <name>
+### Phase 2 — <name>
 - Objective:
 - Deliverables:
 - Verification:
@@ -71,7 +71,7 @@
 | <risk> | <low/med/high> | <low/med/high> | <...> | <...> | <...> |
 
 ## Optional detailed documentation layout (convention)
-If you maintain detailed dev documentation for this task, the repository convention is:
+If you maintain a detailed dev documentation bundle for the task, the repository convention is:
 
 ```
 dev-docs/active/<task>/
@@ -84,7 +84,7 @@ dev-docs/active/<task>/
   05-pitfalls.md
 ```
 
-The roadmap document can be used as the macro-level input for the implementation docs. The plan-maker skill does not create or update those files.
+The roadmap document can be used as the macro-level input for the other files. The plan-maker skill does not create or update those files.
 
 Suggested mapping:
 - The roadmap's **Goal/Non-goals/Scope** → `00-overview.md`
@@ -92,10 +92,10 @@ Suggested mapping:
 - The roadmap's **Architecture direction (high level)** → `02-architecture.md`
 - Decisions/deviations during execution → `03-implementation-notes.md`
 - The roadmap's **Verification** → `04-verification.md`
-- Resolved failures and dead ends → `05-pitfalls.md`
 
 ## To-dos
 - [ ] Confirm open questions
 - [ ] Confirm milestone ordering and DoD
 - [ ] Confirm verification/acceptance criteria
 - [ ] Confirm rollout/rollback strategy
+

@@ -1,4 +1,4 @@
-# Add Feature Flag for New Checkout - Roadmap
+# Add Feature Flag for New Checkout — Roadmap
 
 ## Goal
 - Introduce a feature flag to safely roll out the new checkout flow to a subset of users, with a clean rollback path.
@@ -34,7 +34,7 @@
 
 ## Step-by-step plan (phased)
 
-### Phase 0 - Discovery
+### Phase 0 — Discovery
 - Objective: Confirm existing flag provider and integration points
 - Deliverables:
   - List of current flag usage locations
@@ -44,7 +44,7 @@
 - Rollback:
   - N/A
 
-### Phase 1 - Flag scaffolding
+### Phase 1 — Flag scaffolding
 - Objective: Create the flag and wire evaluation
 - Deliverables:
   - Feature flag defined with default OFF
@@ -55,7 +55,7 @@
 - Rollback:
   - Revert wiring commit; flag can remain unused
 
-### Phase 2 - Gate the new checkout
+### Phase 2 — Gate the new checkout
 - Objective: Ensure all user-visible switches are flag-controlled
 - Deliverables:
   - Conditional routing to new checkout when flag ON
@@ -67,7 +67,7 @@
 - Rollback:
   - Disable flag globally; revert conditional routing if needed
 
-### Phase 3 - Rollout and monitoring
+### Phase 3 — Rollout and monitoring
 - Objective: Ramp safely with metrics and rollback
 - Deliverables:
   - Rollout schedule (1% → 10% → 50% → 100%)
@@ -92,7 +92,7 @@
 | Partial gating causes inconsistent state | low | high | centralize routing decision | e2e tests | disable flag |
 
 ## Optional detailed documentation layout (convention)
-If detailed documentation is required, create:
+If a detailed bundle is required, create:
 
 ```
 dev-docs/active/<task>/
@@ -109,3 +109,4 @@ dev-docs/active/<task>/
 - [ ] Confirm flag system and rollout capability
 - [ ] Confirm success metrics and dashboards
 - [ ] Confirm rollout schedule and owners
+
