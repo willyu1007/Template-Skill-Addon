@@ -63,7 +63,7 @@ Stage C `apply` materializes enabled features by copying templates into the repo
 - Root `README.md` may be generated from the blueprint when `scripts/templates/README.template.md` is present
 - Skills selection (SSOT):
   - `.ai/skills/_meta/sync-manifest.json` (flat schema: `version/includePrefixes/includeSkills/excludeSkills`)
-  - If `.ai/scripts/skillsctl.js` exists, pack toggles must be done via skillsctl
+  - If `.ai/skills/_meta/skillpacksctl.js` exists, pack toggles must be done via skillpacksctl
 - Provider wrappers generated/updated:
   - `node .ai/scripts/sync-skills.cjs` (supports `--providers`)
 
@@ -179,11 +179,9 @@ After Stage C approval, generate and fill the skill retention table:
 4) Preview deletions, then confirm and delete:
 
 ```bash
-node .ai/scripts/delete-skills.cjs --dry-run --skills "<csv>"
-node .ai/scripts/delete-skills.cjs --skills "<csv>" --yes
+node .ai/scripts/sync-skills.cjs --dry-run --delete-skills "<csv>"
+node .ai/scripts/sync-skills.cjs --delete-skills "<csv>" --yes
 ```
-
-(`delete-skills.cjs` is an alias of `delete-skill.cjs`.)
 
 ### Optional: prune unused feature tooling (tests/scripts)
 
@@ -194,7 +192,7 @@ This template ships:
 
 Initialization does **not** auto-delete these. If the user explicitly does not need the corresponding feature packs, you MAY remove the related paths (after confirmation), for example:
 
-- DB mirror tooling: `.ai/scripts/dbctl.js`, `.ai/scripts/migrate.js`
+- DB mirror tooling: `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js`, `.ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js`
 - Deployment tooling: `.ai/scripts/deployctl.js`, `.ai/scripts/rollback.js`
 - Packaging tooling: `.ai/scripts/packctl.js`
 - Release tooling: `.ai/scripts/releasectl.js`
@@ -247,7 +245,7 @@ Optional (configuration only; does not trigger enabling):
 - `.ai/scripts/projectctl.js`
   - `init`: initializes `.ai/project/state.json` (idempotent)
   - `set-context-mode <contract|snapshot>`: sets the context mode
-- `.ai/scripts/skillsctl.js`
+- `.ai/skills/_meta/skillpacksctl.js`
   - `enable-pack <packId> --no-sync`: enables a pack (writes manifest)
 
 For full details, see `.ai/skills/features/context-awareness/`.

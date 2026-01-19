@@ -47,13 +47,13 @@ When enabled, Stage C:
 - Runs:
 
 ```bash
-node .ai/scripts/dbctl.js init --repo-root .
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js init --repo-root .
 ```
 
 - Optional verification (when Stage C is run with `--verify-features`):
 
 ```bash
-node .ai/scripts/dbctl.js verify --repo-root .
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js verify --repo-root .
 ```
 
 2) If `db.ssot=repo-prisma`:

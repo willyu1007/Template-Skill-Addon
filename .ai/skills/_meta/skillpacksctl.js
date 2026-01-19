@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * skillsctl.js
+ * skillpacksctl.js
  *
- * Skills pack management and wrapper synchronization for the Context Awareness feature.
+ * Skill packs controller (packs state + `.ai/skills/_meta/*` + wrapper sync).
  * This is the "scheme A" controller for pack-based skill management.
  *
  * Commands:
@@ -25,7 +25,7 @@ import { spawn } from 'node:child_process';
 function usage(exitCode = 0) {
   const msg = `
 Usage:
-  node .ai/scripts/skillsctl.js <command> [options]
+  node .ai/skills/_meta/skillpacksctl.js <command> [options]
 
 Commands:
   help
@@ -61,11 +61,11 @@ Commands:
     Synchronize provider wrappers.
 
 Examples:
-  node .ai/scripts/skillsctl.js status
-  node .ai/scripts/skillsctl.js enable-pack backend --providers both
-  node .ai/scripts/skillsctl.js disable-pack frontend
-  node .ai/scripts/skillsctl.js list-packs
-  node .ai/scripts/skillsctl.js sync --providers both
+  node .ai/skills/_meta/skillpacksctl.js status
+  node .ai/skills/_meta/skillpacksctl.js enable-pack backend --providers both
+  node .ai/skills/_meta/skillpacksctl.js disable-pack frontend
+  node .ai/skills/_meta/skillpacksctl.js list-packs
+  node .ai/skills/_meta/skillpacksctl.js sync --providers both
 `;
   console.log(msg.trim());
   process.exit(exitCode);
@@ -309,7 +309,7 @@ async function cmdEnablePack(repoRoot, packId, providers, noSync, syncMode, yes)
 
   const packInfo = getPackInfo(repoRoot, packId);
   if (!packInfo) {
-    die(`[error] Pack "${packId}" not found. Run: skillsctl list-packs`);
+    die(`[error] Pack "${packId}" not found. Run: node .ai/skills/_meta/skillpacksctl.js list-packs`);
   }
 
   const manifest = loadManifest(repoRoot);
@@ -348,7 +348,7 @@ async function cmdDisablePack(repoRoot, packId, providers, noSync, syncMode, yes
 
   const packInfo = getPackInfo(repoRoot, packId);
   if (!packInfo) {
-    die(`[error] Pack "${packId}" not found. Run: skillsctl list-packs`);
+    die(`[error] Pack "${packId}" not found. Run: node .ai/skills/_meta/skillpacksctl.js list-packs`);
   }
 
   const manifest = loadManifest(repoRoot);

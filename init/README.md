@@ -128,7 +128,7 @@ Stage C `apply` materializes a feature by copying templates into the repo (when 
 | Feature | Blueprint toggle | Materializes | Control script(s) |
 |---------|------------------|--------------|----------------|
 | Context awareness | `features.contextAwareness` | `docs/context/**`, `config/environments/**` | `.ai/scripts/contextctl.js` |
-| Database | `features.database` (requires `db.ssot != none`) | `db/**` (when `db.ssot=database`), `prisma/**` (when `db.ssot=repo-prisma`) | `.ai/scripts/dbctl.js` (when `db.ssot=database`); `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.cjs` (human interface) |
+| Database | `features.database` (requires `db.ssot != none`) | `db/**` (when `db.ssot=database`), `prisma/**` (when `db.ssot=repo-prisma`) | `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js` (when `db.ssot=database`); `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.cjs` (human interface) |
 | UI | `features.ui` | `ui/**`, `docs/context/ui/**` | `python3 .ai/skills/features/ui/ui-system-bootstrap/scripts/ui_specctl.py` |
 | Environment | `features.environment` | `env/**` (+ generated non-secret docs when `--verify-features`) | `python3 .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py` |
 | Packaging | `features.packaging` | `ops/packaging/**`, `docs/packaging/**` | `.ai/scripts/packctl.js` |

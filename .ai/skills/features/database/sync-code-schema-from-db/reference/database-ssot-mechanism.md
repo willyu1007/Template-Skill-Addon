@@ -38,7 +38,7 @@
 
 4. Import the Prisma schema into the repo mirror:
 
-- `node .ai/scripts/dbctl.js import-prisma`
+- `node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js import-prisma`
 
 5. Refresh LLM context contract:
 

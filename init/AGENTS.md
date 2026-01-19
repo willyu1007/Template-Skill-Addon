@@ -99,13 +99,17 @@ See `.ai/skills/features/context-awareness/` for details.
 
 After Stage C completes, ensure `init/skill-retention-table.template.md` exists (generated from the template). Fill the table with skills from `.ai/skills/` and translate the Description column if needed. Ask the user which skills to keep/delete (record TBD if undecided).
 
-Confirm deletions **before** running (alias of `delete-skill.cjs`):
+Confirm deletions **before** running:
 
 ```bash
-node .ai/scripts/delete-skills.cjs --dry-run --skills "<csv>"
+node .ai/scripts/sync-skills.cjs --dry-run --delete-skills "<csv>"
 ```
 
-After confirmation, re-run with `--yes` to delete. Optional removals (like `agent_builder`) should go through the same flow.
+After confirmation, re-run with `--yes` to delete. Optional removals (like `agent_builder`) should go through the same flow:
+
+```bash
+node .ai/scripts/sync-skills.cjs --delete-skills "<csv>" --yes
+```
 
 ---
 

@@ -24,7 +24,7 @@ import path from 'node:path';
 function usage(exitCode = 0) {
   const msg = `
 Usage:
-  node .ai/scripts/migrate.js <command> [options]
+  node .ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js <command> [options]
 
 Commands:
   list
@@ -56,10 +56,10 @@ Commands:
     Mark a migration as pending (for tracking).
 
 Examples:
-  node .ai/scripts/migrate.js list
-  node .ai/scripts/migrate.js status --env staging
-  node .ai/scripts/migrate.js plan --env prod
-  node .ai/scripts/migrate.js mark-applied --migration 20241228120000_add_users.sql --env staging
+  node .ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js list
+  node .ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js status --env staging
+  node .ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js plan --env prod
+  node .ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js mark-applied --migration 20241228120000_add_users.sql --env staging
 
 Note: This script does NOT execute migrations. Humans must run them manually.
 The script helps track which migrations have been applied to each environment.
@@ -213,7 +213,7 @@ function cmdList(repoRoot, format) {
 
   if (migrations.length === 0) {
     console.log('  (no migrations found)');
-    console.log('  Run: node .ai/scripts/dbctl.js generate-migration --name <name>');
+    console.log('  Run: node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js generate-migration --name <name>');
     return;
   }
 
@@ -294,7 +294,7 @@ function cmdPlan(repoRoot, env) {
   console.log('  1. Review each migration file carefully');
   console.log('  2. Backup your database before applying');
   console.log('  3. Apply migrations in order using your preferred tool');
-  console.log('  4. Run: node .ai/scripts/migrate.js mark-applied --migration <file> --env ' + env);
+  console.log('  4. Run: node .ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js mark-applied --migration <file> --env ' + env);
 }
 
 function cmdMarkApplied(repoRoot, migration, env) {

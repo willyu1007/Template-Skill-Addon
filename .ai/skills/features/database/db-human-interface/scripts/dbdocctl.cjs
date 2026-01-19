@@ -2041,7 +2041,7 @@ function renderRunbookDoc({ schemaMeta, idx, objectLabel, dbops }) {
     '- Run workflow skill `sync-code-schema-from-db` (DB → Prisma → mirror → context).',
     '- Or run the underlying commands (if your process allows):',
     '  - `npx prisma db pull` (human, correct env)',
-    '  - `node .ai/scripts/dbctl.js import-prisma`',
+    '  - `node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js import-prisma`',
     '  - `node .ai/scripts/dbssotctl.js sync-to-context`'
   ].join('\n');
 

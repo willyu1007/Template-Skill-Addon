@@ -8,7 +8,7 @@ Use the example when the user mentions:
 - EAS builds
 - iOS simulator / Android emulator issues
 
-The guide is an **example**. Prefer the project's own README/scripts when available.
+Example guide only. Prefer the project's own README/scripts when available.
 
 ## Where to look for logs
 
@@ -17,6 +17,7 @@ The guide is an **example**. Prefer the project's own README/scripts when availa
   - JavaScript stack traces
   - bundling errors
   - some runtime logs
+- If this terminal is IDE-integrated, prefer auto-collection (reply `DONE` after repro; see `examples/ide-terminal-hook.md`).
 
 If the project has a custom script, use that rather than guessing the command.
 

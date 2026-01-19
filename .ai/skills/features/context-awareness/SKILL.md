@@ -25,11 +25,11 @@ When enabled (typically during init), the feature **materializes** these paths i
 - `docs/context/**` (contracts + registry)
 - `config/environments/**` (environment config templates; no secrets)
 
-And it assumes these controller scripts exist (they are part of the template SSOT under `.ai/scripts/`):
+And it assumes these controller scripts exist (they are part of the template SSOT under `.ai/`):
 
 - `node .ai/scripts/contextctl.js` — context registry + artifacts + env registry
 - `node .ai/scripts/projectctl.js` — project state (`.ai/project/state.json`)
-- `node .ai/scripts/skillsctl.js` — skill pack switching + wrapper sync
+- `node .ai/skills/_meta/skillpacksctl.js` — skill pack switching + wrapper sync
 
 ## Canonical entry points for LLMs
 

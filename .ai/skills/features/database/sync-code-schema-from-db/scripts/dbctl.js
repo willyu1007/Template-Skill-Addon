@@ -13,8 +13,8 @@
  *
  * Typical flow (human + LLM):
  * 1) Human runs: prisma db pull ...  (updates prisma/schema.prisma)
- * 2) LLM/human runs: node .ai/scripts/dbctl.js import-prisma
- * 3) LLM/human runs: node .ai/scripts/dbctl.js sync-to-context
+ * 2) LLM/human runs: node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js import-prisma
+ * 3) LLM/human runs: node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js sync-to-context
  */
 
 import fs from 'node:fs';
@@ -28,12 +28,12 @@ import {
   parsePrismaSchema,
   buildNormalizedDbSchema,
   normalizeDbMirrorSchema
-} from './lib/normalized-db-schema.js';
+} from '../../../../../scripts/lib/normalized-db-schema.js';
 
 function usage(exitCode = 0) {
   const msg = `
 Usage:
-  node .ai/scripts/dbctl.js <command> [options]
+  node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js <command> [options]
 
 Commands:
   help
@@ -153,7 +153,7 @@ function cmdInit(repoRoot) {
       database: { kind: 'relational', dialect: 'generic', name: '', schemas: [] },
       enums: [],
       tables: [],
-      notes: 'DB mirror skeleton. Populate via: node .ai/scripts/dbctl.js import-prisma'
+      notes: 'DB mirror skeleton. Populate via: node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js import-prisma'
     });
     writeJson(p.mirrorPath, mirror);
   }

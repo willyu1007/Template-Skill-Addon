@@ -18,6 +18,7 @@ const colors = {
   green: (s) => `\x1b[32m${s}\x1b[0m`,
   gray: (s) => `\x1b[90m${s}\x1b[0m`,
   red: (s) => `\x1b[31m${s}\x1b[0m`,
+  yellow: (s) => `\x1b[33m${s}\x1b[0m`,
 };
 
 function printHelp() {
@@ -35,7 +36,12 @@ function printHelp() {
     '  --manifest <path>                     JSON manifest (for --scope current)',
     '  --mode <reset|update>                 reset deletes provider roots; update is incremental (default: reset)',
     '  --prune                               With --mode update: delete wrappers not in selected set (destructive)',
-    '  --delete <csv>                        Delete wrapper(s) only (no SSOT changes)',
+    '  --delete <csv>                        Delete wrapper(s) only (no SSOT changes) (alias: --delete-wrappers)',
+    '  --delete-wrappers <csv>               Delete wrapper(s) only (no SSOT changes)',
+    '  --delete-skills <csv>                 Delete skill(s) from SSOT and/or providers (see --delete-scope)',
+    '  --delete-scope <all|ssot|providers>   Deletion scope for --delete-skills (default: all)',
+    '  --clean-empty                         With --delete-skills: remove empty parent dirs after deletion',
+    '  --[no-]update-meta                    With --delete-skills: update .ai/skills/_meta/sync-manifest.json (default: update)',
     '  --list                                List discovered skills (respects --scope filters)',
     '  --dry-run                             Print actions without writing',
     '  --yes                                 Required for destructive operations (reset/prune/delete), unless --dry-run',
@@ -280,7 +286,11 @@ function parseArgs(argv) {
     dryRun: false,
     yes: false,
     specificSkills: [],
-    deleteSkills: [],
+    deleteWrappers: [],
+    deleteSkillDirs: [],
+    deleteScope: 'all',
+    cleanEmpty: false,
+    updateMeta: true,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -335,9 +345,31 @@ function parseArgs(argv) {
       i += 1;
       continue;
     }
-    if (a === '--delete') {
-      args.deleteSkills.push(...parseCsv(argv[i + 1] || ''));
+    if (a === '--delete' || a === '--delete-wrappers') {
+      args.deleteWrappers.push(...parseCsv(argv[i + 1] || ''));
       i += 1;
+      continue;
+    }
+    if (a === '--delete-skills') {
+      args.deleteSkillDirs.push(...parseCsv(argv[i + 1] || ''));
+      i += 1;
+      continue;
+    }
+    if (a === '--delete-scope') {
+      args.deleteScope = String(argv[i + 1] || '').toLowerCase();
+      i += 1;
+      continue;
+    }
+    if (a === '--clean-empty') {
+      args.cleanEmpty = true;
+      continue;
+    }
+    if (a === '--update-meta') {
+      args.updateMeta = true;
+      continue;
+    }
+    if (a === '--no-update-meta') {
+      args.updateMeta = false;
       continue;
     }
 
@@ -501,6 +533,248 @@ function deleteWrappers({ providers, skillNames, dryRun, allSkills }) {
   }
 }
 
+function resolveSafeChildDir(rootDir, relPath) {
+  const absRoot = path.resolve(rootDir);
+  const absTarget = path.resolve(rootDir, String(relPath || ''));
+  const rel = path.relative(absRoot, absTarget);
+  if (!rel || rel === '.' || rel.startsWith('..') || path.isAbsolute(rel)) {
+    return null;
+  }
+  return absTarget;
+}
+
+function cleanEmptyParents(dirPath, stopAt) {
+  let current = path.dirname(dirPath);
+  const stopAtAbs = path.resolve(stopAt);
+
+  while (current !== stopAtAbs && current.startsWith(stopAtAbs)) {
+    try {
+      const entries = fs.readdirSync(current);
+      if (entries.length === 0) {
+        fs.rmdirSync(current);
+      } else {
+        break;
+      }
+    } catch {
+      break;
+    }
+    current = path.dirname(current);
+  }
+}
+
+function deleteDirSafe(rootDir, relPath, label, options) {
+  const { dryRun, cleanEmpty, stopAt } = options;
+
+  const targetDir = resolveSafeChildDir(rootDir, relPath);
+  if (!targetDir) {
+    console.log(colors.red(`  [!] ${label}: path traversal blocked (${relPath})`));
+    return { deleted: false, reason: 'blocked' };
+  }
+
+  if (!fs.existsSync(targetDir)) {
+    console.log(colors.gray(`  [-] ${label}: not present`));
+    return { deleted: false, reason: 'not_found' };
+  }
+
+  if (dryRun) {
+    console.log(colors.yellow(`  [~] ${label}: ${toPosix(path.relative(repoRoot, targetDir))}/ (dry-run)`));
+    return { deleted: true, reason: 'dry_run' };
+  }
+
+  try {
+    fs.rmSync(targetDir, { recursive: true, force: true });
+    console.log(colors.green(`  [✓] ${label}: ${toPosix(path.relative(repoRoot, targetDir))}/`));
+
+    if (cleanEmpty && stopAt) {
+      cleanEmptyParents(targetDir, stopAt);
+    }
+
+    return { deleted: true, reason: 'deleted' };
+  } catch (err) {
+    console.log(colors.red(`  [!] ${label}: failed to delete (${err.message})`));
+    return { deleted: false, reason: 'error' };
+  }
+}
+
+function resolveSkillRelPathForDelete(identifier, allSkills) {
+  const normalized = toPosix(identifier).replace(/^\/+|\/+$/g, '');
+
+  // First, try to match by relative path
+  const byPath = allSkills.find((s) => s.relFromSkillsRoot === normalized);
+  if (byPath) {
+    return { relPath: byPath.relFromSkillsRoot, skillName: byPath.name };
+  }
+
+  // Then, try to match by name (may have multiple matches if dirName overlaps)
+  const byName = allSkills.filter((s) => s.name === normalized || s.dirName === normalized);
+  if (byName.length === 1) {
+    return { relPath: byName[0].relFromSkillsRoot, skillName: byName[0].name };
+  }
+  if (byName.length > 1) {
+    console.error(colors.red(`Ambiguous skill identifier "${normalized}". Multiple matches found:`));
+    for (const s of byName) {
+      console.error(colors.red(`  - ${s.relFromSkillsRoot}`));
+    }
+    console.error(colors.gray('Use the full path to specify which one to delete.'));
+    return null;
+  }
+
+  // Not found
+  return { relPath: normalized, skillName: null };
+}
+
+function updateSyncManifestAfterDelete(skillNames, dryRun) {
+  const manifestPath = defaultManifestPath;
+  if (!fs.existsSync(manifestPath)) {
+    console.log(colors.gray(`  [-] meta: manifest not found (${toPosix(path.relative(repoRoot, manifestPath))})`));
+    return { op: 'skip', path: manifestPath, reason: 'missing' };
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  } catch (err) {
+    console.error(colors.red(`Failed to read manifest JSON: ${toPosix(path.relative(repoRoot, manifestPath))}`));
+    console.error(colors.red(`  ${err.message}`));
+    process.exit(1);
+  }
+
+  const includePrefixes = Array.isArray(manifest.includePrefixes)
+    ? manifest.includePrefixes
+    : Array.isArray(manifest.prefixes)
+      ? manifest.prefixes
+      : [];
+  const includeSkills = Array.isArray(manifest.includeSkills)
+    ? manifest.includeSkills
+    : Array.isArray(manifest.skills)
+      ? manifest.skills
+      : [];
+  const excludeSkills = Array.isArray(manifest.excludeSkills)
+    ? manifest.excludeSkills
+    : Array.isArray(manifest.exclude)
+      ? manifest.exclude
+      : [];
+
+  const removeSet = new Set(skillNames.map((s) => String(s)));
+  const nextIncludeSkills = includeSkills.filter((s) => !removeSet.has(String(s)));
+  const nextExcludeSkills = excludeSkills.filter((s) => !removeSet.has(String(s)));
+
+  const removedFromInclude = includeSkills.filter((s) => removeSet.has(String(s)));
+  const removedFromExclude = excludeSkills.filter((s) => removeSet.has(String(s)));
+
+  const changed = removedFromInclude.length > 0 || removedFromExclude.length > 0;
+  if (!changed) {
+    console.log(colors.gray('  [=] meta: sync-manifest.json already has no deleted-skill references'));
+    return { op: 'noop', path: manifestPath };
+  }
+
+  const updated = {
+    ...manifest,
+    version: manifest.version || 1,
+    includePrefixes,
+    includeSkills: nextIncludeSkills,
+    excludeSkills: nextExcludeSkills,
+  };
+  delete updated.prefixes;
+  delete updated.skills;
+  delete updated.exclude;
+
+  const note = `remove includeSkills/excludeSkills refs: -${removedFromInclude.length} include, -${removedFromExclude.length} exclude`;
+  if (dryRun) {
+    console.log(colors.yellow(`  [~] meta: would update sync-manifest.json (${note})`));
+    return { op: 'write', path: manifestPath, mode: 'dry-run', note };
+  }
+
+  fs.writeFileSync(manifestPath, JSON.stringify(updated, null, 2) + '\n', 'utf8');
+  console.log(colors.gray(`  [+] meta: updated sync-manifest.json (${note})`));
+  return { op: 'write', path: manifestPath, mode: 'applied', note };
+}
+
+function deleteSkills({ providers, identifiers, deleteScope, cleanEmpty, updateMeta, dryRun, allSkills }) {
+  const scope = String(deleteScope || 'all').toLowerCase();
+  const validScopes = new Set(['all', 'ssot', 'providers']);
+  if (!validScopes.has(scope)) {
+    console.error(colors.red(`Invalid --delete-scope: ${deleteScope}`));
+    console.error(colors.gray(`Valid values: ${[...validScopes].join(', ')}`));
+    process.exit(1);
+  }
+
+  const raw = identifiers.map((s) => String(s || '').trim()).filter(Boolean);
+  if (raw.length === 0) {
+    console.error(colors.red('No skills specified for --delete-skills.'));
+    console.error(colors.gray('Use --delete-skills "<csv>" to specify skills.'));
+    process.exit(1);
+  }
+
+  const resolved = [];
+  const skillNamesForMeta = new Set();
+  for (const id of raw) {
+    const r = resolveSkillRelPathForDelete(id, allSkills);
+    if (r === null) process.exit(1);
+
+    const relPath = String(r.relPath || '').replace(/^\/+|\/+$/g, '');
+    if (!relPath || relPath === '.' || relPath.startsWith('_meta')) {
+      console.error(colors.red(`Refusing to delete non-skill path: "${id}" -> "${relPath || '(empty)'}"`));
+      process.exit(1);
+    }
+
+    if ((scope === 'all' || scope === 'ssot') && !r.skillName) {
+      console.error(colors.red(`Unknown skill "${id}" (not found under SSOT skills root).`));
+      console.error(colors.gray('Hint: use the exact skill name, or use wrapper-only deletion via --delete.'));
+      process.exit(1);
+    }
+
+    if (r.skillName) skillNamesForMeta.add(r.skillName);
+    resolved.push({ identifier: id, relPath, skillName: r.skillName });
+  }
+
+  const byPath = new Map();
+  for (const r of resolved) {
+    if (!byPath.has(r.relPath)) byPath.set(r.relPath, r);
+  }
+  const targets = [...byPath.values()];
+
+  console.log(colors.cyan('========================================'));
+  console.log(colors.cyan('  Deleting skills'));
+  console.log(colors.cyan('========================================'));
+  console.log(colors.gray(`  delete_scope: ${scope}`));
+  console.log(colors.gray(`  skills: ${targets.length}`));
+  console.log(colors.gray(`  dry-run: ${dryRun}`));
+
+  for (const t of targets) {
+    console.log('');
+    console.log(colors.cyan(`Skill: ${t.relPath}`));
+
+    const opts = { dryRun, cleanEmpty };
+
+    if (scope === 'all' || scope === 'ssot') {
+      deleteDirSafe(defaultSkillsRoot, t.relPath, 'SSOT', { ...opts, stopAt: defaultSkillsRoot });
+    }
+
+    if (scope === 'all' || scope === 'providers') {
+      for (const provider of providers) {
+        const providerRoot = providerDefaults[provider];
+        deleteDirSafe(providerRoot, t.relPath, provider, { ...opts, stopAt: providerRoot });
+      }
+    }
+  }
+
+  if ((scope === 'all' || scope === 'ssot') && updateMeta && skillNamesForMeta.size > 0) {
+    console.log('');
+    console.log(colors.cyan('Meta updates:'));
+    updateSyncManifestAfterDelete([...skillNamesForMeta], dryRun);
+  }
+
+  console.log('');
+  console.log(colors.cyan('========================================'));
+  console.log(colors.green('  Delete complete'));
+  console.log(colors.cyan('========================================'));
+  if (dryRun) {
+    console.log(colors.yellow('Dry-run mode: no files were actually deleted.'));
+    console.log(colors.gray('Re-run with --yes to perform the deletion.'));
+  }
+}
+
 function sync() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -516,28 +790,58 @@ function sync() {
   }
 
   const isDestructive =
-    !args.dryRun && (mode === 'reset' || (mode === 'update' && args.prune) || args.deleteSkills.length > 0);
+    !args.dryRun &&
+    (mode === 'reset' ||
+      (mode === 'update' && args.prune) ||
+      args.deleteWrappers.length > 0 ||
+      args.deleteSkillDirs.length > 0);
   if (isDestructive && !args.yes) {
     console.error(colors.red('Refusing to perform destructive operations without --yes.'));
-    console.error(colors.gray('Destructive operations include: --mode reset, --mode update --prune, and --delete.'));
+    console.error(colors.gray('Destructive operations include: --mode reset, --mode update --prune, --delete-wrappers, and --delete-skills.'));
     console.error(colors.gray('Preview safely with --dry-run, then re-run with --yes.'));
     process.exit(1);
   }
 
   const { skills: allSkills } = loadSkills(args.skillsRoot);
-  const selectedSkills = selectSkills(args, allSkills);
+  const hasDeleteSkills = args.deleteSkillDirs.length > 0;
+  const hasDeleteWrappers = args.deleteWrappers.length > 0;
+
+  if (hasDeleteSkills && hasDeleteWrappers) {
+    console.error(colors.red('Cannot combine --delete-skills with --delete/--delete-wrappers.'));
+    process.exit(1);
+  }
 
   if (args.list) {
+    if (hasDeleteSkills || hasDeleteWrappers) {
+      console.error(colors.red('Cannot combine --list with delete operations.'));
+      process.exit(1);
+    }
+    const selectedSkills = selectSkills(args, allSkills);
     for (const s of selectedSkills) {
       console.log(`${s.name}\t${s.relFromSkillsRoot}`);
     }
     return;
   }
 
-  if (args.deleteSkills.length > 0) {
-    deleteWrappers({ providers, skillNames: args.deleteSkills, dryRun: args.dryRun, allSkills });
+  if (hasDeleteSkills) {
+    deleteSkills({
+      providers,
+      identifiers: args.deleteSkillDirs,
+      deleteScope: args.deleteScope,
+      cleanEmpty: args.cleanEmpty,
+      updateMeta: args.updateMeta,
+      dryRun: args.dryRun,
+      allSkills,
+    });
     return;
   }
+
+  if (hasDeleteWrappers) {
+    deleteWrappers({ providers, skillNames: args.deleteWrappers, dryRun: args.dryRun, allSkills });
+    return;
+  }
+
+  const selectedSkills = selectSkills(args, allSkills);
 
   console.log(colors.cyan('========================================'));
   console.log(colors.cyan('  Syncing skill stubs'));

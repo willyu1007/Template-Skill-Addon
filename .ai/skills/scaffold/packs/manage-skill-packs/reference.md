@@ -13,12 +13,11 @@
 ## Why a state file exists
 
 Without state, disabling a pack is ambiguous (you cannot know which prefixes/skills were added by which pack).
-`skillsctl` persists a base selection so enable/disable is deterministic and auditable.
+`skillpacksctl` persists a base selection so enable/disable is deterministic and auditable.
 
 ## Verification
 
 - Print the effective selection:
-  - `node .ai/scripts/skillsctl.js status`
+  - `node .ai/skills/_meta/skillpacksctl.js status`
 - Re-generate wrappers:
-  - `node .ai/scripts/skillsctl.js sync --providers both`
-
+  - `node .ai/skills/_meta/skillpacksctl.js sync --providers both`

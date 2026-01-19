@@ -1163,7 +1163,7 @@ function renderDbSsotAgentsBlock(mode) {
 ` +
       `Rules:
 - Human runs \`prisma db pull\` against the correct environment.
-- Mirror update: \`node .ai/scripts/dbctl.js import-prisma\`.
+- Mirror update: \`node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js import-prisma\`.
 - Context refresh: \`node .ai/scripts/dbssotctl.js sync-to-context\`.
 `
     );
@@ -1437,15 +1437,37 @@ function ensureDatabaseFeature(repoRoot, blueprint, apply, options = {}) {
   result.actions.push(markProjectFeature(repoRoot, 'database', apply));
 
   if (mode === 'database') {
-    // In DB SSOT mode, materialize db/ mirrors and run dbctl init/verify.
-    const res = ensureFeature(repoRoot, 'database', apply, 'dbctl.js', { force, verify, stateKey: 'database' });
+    // In DB SSOT mode, materialize db/ mirrors and run the DB mirror controller (feature-local).
+    const res = ensureFeature(repoRoot, 'database', apply, null, { force, verify, stateKey: 'database' });
     result.actions.push(res);
     if (res.errors && res.errors.length > 0) result.errors.push(...res.errors);
     if (res.warnings && res.warnings.length > 0) result.warnings.push(...res.warnings);
-    if (res.verifyFailed) {
-      result.verifyFailed = true;
-      result.verifyError = res.verifyError || 'Database feature verify failed';
+
+    const dbctlPath = path.join(
+      repoRoot,
+      '.ai',
+      'skills',
+      'features',
+      'database',
+      'sync-code-schema-from-db',
+      'scripts',
+      'dbctl.js'
+    );
+
+    if (fs.existsSync(dbctlPath)) {
+      result.actions.push(runNodeScriptWithRepoRootFallback(repoRoot, dbctlPath, ['init', '--repo-root', repoRoot], apply));
+      if (verify && apply) {
+        const verifyRes = runNodeScriptWithRepoRootFallback(repoRoot, dbctlPath, ['verify', '--repo-root', repoRoot], apply);
+        result.actions.push(verifyRes);
+        if (verifyRes.mode === 'failed') {
+          result.verifyFailed = true;
+          result.verifyError = 'Database feature verify failed';
+        }
+      }
+    } else if (apply) {
+      result.errors.push(`Feature "database" control script not found: ${path.relative(repoRoot, dbctlPath)}`);
     }
+
     return result;
   }
 
@@ -1844,10 +1866,10 @@ process.exit(0);
 }
 
 function updateManifest(repoRoot, blueprint, apply) {
-  // When skillsctl is available, pack switching should go through .ai/scripts/skillsctl.js (scheme A).
-  // When skillsctl is not available, fall back to a flat sync-manifest.json update (additive; never removes).
+  // When skillpacksctl is available, pack switching should go through .ai/skills/_meta/skillpacksctl.js (scheme A).
+  // When skillpacksctl is not available, fall back to a flat sync-manifest.json update (additive; never removes).
   const manifestPath = path.join(repoRoot, '.ai', 'skills', '_meta', 'sync-manifest.json');
-  const skillsctlPath = path.join(repoRoot, '.ai', 'scripts', 'skillsctl.js');
+  const skillpacksctlPath = path.join(repoRoot, '.ai', 'skills', '_meta', 'skillpacksctl.js');
 
   const warnings = [];
   const errors = [];
@@ -1863,9 +1885,9 @@ function updateManifest(repoRoot, blueprint, apply) {
     return { op: 'skip', path: manifestPath, mode: apply ? 'applied' : 'dry-run', warnings, note: 'no packs requested' };
   }
 
-  // Prefer skillsctl if available
-  if (fs.existsSync(skillsctlPath)) {
-    // Preflight: ensure pack files exist (more actionable than letting skillsctl fail mid-run).
+  // Prefer skillpacksctl if available
+  if (fs.existsSync(skillpacksctlPath)) {
+    // Preflight: ensure pack files exist (more actionable than letting skillpacksctl fail mid-run).
     for (const p of packList) {
       const packFile = path.join(repoRoot, '.ai', 'skills', '_meta', 'packs', `${p}.json`);
       if (!fs.existsSync(packFile)) {
@@ -1874,13 +1896,13 @@ function updateManifest(repoRoot, blueprint, apply) {
     }
 
     if (errors.length > 0) {
-      return { op: 'skillsctl', path: skillsctlPath, mode: 'failed', errors, warnings, packs: packList };
+      return { op: 'skillpacksctl', path: skillpacksctlPath, mode: 'failed', errors, warnings, packs: packList };
     }
 
     const actions = [];
     for (const p of packList) {
       const cmd = 'node';
-      const args = [skillsctlPath, 'enable-pack', p, '--repo-root', repoRoot, '--no-sync'];
+      const args = [skillpacksctlPath, 'enable-pack', p, '--repo-root', repoRoot, '--no-sync'];
       const printable = `${cmd} ${args.join(' ')}`;
 
       if (!apply) {
@@ -1890,7 +1912,7 @@ function updateManifest(repoRoot, blueprint, apply) {
 
       const res = childProcess.spawnSync(cmd, args, { stdio: 'inherit', cwd: repoRoot });
       if (res.status !== 0) {
-        return { op: 'skillsctl', path: skillsctlPath, mode: 'failed', exitCode: res.status, packs: packList, warnings };
+        return { op: 'skillpacksctl', path: skillpacksctlPath, mode: 'failed', exitCode: res.status, packs: packList, warnings };
       }
       actions.push({ op: 'run', cmd: printable, mode: 'applied' });
     }
@@ -1901,7 +1923,7 @@ function updateManifest(repoRoot, blueprint, apply) {
       try { effective = readJson(manifestPath); } catch {}
     }
 
-    return { op: 'skillsctl', path: manifestPath, mode: apply ? 'applied' : 'dry-run', warnings, packs: packList, actions, effectiveManifest: effective };
+    return { op: 'skillpacksctl', path: manifestPath, mode: apply ? 'applied' : 'dry-run', warnings, packs: packList, actions, effectiveManifest: effective };
   }
 
   // Fallback: update flat manifest directly (additive; safe for basic repos)
@@ -1921,7 +1943,7 @@ function updateManifest(repoRoot, blueprint, apply) {
   for (const p of packList) {
     const prefix = prefixMap[p];
     if (!prefix) {
-      warnings.push(`Pack "${p}" has no prefix mapping and skillsctl is not available; skipping.`);
+      warnings.push(`Pack "${p}" has no prefix mapping and skillpacksctl is not available; skipping.`);
       continue;
     }
     prefixesToAdd.push(prefix);
@@ -2125,7 +2147,7 @@ function main() {
       console.log('Next: user confirmation that scaffold and enabled capabilities match expectations.');
       console.log('After confirmation, run:');
       console.log(`  node ${self} approve --stage C --repo-root ${repoRoot}`);
-      console.log('Post-init: fill init/skill-retention-table.template.md and confirm deletions before running delete-skills.cjs (dry-run, then --yes).');
+      console.log('Post-init: fill init/skill-retention-table.template.md and confirm deletions before running sync-skills.cjs --delete-skills (dry-run, then --yes).');
       console.log('Post-init: update root README.md and AGENTS.md if needed.');
       console.log('\nOptional: later run cleanup-init --apply --i-understand to remove the init/ directory');
       process.exit(0);

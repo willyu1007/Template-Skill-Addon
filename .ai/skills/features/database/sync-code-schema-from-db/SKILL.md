@@ -85,16 +85,16 @@ Record the instructions and the environment assumptions in `01-db-pull-instructi
 
 6. Ensure the DB mirror assets are present (required for the mirror workflow):
    - Required paths:
-     - `.ai/scripts/dbctl.js`
+     - `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js`
      - `db/schema/tables.json`
    - If `db/schema/tables.json` is missing, install the mirror skeleton:
      - Copy templates from `.ai/skills/features/database/sync-code-schema-from-db/templates/` into the repo root.
-     - Run `node .ai/scripts/dbctl.js init`, then re-run this phase.
-   - If `.ai/scripts/dbctl.js` is missing, enable the database feature via init (`features.database=true` + `db.ssot=database`), then re-run this phase (see `init/feature-docs/database.md`).
+     - Run `node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js init`, then re-run this phase.
+   - If `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js` is missing, enable the database feature via init (`features.database=true` + `db.ssot=database`), then re-run this phase (see `init/feature-docs/database.md`).
 
 7. Import `prisma/schema.prisma` into `db/schema/tables.json`:
 
-- `node .ai/scripts/dbctl.js import-prisma`
+- `node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js import-prisma`
 
 Record output in `02-import-prisma-log.md`.
 

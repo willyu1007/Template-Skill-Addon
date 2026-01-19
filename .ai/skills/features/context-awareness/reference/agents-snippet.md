@@ -11,10 +11,9 @@ If `docs/context/` exists:
 Pack switching:
 
 - AI/LLM MUST NOT edit `.ai/skills/_meta/sync-manifest.json` directly.
-- AI/LLM MUST use: `node .ai/scripts/skillsctl.js enable-pack|disable-pack|sync ...`.
+- AI/LLM MUST use: `node .ai/skills/_meta/skillpacksctl.js enable-pack|disable-pack|sync ...`.
 
 Project state:
 
 - AI/LLM MUST treat `.ai/project/state.json` as the project "stage/state" SSOT.
 - AI/LLM MUST use: `node .ai/scripts/projectctl.js` to change it.
-

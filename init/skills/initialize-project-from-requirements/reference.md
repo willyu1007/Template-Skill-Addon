@@ -15,7 +15,7 @@ It is the SSOT; other references should link here.
   - materialized into `.ai/skills/_meta/sync-manifest.json` (flat schema)
   - synced into provider wrappers by `node .ai/scripts/sync-skills.cjs`
 - Stage transitions require explicit approval (`approve`), not manual state edits.
-- When `.ai/scripts/skillsctl.js` is available, pack enabling is performed through it; otherwise Stage C falls back to editing the sync manifest.
+- When `.ai/skills/_meta/skillpacksctl.js` is available, pack enabling is performed through it; otherwise Stage C falls back to editing the sync manifest.
 - Optional **features** are materialized in Stage C from templates stored under `.ai/skills/features/...`.
 
 ---
@@ -96,7 +96,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 3. scaffold directories/files (idempotent; mostly "write-if-missing")
 4. generate configs via `scripts/scaffold-configs.cjs` (SSOT)
 5. materialize optional **features** from templates under `.ai/skills/features/.../templates/` and run their control scripts (`...ctl.js init`)
-6. enable packs (skillsctl when present; else sync manifest)
+6. enable packs (skillpacksctl when present; else sync manifest)
 7. sync wrappers via `.ai/scripts/sync-skills.cjs`
 
 Notes:

@@ -10,4 +10,4 @@ This enforces that:
 - the project state file is schema-valid
 
 If you also want to enforce skills wrapper sync, add:
-- `node .ai/scripts/skillsctl.js sync --providers both`
+- `node .ai/skills/_meta/skillpacksctl.js sync --providers both`

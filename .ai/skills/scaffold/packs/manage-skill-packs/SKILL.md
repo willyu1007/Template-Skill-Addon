@@ -1,6 +1,6 @@
 ---
 name: manage-skill-packs
-description: Enable or disable skill packs via skillsctl and re-sync provider wrappers without manually editing the manifest.
+description: Enable or disable skill packs via skillpacksctl and re-sync provider wrappers without manually editing the manifest.
 ---
 
 # Manage Skill Packs
@@ -35,25 +35,25 @@ Do NOT use this skill if:
 ## Steps
 
 1. List available packs:
-   - `node .ai/scripts/skillsctl.js list-packs`
+   - `node .ai/skills/_meta/skillpacksctl.js list-packs`
 
 2. Enable a pack and sync wrappers:
-   - `node .ai/scripts/skillsctl.js enable-pack <packId> --providers both`
+   - `node .ai/skills/_meta/skillpacksctl.js enable-pack <packId> --providers both`
 
 3. Disable a pack and sync wrappers:
-   - `node .ai/scripts/skillsctl.js disable-pack <packId> --providers both`
+   - `node .ai/skills/_meta/skillpacksctl.js disable-pack <packId> --providers both`
 
 4. Inspect current selection:
-   - `node .ai/scripts/skillsctl.js status`
+   - `node .ai/skills/_meta/skillpacksctl.js status`
 
 5. Re-sync wrappers (without changing packs):
-   - `node .ai/scripts/skillsctl.js sync --providers both`
+   - `node .ai/skills/_meta/skillpacksctl.js sync --providers both`
 
 ## Verification
 
 ```bash
-node .ai/scripts/skillsctl.js status
-node .ai/scripts/skillsctl.js list-packs
+node .ai/skills/_meta/skillpacksctl.js status
+node .ai/skills/_meta/skillpacksctl.js list-packs
 ```
 
 ## Boundaries

@@ -18,8 +18,8 @@ New files/directories (created if missing):
   - `db/config/` (environment metadata; no secrets)
   - `db/samples/` (sample/seed data)
   - `db/workdocs/` (DB change proposals, rollout plans)
-- `.ai/scripts/dbctl.js` (mirror controller)
-- `.ai/scripts/migrate.js` (optional migration tracking)
+- `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js` (mirror controller)
+- `.ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js` (optional migration tracking)
 
 ## Install
 
@@ -54,7 +54,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 2. Initialize the mirror skeleton (idempotent):
 
    ```bash
-   node .ai/scripts/dbctl.js init
+   node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js init
    ```
 
 
@@ -64,16 +64,16 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 
 ```bash
 # Initialize db mirror structure
-node .ai/scripts/dbctl.js init
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js init
 
 # Import prisma/schema.prisma into the mirror
-node .ai/scripts/dbctl.js import-prisma
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js import-prisma
 
 # List tables in the mirror
-node .ai/scripts/dbctl.js list-tables
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js list-tables
 
 # Verify mirror file is parseable
-node .ai/scripts/dbctl.js verify --strict
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js verify --strict
 ```
 
 ### Context awareness bridge (recommended)
@@ -92,11 +92,11 @@ This feature may be used to track DB changes executed by humans:
 
 ```bash
 # Create an empty SQL file for humans to fill/apply
-node .ai/scripts/dbctl.js generate-migration --name add-user-roles
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js generate-migration --name add-user-roles
 
 # Track applied migrations per environment (manual bookkeeping)
-node .ai/scripts/migrate.js list
-node .ai/scripts/migrate.js mark-applied --migration 20260101120000_add_user_roles.sql --env staging
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js list
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js mark-applied --migration 20260101120000_add_user_roles.sql --env staging
 ```
 
 ## AI/LLM guidelines
@@ -120,5 +120,5 @@ AI MUST NOT:
 Delete these paths:
 
 - `db/`
-- `.ai/scripts/dbctl.js`
-- `.ai/scripts/migrate.js`
+- `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js`
+- `.ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js`

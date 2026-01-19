@@ -7,7 +7,7 @@
 - The feature provides **project-level scripts** that MUST be used to change the context:
   - `node .ai/scripts/contextctl.js` (context artifacts + registry + environments)
   - `node .ai/scripts/projectctl.js` (project state/config)
-  - `node .ai/scripts/skillsctl.js` (skills pack switching + wrapper sync)
+  - `node .ai/skills/_meta/skillpacksctl.js` (skills pack switching + wrapper sync)
 - The goal is to make an LLM "context-aware" without relying on ad-hoc folder scans:
   - The LLM reads `docs/context/INDEX.md` and `docs/context/registry.json` as the entry point.
   - Environment constraints are in `docs/context/config/environment-registry.json`.
@@ -21,7 +21,8 @@ New files/directories (created if missing):
 - `docs/context/config/**` (environment registry)
 - `.ai/skills/features/context-awareness/**` (documentation for this feature)
 - `config/environments/**` (environment config templates)
-- `.ai/scripts/{contextctl.js,projectctl.js,skillsctl.js,explain-context-feature.js}`
+- `.ai/scripts/{contextctl.js,projectctl.js,explain-context-feature.js}`
+- `.ai/skills/_meta/skillpacksctl.js` (pack controller)
 - `.ai/project/{state.json,state.schema.json}`
 - `.ai/skills/scaffold/**` (optional scaffold skills for context/packs/state)
 - `.ai/skills/_meta/packs/{context-core.json,scaffold-core.json}` (pack definitions)
@@ -69,7 +70,7 @@ If you are not using the init pipeline, you can materialize the feature template
    ```
 3. (Optional) Enable the scaffold/context pack and sync wrappers:
    ```bash
-   node .ai/scripts/skillsctl.js enable-pack context-core --providers both
+   node .ai/skills/_meta/skillpacksctl.js enable-pack context-core --providers both
    ```
 
 
@@ -140,7 +141,7 @@ node .ai/scripts/contextctl.js list
   ```
 - Skills wrappers are synced (if you enabled packs):
   ```bash
-  node .ai/scripts/skillsctl.js sync --providers both
+  node .ai/skills/_meta/skillpacksctl.js sync --providers both
   ```
 
 ## Rollback / Uninstall
@@ -152,7 +153,7 @@ Delete these paths (if you want a clean uninstall):
 - `config/environments/`
 - `.ai/scripts/contextctl.js`
 - `.ai/scripts/projectctl.js`
-- `.ai/scripts/skillsctl.js`
+- `.ai/skills/_meta/skillpacksctl.js`
 - `.ai/scripts/explain-context-feature.js`
 - `.ai/project/`
 - `.ai/skills/scaffold/` (only if you installed the feature's scaffold skills)

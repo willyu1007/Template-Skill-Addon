@@ -6,8 +6,8 @@ This template does **not** ship an `addons/` directory. Feature assets are integ
 
 - Templates: usually `.ai/skills/features/<feature-id>/templates/` (some features source templates from nested skills; for database: `.ai/skills/features/database/sync-code-schema-from-db/templates/`)
 - Control scripts:
-  - Node: `.ai/scripts/*ctl.js`
-  - Python: `.ai/skills/features/**/scripts/*.py` (feature-specific)
+  - Repo-level Node controllers: `.ai/scripts/*ctl.js` (and other repo controllers like `sync-skills.cjs`)
+  - Feature-local tools: `.ai/skills/features/**/scripts/*` (Node `.js`/`.cjs` and/or Python `.py`)
 - Feature flags/state: `.ai/project/state.json` (via `.ai/scripts/projectctl.js`)
 
 ## Available features
@@ -15,13 +15,17 @@ This template does **not** ship an `addons/` directory. Feature assets are integ
 | Feature ID | Blueprint toggle | Control script | Documentation |
 |------------|------------------|----------------|---------------|
 | `context-awareness` | `features.contextAwareness` | `contextctl.js` | [context-awareness.md](context-awareness.md) |
-| `database` | `features.database` (requires `db.ssot != none`) | `dbctl.js` (when `db.ssot=database`) | [database.md](database.md) |
+| `database` | `features.database` (requires `db.ssot != none`) | `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js` (when `db.ssot=database`) | [database.md](database.md) |
 | `ui` | `features.ui` | `ui_specctl.py` | [ui.md](ui.md) |
 | `environment` | `features.environment` | `env_contractctl.py` | [environment.md](environment.md) |
 | `packaging` | `features.packaging` | `packctl.js` | [packaging.md](packaging.md) |
 | `deployment` | `features.deployment` | `deployctl.js` | [deployment.md](deployment.md) |
 | `release` | `features.release` | `releasectl.js` | [release.md](release.md) |
 | `observability` | `features.observability` (requires `features.contextAwareness=true`) | `obsctl.js` | [observability.md](observability.md) |
+
+## Related tooling (not blueprint features)
+
+- CI templates controller: [ci.md](ci.md) (`node .ai/scripts/cictl.js ...`)
 
 ## How to decide (Stage B)
 
