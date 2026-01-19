@@ -4,9 +4,9 @@ If `docs/context/` exists:
 
 - AI/LLM MUST treat `docs/context/INDEX.md` as the entry point for project context.
 - AI/LLM MUST NOT "scan the repo" to infer APIs/DB/flows when context artifacts are available.
-- AI/LLM MUST update `docs/context/` only via `node .ai/scripts/contextctl.js`.
+- AI/LLM MUST update `docs/context/` only via `node .ai/skills/features/context-awareness/scripts/contextctl.js`.
   - Do NOT directly edit `docs/context/registry.json` by hand.
-  - After any context change, run: `node .ai/scripts/contextctl.js touch` and `node .ai/scripts/contextctl.js verify --strict`.
+  - After any context change, run: `node .ai/skills/features/context-awareness/scripts/contextctl.js touch` and `node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict`.
 
 Pack switching:
 

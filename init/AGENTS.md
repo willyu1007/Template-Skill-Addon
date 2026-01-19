@@ -86,7 +86,7 @@ If Stage C `apply` fails with an `EPERM` error while writing `.codex/skills/` or
 
 If the blueprint enables context awareness (`features.contextAwareness: true`), Stage C `apply` will:
 - copy templates from `.ai/skills/features/context-awareness/templates/` into the repo (copy-if-missing; non-destructive)
-- run `.ai/scripts/contextctl.js init`
+- run `.ai/skills/features/context-awareness/scripts/contextctl.js init`
 - run `.ai/scripts/projectctl.js init` and `set-context-mode` (if projectctl exists)
 
 `context.*` is configuration only and does not trigger enabling by itself.

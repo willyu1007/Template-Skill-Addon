@@ -17,7 +17,7 @@
 
 ## AI Workflow
 
-1. **Register** targets: `node .ai/scripts/packctl.js add-service --id <id> --module <path>`
+1. **Register** targets: `node .ai/skills/features/packaging/scripts/packctl.js add-service --id <id> --module <path>`
 2. **Customize** Dockerfile if needed (copy from template)
 3. **Document** decisions in `workdocs/`
 4. **Request human** to build and push
@@ -43,4 +43,3 @@ docker push <registry>/<name>:<tag>
 ## Registry
 
 All targets are tracked in `docs/packaging/registry.json`.
-

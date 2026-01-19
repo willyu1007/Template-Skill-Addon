@@ -114,7 +114,7 @@ Enable via blueprint:
 `context.*` is configuration only and does not trigger enabling by itself.
 
 Implications:
-- Stage C materializes `docs/context/**` and environment templates, then runs `.ai/scripts/contextctl.js init`
+- Stage C materializes `docs/context/**` and environment templates, then runs `.ai/skills/features/context-awareness/scripts/contextctl.js init`
 - Optional: add `context-core` to `skills.packs` if you want context-related scaffold skills/wrappers
 
 See:

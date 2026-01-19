@@ -8,10 +8,10 @@
 
 ## Workflow
 
-1. **Prepare** release: `node .ai/scripts/releasectl.js prepare --version <version>`
-2. **Generate** changelog: `node .ai/scripts/releasectl.js changelog`
+1. **Prepare** release: `node .ai/skills/features/release/scripts/releasectl.js prepare --version <version>`
+2. **Generate** changelog: `node .ai/skills/features/release/scripts/releasectl.js changelog`
 3. **Request human** approval
-4. **Tag** release: `node .ai/scripts/releasectl.js tag --version <version>`
+4. **Tag** release: `node .ai/skills/features/release/scripts/releasectl.js tag --version <version>`
 
 ## Version Strategies
 
@@ -31,16 +31,16 @@
 
 ```bash
 # Check status
-node .ai/scripts/releasectl.js status
+node .ai/skills/features/release/scripts/releasectl.js status
 
 # Prepare release
-node .ai/scripts/releasectl.js prepare --version 1.2.0
+node .ai/skills/features/release/scripts/releasectl.js prepare --version 1.2.0
 
 # Generate changelog
-node .ai/scripts/releasectl.js changelog
+node .ai/skills/features/release/scripts/releasectl.js changelog
 
 # Create tag
-node .ai/scripts/releasectl.js tag --version 1.2.0
+node .ai/skills/features/release/scripts/releasectl.js tag --version 1.2.0
 ```
 
 ## Forbidden Actions
@@ -49,4 +49,3 @@ node .ai/scripts/releasectl.js tag --version 1.2.0
 - Skipping release approval
 - Tagging without verification
 - Manual git tag creation (use releasectl)
-

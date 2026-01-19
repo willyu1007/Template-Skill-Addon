@@ -1,25 +1,61 @@
-# CI templates (repo-level)
+# Feature: CI
 
-This repo keeps a small controller to apply and validate CI templates without hand-copying files.
+## Conclusions (read first)
 
-Notes:
+- Installs a practical CI baseline for **GitHub Actions** or **GitLab CI**
+- Stage C installs **CI only** (no delivery workflow by default)
+- Delivery is **explicit opt-in** (enabled via `cictl add-delivery`)
 
-- This is **not** a blueprint feature toggle.
-- Use the CI-related skills to design the workflow; use `cictl.js` to materialize templates into the repo.
+## How to enable
 
-## Commands
+In `init/project-blueprint.json`:
+
+```json
+{
+  "features": {
+    "ci": true
+  },
+  "ci": {
+    "provider": "github"
+  }
+}
+```
+
+Set `"provider": "gitlab"` to install GitLab CI instead.
+
+## What Stage C `apply` does
+
+When enabled, Stage C:
+
+1) Runs the CI controller:
 
 ```bash
-# Apply a CI template
-node .ai/scripts/cictl.js init --provider github --repo-root .
-node .ai/scripts/cictl.js init --provider gitlab --repo-root .
+node .ai/skills/features/ci/scripts/cictl.js init --provider <github|gitlab> --repo-root .
+```
 
-# Validate the installed template/config (best effort)
-node .ai/scripts/cictl.js verify --repo-root .
+2) Materializes (copy-if-missing):
+- GitHub Actions: `.github/workflows/ci.yml`
+- GitLab CI: `.gitlab-ci.yml`
+- CI metadata: `ci/**` (`ci/config.json`, `ci/workdocs/`, etc.)
+
+3) Optional verification (when Stage C is run with `--verify-features`):
+
+```bash
+node .ai/skills/features/ci/scripts/cictl.js verify --repo-root .
+```
+
+## Delivery (explicit opt-in)
+
+Stage C does **not** install delivery workflows.
+
+Enable delivery explicitly (method A):
+
+```bash
+node .ai/skills/features/ci/scripts/cictl.js add-delivery --provider github --repo-root .
+node .ai/skills/features/ci/scripts/cictl.js add-delivery --provider gitlab --repo-root .
 ```
 
 ## Acceptance
 
-- `node .ai/scripts/cictl.js --help` documents `init` and `verify`
-- The template files are created in the expected CI locations for the provider
-
+- `node .ai/skills/features/ci/scripts/cictl.js --help` documents `init`, `add-delivery`, and `verify`
+- Stage C installs exactly one CI provider workflow based on `ci.provider`

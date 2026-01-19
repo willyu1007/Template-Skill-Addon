@@ -21,8 +21,7 @@ When enabled, this feature materializes:
 
 Controller scripts (provided by the template SSOT):
 
-- `node .ai/scripts/packctl.js` — packaging target registry management
-- `node .ai/scripts/build.js` — optional provider-agnostic build entry point
+- `node .ai/skills/features/packaging/scripts/packctl.js` — packaging target registry management
 
 ## How to enable
 
@@ -46,8 +45,8 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 2. Initialize:
 
 ```bash
-node .ai/scripts/packctl.js init
-node .ai/scripts/packctl.js verify
+node .ai/skills/features/packaging/scripts/packctl.js init
+node .ai/skills/features/packaging/scripts/packctl.js verify
 ```
 
 ## Operating rules
@@ -59,7 +58,7 @@ node .ai/scripts/packctl.js verify
 ## Verification
 
 ```bash
-node .ai/scripts/packctl.js verify
+node .ai/skills/features/packaging/scripts/packctl.js verify
 ```
 
 ## Boundaries

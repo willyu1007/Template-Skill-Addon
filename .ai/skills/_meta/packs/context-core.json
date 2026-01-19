@@ -7,8 +7,8 @@
   ],
   "dependencies": [],
   "scripts": {
-    "init": "node .ai/scripts/contextctl.js init && node .ai/scripts/projectctl.js init",
-    "verify": "node .ai/scripts/contextctl.js verify --strict && node .ai/scripts/projectctl.js verify"
+    "init": "node .ai/skills/features/context-awareness/scripts/contextctl.js init && node .ai/scripts/projectctl.js init",
+    "verify": "node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict && node .ai/scripts/projectctl.js verify"
   },
   "metadata": {
     "author": "context-awareness-addon",

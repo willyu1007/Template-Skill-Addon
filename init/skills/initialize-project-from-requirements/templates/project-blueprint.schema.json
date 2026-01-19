@@ -292,6 +292,10 @@
           "type": "boolean",
           "description": "Enable the release feature (version and changelog management)."
         },
+        "ci": {
+          "type": "boolean",
+          "description": "Enable the CI feature (CI templates + conventions; requires ci.provider)."
+        },
         "observability": {
           "type": "boolean",
           "description": "Enable the observability feature (metrics/logs/traces contracts)."
@@ -376,6 +380,14 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "github",
+            "gitlab"
+          ],
+          "description": "Primary CI provider SSOT (required when features.ci=true)."
         },
         "platform": {
           "type": "string",

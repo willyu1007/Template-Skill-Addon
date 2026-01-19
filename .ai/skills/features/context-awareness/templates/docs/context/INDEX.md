@@ -6,8 +6,8 @@
 - The canonical index of all context artifacts is `docs/context/registry.json`.
 - When `docs/context/` exists, AI/LLM SHOULD prefer these artifacts over ad-hoc repository scanning.
 - Any change to context artifacts MUST be accompanied by an updated registry checksum:
-  - Run `node .ai/scripts/contextctl.js touch`
-  - Verify with `node .ai/scripts/contextctl.js verify --strict`
+  - Run `node .ai/skills/features/context-awareness/scripts/contextctl.js touch`
+  - Verify with `node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict`
 
 ## What lives here
 
@@ -48,18 +48,18 @@ After generation, `dbssotctl` runs `contextctl touch` (best effort) to keep chec
 
 ## How to update context (script-only)
 
-Use `node .ai/scripts/contextctl.js`:
+Use `node .ai/skills/features/context-awareness/scripts/contextctl.js`:
 
 - Initialize (idempotent):
-  - `node .ai/scripts/contextctl.js init`
+  - `node .ai/skills/features/context-awareness/scripts/contextctl.js init`
 - Register a new artifact:
-  - `node .ai/scripts/contextctl.js add-artifact --id <id> --type <type> --path <repo-relative-path>`
+  - `node .ai/skills/features/context-awareness/scripts/contextctl.js add-artifact --id <id> --type <type> --path <repo-relative-path>`
 - Update checksums after edits:
-  - `node .ai/scripts/contextctl.js touch`
+  - `node .ai/skills/features/context-awareness/scripts/contextctl.js touch`
 - Verify consistency (for CI):
-  - `node .ai/scripts/contextctl.js verify --strict`
+  - `node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict`
 
 ## Verification
 
 - Registry and artifacts are consistent:
-  - `node .ai/scripts/contextctl.js verify --strict`
+  - `node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict`

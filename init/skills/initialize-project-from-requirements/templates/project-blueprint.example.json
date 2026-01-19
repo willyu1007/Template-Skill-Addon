@@ -79,6 +79,7 @@
   },
   "ci": {
     "enabled": true,
+    "provider": "github",
     "platform": "github-actions",
     "features": [
       "lint",
@@ -137,6 +138,7 @@
     "packaging": true,
     "deployment": true,
     "release": true,
+    "ci": true,
     "observability": true
   }
 }

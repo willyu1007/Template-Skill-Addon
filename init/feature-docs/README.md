@@ -14,18 +14,15 @@ This template does **not** ship an `addons/` directory. Feature assets are integ
 
 | Feature ID | Blueprint toggle | Control script | Documentation |
 |------------|------------------|----------------|---------------|
-| `context-awareness` | `features.contextAwareness` | `contextctl.js` | [context-awareness.md](context-awareness.md) |
+| `context-awareness` | `features.contextAwareness` | `.ai/skills/features/context-awareness/scripts/contextctl.js` | [context-awareness.md](context-awareness.md) |
 | `database` | `features.database` (requires `db.ssot != none`) | `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js` (when `db.ssot=database`) | [database.md](database.md) |
 | `ui` | `features.ui` | `ui_specctl.py` | [ui.md](ui.md) |
 | `environment` | `features.environment` | `env_contractctl.py` | [environment.md](environment.md) |
-| `packaging` | `features.packaging` | `packctl.js` | [packaging.md](packaging.md) |
-| `deployment` | `features.deployment` | `deployctl.js` | [deployment.md](deployment.md) |
-| `release` | `features.release` | `releasectl.js` | [release.md](release.md) |
-| `observability` | `features.observability` (requires `features.contextAwareness=true`) | `obsctl.js` | [observability.md](observability.md) |
-
-## Related tooling (not blueprint features)
-
-- CI templates controller: [ci.md](ci.md) (`node .ai/scripts/cictl.js ...`)
+| `packaging` | `features.packaging` | `.ai/skills/features/packaging/scripts/packctl.js` | [packaging.md](packaging.md) |
+| `deployment` | `features.deployment` | `.ai/skills/features/deployment/scripts/deployctl.js` | [deployment.md](deployment.md) |
+| `release` | `features.release` | `.ai/skills/features/release/scripts/releasectl.js` | [release.md](release.md) |
+| `ci` | `features.ci` (requires `ci.provider`) | `.ai/skills/features/ci/scripts/cictl.js` | [ci.md](ci.md) |
+| `observability` | `features.observability` (requires `features.contextAwareness=true`) | `.ai/skills/features/observability/scripts/obsctl.js` | [observability.md](observability.md) |
 
 ## How to decide (Stage B)
 

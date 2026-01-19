@@ -18,8 +18,8 @@
 
 ## AI Workflow
 
-1. **Register** services: `node .ai/scripts/deployctl.js add-service --id <id>`
-2. **Plan** deployment: `node .ai/scripts/deployctl.js plan --service <id> --env <env>`
+1. **Register** services: `node .ai/skills/features/deployment/scripts/deployctl.js add-service --id <id>`
+2. **Plan** deployment: `node .ai/skills/features/deployment/scripts/deployctl.js plan --service <id> --env <env>`
 3. **Document** in `workdocs/`
 4. **Request human** to execute deployment
 
@@ -44,4 +44,3 @@
 - Credential handling
 - Production changes without approval
 - Skipping environment progression
-

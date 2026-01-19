@@ -52,13 +52,13 @@ node .ai/scripts/projectctl.js set-context-mode <contract|snapshot> --repo-root 
 3) Initializes context artifacts (idempotent):
 
 ```bash
-node .ai/scripts/contextctl.js init --repo-root .
+node .ai/skills/features/context-awareness/scripts/contextctl.js init --repo-root .
 ```
 
 4) Optional verification (when Stage C is run with `--verify-features`):
 
 ```bash
-node .ai/scripts/contextctl.js verify --repo-root .
+node .ai/skills/features/context-awareness/scripts/contextctl.js verify --repo-root .
 ```
 
 ## Key outputs

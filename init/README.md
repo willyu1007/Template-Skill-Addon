@@ -120,21 +120,23 @@ Key sections:
 This template does **not** ship an `addons/` directory. Feature assets are integrated under `.ai/`:
 
 - Feature skills + templates: `.ai/skills/features/...`
-- Control scripts: `.ai/scripts/...`
+- Feature controllers: `.ai/skills/features/**/scripts/*` (Node/Python)
+- Cross-cutting controllers: `.ai/scripts/*` (e.g., `projectctl.js`, `dbssotctl.js`)
 - Project state (feature flags): `.ai/project/state.json`
 
-Stage C `apply` materializes a feature by copying templates into the repo (when the feature has templates) and running the corresponding control scripts (Node under `.ai/scripts/` and/or Python under `.ai/skills/features/**/scripts/`, depending on the feature).
+Stage C `apply` materializes a feature by copying templates into the repo (when the feature has templates) and running the corresponding control scripts (typically under `.ai/skills/features/**/scripts/`, plus cross-cutting `.ai/scripts/projectctl.js` for feature state).
 
 | Feature | Blueprint toggle | Materializes | Control script(s) |
 |---------|------------------|--------------|----------------|
-| Context awareness | `features.contextAwareness` | `docs/context/**`, `config/environments/**` | `.ai/scripts/contextctl.js` |
+| Context awareness | `features.contextAwareness` | `docs/context/**`, `config/environments/**` | `node .ai/skills/features/context-awareness/scripts/contextctl.js` |
 | Database | `features.database` (requires `db.ssot != none`) | `db/**` (when `db.ssot=database`), `prisma/**` (when `db.ssot=repo-prisma`) | `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js` (when `db.ssot=database`); `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.cjs` (human interface) |
 | UI | `features.ui` | `ui/**`, `docs/context/ui/**` | `python3 .ai/skills/features/ui/ui-system-bootstrap/scripts/ui_specctl.py` |
 | Environment | `features.environment` | `env/**` (+ generated non-secret docs when `--verify-features`) | `python3 .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py` |
-| Packaging | `features.packaging` | `ops/packaging/**`, `docs/packaging/**` | `.ai/scripts/packctl.js` |
-| Deployment | `features.deployment` | `ops/deploy/**` | `.ai/scripts/deployctl.js` |
-| Observability | `features.observability` (requires context awareness) | `docs/context/observability/**`, `observability/**` | `.ai/scripts/obsctl.js` |
-| Release | `features.release` | `release/**`, `.releaserc.json.template` | `.ai/scripts/releasectl.js` |
+| Packaging | `features.packaging` | `ops/packaging/**`, `docs/packaging/**` | `node .ai/skills/features/packaging/scripts/packctl.js` |
+| Deployment | `features.deployment` | `ops/deploy/**` | `node .ai/skills/features/deployment/scripts/deployctl.js` |
+| CI | `features.ci` (requires `ci.provider`) | `.github/workflows/ci.yml` (GitHub) or `.gitlab-ci.yml` (GitLab), `ci/**` | `node .ai/skills/features/ci/scripts/cictl.js` |
+| Observability | `features.observability` (requires context awareness) | `docs/context/observability/**`, `observability/**` | `node .ai/skills/features/observability/scripts/obsctl.js` |
+| Release | `features.release` | `release/**`, `.releaserc.json.template` | `node .ai/skills/features/release/scripts/releasectl.js` |
 
 For feature-specific details, see:
 

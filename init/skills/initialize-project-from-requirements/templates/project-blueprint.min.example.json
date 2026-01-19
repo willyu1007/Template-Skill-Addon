@@ -37,6 +37,7 @@
     "packaging": false,
     "deployment": false,
     "release": false,
+    "ci": false,
     "observability": false
   },
   "skills": {

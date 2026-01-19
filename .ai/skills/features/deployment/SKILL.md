@@ -9,7 +9,7 @@ description: Enable and operate the Deployment feature (ops/deploy conventions +
 
 Standardize how the repo describes and executes deployments across environments (dev/staging/prod) in an LLM-friendly, auditable way.
 
-The repo keeps deployment artifacts under `ops/deploy/` and exposes a small set of controller scripts under `.ai/scripts/`.
+The repo keeps deployment artifacts under `ops/deploy/` and exposes a small set of controller scripts under `.ai/`.
 
 ## What gets enabled
 
@@ -23,9 +23,8 @@ When enabled, this feature materializes:
 
 Controller scripts (provided by the template SSOT):
 
-- `node .ai/scripts/deployctl.js` — deployment configuration management
-- `node .ai/scripts/deploy.js` — deployment execution entry point (human-run)
-- `node .ai/scripts/rollback.js` — rollback entry point (human-run)
+- `node .ai/skills/features/deployment/scripts/deployctl.js` — deployment configuration management
+- `node .ai/skills/features/deployment/scripts/rollback.js` — rollback entry point (human-run)
 
 ## How to enable
 
@@ -49,8 +48,8 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 2. Initialize:
 
 ```bash
-node .ai/scripts/deployctl.js init
-node .ai/scripts/deployctl.js verify --strict
+node .ai/skills/features/deployment/scripts/deployctl.js init
+node .ai/skills/features/deployment/scripts/deployctl.js verify
 ```
 
 ## Operating rules
@@ -62,7 +61,7 @@ node .ai/scripts/deployctl.js verify --strict
 ## Verification
 
 ```bash
-node .ai/scripts/deployctl.js verify --strict
+node .ai/skills/features/deployment/scripts/deployctl.js verify
 ```
 
 ## Boundaries

@@ -5,10 +5,10 @@ Store BPMN 2.0 process definitions under `docs/context/process/` (LLM-visible co
 
 ## Rules (MUST)
 
-- Each `.bpmn` file MUST be registered in `docs/context/registry.json` (use `node .ai/scripts/contextctl.js add-artifact ...`).
+- Each `.bpmn` file MUST be registered in `docs/context/registry.json` (use `node .ai/skills/features/context-awareness/scripts/contextctl.js add-artifact ...`).
 - After editing any `.bpmn`, run:
-  - `node .ai/scripts/contextctl.js touch`
-  - `node .ai/scripts/contextctl.js verify --strict`
+  - `node .ai/skills/features/context-awareness/scripts/contextctl.js touch`
+  - `node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict`
 
 ## Progressive disclosure (LLM)
 - Prefer reading `docs/context/registry.json` first, then open only the specific `.bpmn` files needed.

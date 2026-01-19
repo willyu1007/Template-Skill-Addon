@@ -24,7 +24,7 @@ When enabled, this feature materializes:
 
 Controller script (provided by the template SSOT):
 
-- `node .ai/scripts/obsctl.js` — manage and verify observability contracts
+- `node .ai/skills/features/observability/scripts/obsctl.js` — manage and verify observability contracts
 
 ## Dependency
 
@@ -55,14 +55,14 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 3. Initialize:
 
 ```bash
-node .ai/scripts/obsctl.js init
-node .ai/scripts/obsctl.js verify --strict
+node .ai/skills/features/observability/scripts/obsctl.js init
+node .ai/skills/features/observability/scripts/obsctl.js verify
 ```
 
 ## Verification
 
 ```bash
-node .ai/scripts/obsctl.js verify --strict
+node .ai/skills/features/observability/scripts/obsctl.js verify
 ```
 
 ## Boundaries

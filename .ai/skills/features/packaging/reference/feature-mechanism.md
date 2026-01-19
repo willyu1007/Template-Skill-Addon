@@ -19,8 +19,7 @@ New files/directories (created if missing):
   - `ops/packaging/scripts/` (build scripts)
   - `ops/packaging/workdocs/` (packaging plans)
 - `docs/packaging/registry.json` (artifact registry)
-- `.ai/scripts/packctl.js` (packaging management)
-- `.ai/scripts/build.js` (build execution)
+- `.ai/skills/features/packaging/scripts/packctl.js` (packaging management)
 - `.ai/skills/features/packaging/` (feature documentation)
 
 ## Install
@@ -57,7 +56,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
    - Copy-if-missing (non-destructive merge)
 2. Initialize packaging:
    ```bash
-   node .ai/scripts/packctl.js init
+   node .ai/skills/features/packaging/scripts/packctl.js init
    ```
 
 ## Usage
@@ -66,26 +65,26 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 
 ```bash
 # Register a service
-node .ai/scripts/packctl.js add-service --id api --module apps/backend
+node .ai/skills/features/packaging/scripts/packctl.js add-service --id api --module apps/backend
 
 # Register a job
-node .ai/scripts/packctl.js add-job --id cron-task --module jobs/cron
+node .ai/skills/features/packaging/scripts/packctl.js add-job --id cron-task --module jobs/cron
 
 # List all targets
-node .ai/scripts/packctl.js list
+node .ai/skills/features/packaging/scripts/packctl.js list
 ```
 
 ### Build Artifacts
 
 ```bash
 # Build a specific target
-node .ai/scripts/packctl.js build --target api --tag v1.0.0
+node .ai/skills/features/packaging/scripts/packctl.js build --target api --tag v1.0.0
 
 # Build all targets
-node .ai/scripts/packctl.js build-all --tag v1.0.0
+node .ai/skills/features/packaging/scripts/packctl.js build-all --tag v1.0.0
 
 # Verify packaging configuration
-node .ai/scripts/packctl.js verify
+node .ai/skills/features/packaging/scripts/packctl.js verify
 ```
 
 ## Artifact Registry
@@ -117,10 +116,10 @@ Templates in `ops/packaging/templates/`:
 
 ```bash
 # Verify packaging configuration
-node .ai/scripts/packctl.js verify
+node .ai/skills/features/packaging/scripts/packctl.js verify
 
 # List registered targets
-node .ai/scripts/packctl.js list
+node .ai/skills/features/packaging/scripts/packctl.js list
 ```
 
 ## Rollback / Uninstall
@@ -129,6 +128,5 @@ Delete these paths:
 
 - `ops/packaging/`
 - `docs/packaging/`
-- `.ai/scripts/packctl.js`
-- `.ai/scripts/build.js`
+- `.ai/skills/features/packaging/scripts/packctl.js`
 - `.ai/skills/features/packaging/`

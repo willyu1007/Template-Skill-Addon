@@ -18,7 +18,7 @@ When enabled, this feature materializes:
 
 Controller script (provided by the template SSOT):
 
-- `node .ai/scripts/releasectl.js` — manage release configuration and checklists
+- `node .ai/skills/features/release/scripts/releasectl.js` — manage release configuration and checklists
 
 ## How to enable
 
@@ -42,8 +42,8 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 2. Initialize:
 
 ```bash
-node .ai/scripts/releasectl.js init
-node .ai/scripts/releasectl.js verify
+node .ai/skills/features/release/scripts/releasectl.js init
+node .ai/skills/features/release/scripts/releasectl.js verify
 ```
 
 ## Operating rules
@@ -54,7 +54,7 @@ node .ai/scripts/releasectl.js verify
 ## Verification
 
 ```bash
-node .ai/scripts/releasectl.js verify
+node .ai/skills/features/release/scripts/releasectl.js verify
 ```
 
 ## Boundaries

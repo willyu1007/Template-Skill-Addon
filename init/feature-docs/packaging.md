@@ -33,13 +33,13 @@ When enabled, Stage C:
 2) Runs the controller:
 
 ```bash
-node .ai/scripts/packctl.js init --repo-root .
+node .ai/skills/features/packaging/scripts/packctl.js init --repo-root .
 ```
 
 3) Optional verification (when Stage C is run with `--verify-features`):
 
 ```bash
-node .ai/scripts/packctl.js verify --repo-root .
+node .ai/skills/features/packaging/scripts/packctl.js verify --repo-root .
 ```
 
 ## Key outputs
@@ -51,11 +51,11 @@ node .ai/scripts/packctl.js verify --repo-root .
 
 ```bash
 # Add a service packaging target
-node .ai/scripts/packctl.js add-service --id api --module apps/backend
+node .ai/skills/features/packaging/scripts/packctl.js add-service --id api --module apps/backend
 
 # Add a job packaging target
-node .ai/scripts/packctl.js add-job --id cron-task
+node .ai/skills/features/packaging/scripts/packctl.js add-job --id cron-task
 
 # List packaging targets
-node .ai/scripts/packctl.js list
+node .ai/skills/features/packaging/scripts/packctl.js list
 ```

@@ -12,10 +12,10 @@ New files/directories (created if missing):
 
 - `release/` (release management root)
   - `release/AGENTS.md` (LLM guidance)
-  - `release/config.json` (release configuration)
-  - `release/changelog-template.md` (changelog template)
-  - `release/workdocs/` (release planning)
-- `.ai/scripts/releasectl.js` (release management)
+- `release/config.json` (release configuration)
+- `release/changelog-template.md` (changelog template)
+- `release/workdocs/` (release planning)
+- `.ai/skills/features/release/scripts/releasectl.js` (release management)
 - `.releaserc.json.template` (semantic-release config template)
 - `.ai/skills/features/release/` (feature documentation)
 
@@ -51,7 +51,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 2. Initialize release scaffolding:
 
 ```bash
-node .ai/scripts/releasectl.js init --strategy semantic
+node .ai/skills/features/release/scripts/releasectl.js init --strategy semantic
 ```
 
 ## Usage
@@ -60,30 +60,30 @@ node .ai/scripts/releasectl.js init --strategy semantic
 
 ```bash
 # Initialize with semantic versioning
-node .ai/scripts/releasectl.js init --strategy semantic
+node .ai/skills/features/release/scripts/releasectl.js init --strategy semantic
 
 # Initialize with manual versioning
-node .ai/scripts/releasectl.js init --strategy manual
+node .ai/skills/features/release/scripts/releasectl.js init --strategy manual
 ```
 
 ### Prepare Release
 
 ```bash
 # Prepare a new release
-node .ai/scripts/releasectl.js prepare --version 1.2.0
+node .ai/skills/features/release/scripts/releasectl.js prepare --version 1.2.0
 
 # Generate changelog
-node .ai/scripts/releasectl.js changelog --from v1.0.0 --to HEAD
+node .ai/skills/features/release/scripts/releasectl.js changelog --from v1.0.0 --to HEAD
 ```
 
 ### Tag Release
 
 ```bash
 # Create release tag
-node .ai/scripts/releasectl.js tag --version 1.2.0
+node .ai/skills/features/release/scripts/releasectl.js tag --version 1.2.0
 
 # Show release status
-node .ai/scripts/releasectl.js status
+node .ai/skills/features/release/scripts/releasectl.js status
 ```
 
 ## Versioning Strategies
@@ -98,10 +98,10 @@ node .ai/scripts/releasectl.js status
 
 ```bash
 # Check release status
-node .ai/scripts/releasectl.js status
+node .ai/skills/features/release/scripts/releasectl.js status
 
 # Verify configuration
-node .ai/scripts/releasectl.js verify
+node .ai/skills/features/release/scripts/releasectl.js verify
 ```
 
 ## Rollback / Uninstall
@@ -109,6 +109,6 @@ node .ai/scripts/releasectl.js verify
 Delete these paths:
 
 - `release/`
-- `.ai/scripts/releasectl.js`
+- `.ai/skills/features/release/scripts/releasectl.js`
 - `.releaserc.json` (if generated)
 - `.ai/skills/features/release/`

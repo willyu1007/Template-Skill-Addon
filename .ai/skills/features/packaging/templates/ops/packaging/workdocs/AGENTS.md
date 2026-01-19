@@ -10,7 +10,7 @@ Store packaging decisions and plans under `ops/packaging/workdocs/` (design note
 - Registry conventions and access assumptions (NO secrets)
 
 ## What does NOT belong here
-- Executable automation (use `ops/packaging/scripts/` and `.ai/scripts/packctl.js`)
+- Executable automation (use `ops/packaging/scripts/` and `.ai/skills/features/packaging/scripts/packctl.js`)
 - Credentials, tokens, or private keys
 
 ## Verification

@@ -5,7 +5,7 @@
 - The feature installs a **stable, verifiable project context layer** under `docs/context/` (API, DB schema mapping, BPMN, and additional artifacts).
 - The feature also provides **environment configuration management** under `docs/context/config/` and `config/environments/`.
 - The feature provides **project-level scripts** that MUST be used to change the context:
-  - `node .ai/scripts/contextctl.js` (context artifacts + registry + environments)
+  - `node .ai/skills/features/context-awareness/scripts/contextctl.js` (context artifacts + registry + environments)
   - `node .ai/scripts/projectctl.js` (project state/config)
   - `node .ai/skills/_meta/skillpacksctl.js` (skills pack switching + wrapper sync)
 - The goal is to make an LLM "context-aware" without relying on ad-hoc folder scans:
@@ -21,7 +21,8 @@ New files/directories (created if missing):
 - `docs/context/config/**` (environment registry)
 - `.ai/skills/features/context-awareness/**` (documentation for this feature)
 - `config/environments/**` (environment config templates)
-- `.ai/scripts/{contextctl.js,projectctl.js,explain-context-feature.js}`
+- `.ai/skills/features/context-awareness/scripts/contextctl.js`
+- `.ai/scripts/projectctl.js`
 - `.ai/skills/_meta/skillpacksctl.js` (pack controller)
 - `.ai/project/{state.json,state.schema.json}`
 - `.ai/skills/scaffold/**` (optional scaffold skills for context/packs/state)
@@ -62,12 +63,12 @@ If you are not using the init pipeline, you can materialize the feature template
    - Source: `.ai/skills/features/context-awareness/templates/`
    - Destination: repo root
 2. Initialize (idempotent):
-   ```bash
-   node .ai/scripts/projectctl.js init
-   node .ai/scripts/projectctl.js set-context-mode contract
-   node .ai/scripts/projectctl.js set context.enabled true
-   node .ai/scripts/contextctl.js init
-   ```
+	   ```bash
+	   node .ai/scripts/projectctl.js init
+	   node .ai/scripts/projectctl.js set-context-mode contract
+	   node .ai/scripts/projectctl.js set context.enabled true
+	   node .ai/skills/features/context-awareness/scripts/contextctl.js init
+	   ```
 3. (Optional) Enable the scaffold/context pack and sync wrappers:
    ```bash
    node .ai/skills/_meta/skillpacksctl.js enable-pack context-core --providers both
@@ -100,40 +101,40 @@ Copy templates to actual config files (remove `.template` suffix) and fill in va
 
 ```bash
 # Add a new environment
-node .ai/scripts/contextctl.js add-env --id qa --description "QA environment"
+node .ai/skills/features/context-awareness/scripts/contextctl.js add-env --id qa --description "QA environment"
 
 # List all environments
-node .ai/scripts/contextctl.js list-envs
+node .ai/skills/features/context-awareness/scripts/contextctl.js list-envs
 
 # Verify environment configuration
-node .ai/scripts/contextctl.js verify-config --env staging
+node .ai/skills/features/context-awareness/scripts/contextctl.js verify-config --env staging
 ```
 
 ## Artifact Commands
 
 ```bash
 # Add an artifact
-node .ai/scripts/contextctl.js add-artifact --id my-api --type openapi --path docs/context/api/my-api.yaml
+node .ai/skills/features/context-awareness/scripts/contextctl.js add-artifact --id my-api --type openapi --path docs/context/api/my-api.yaml
 
 # Remove an artifact
-node .ai/scripts/contextctl.js remove-artifact --id old-api
+node .ai/skills/features/context-awareness/scripts/contextctl.js remove-artifact --id old-api
 
 # Update checksums after editing artifacts
-node .ai/scripts/contextctl.js touch
+node .ai/skills/features/context-awareness/scripts/contextctl.js touch
 
 # List all artifacts
-node .ai/scripts/contextctl.js list
+node .ai/skills/features/context-awareness/scripts/contextctl.js list
 ```
 
 ## Verification
 
 - Context layer exists and is consistent:
   ```bash
-  node .ai/scripts/contextctl.js verify --strict
+  node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict
   ```
 - Environment configuration is valid:
   ```bash
-  node .ai/scripts/contextctl.js verify-config
+  node .ai/skills/features/context-awareness/scripts/contextctl.js verify-config
   ```
 - Project state is valid:
   ```bash
@@ -151,10 +152,9 @@ Delete these paths (if you want a clean uninstall):
 - `docs/context/`
 - `.ai/skills/features/context-awareness/`
 - `config/environments/`
-- `.ai/scripts/contextctl.js`
+- `.ai/skills/features/context-awareness/scripts/contextctl.js`
 - `.ai/scripts/projectctl.js`
 - `.ai/skills/_meta/skillpacksctl.js`
-- `.ai/scripts/explain-context-feature.js`
 - `.ai/project/`
 - `.ai/skills/scaffold/` (only if you installed the feature's scaffold skills)
 - `.ai/skills/_meta/packs/context-core.json`

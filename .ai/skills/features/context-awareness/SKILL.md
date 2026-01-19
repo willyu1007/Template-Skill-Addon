@@ -27,7 +27,7 @@ When enabled (typically during init), the feature **materializes** these paths i
 
 And it assumes these controller scripts exist (they are part of the template SSOT under `.ai/`):
 
-- `node .ai/scripts/contextctl.js` — context registry + artifacts + env registry
+- `node .ai/skills/features/context-awareness/scripts/contextctl.js` — context registry + artifacts + env registry
 - `node .ai/scripts/projectctl.js` — project state (`.ai/project/state.json`)
 - `node .ai/skills/_meta/skillpacksctl.js` — skill pack switching + wrapper sync
 
@@ -75,8 +75,8 @@ If you must enable after init, you can:
 ```bash
 node .ai/scripts/projectctl.js init
 node .ai/scripts/projectctl.js set context.enabled true
-node .ai/scripts/contextctl.js init
-node .ai/scripts/contextctl.js touch
+node .ai/skills/features/context-awareness/scripts/contextctl.js init
+node .ai/skills/features/context-awareness/scripts/contextctl.js touch
 ```
 
 ## Operating rules
@@ -86,21 +86,21 @@ node .ai/scripts/contextctl.js touch
 After editing any file under `docs/context/**`:
 
 ```bash
-node .ai/scripts/contextctl.js touch
+node .ai/skills/features/context-awareness/scripts/contextctl.js touch
 ```
 
 ### Managing environments
 
 ```bash
-node .ai/scripts/contextctl.js list-envs
-node .ai/scripts/contextctl.js add-env --id qa --description "QA environment"
-node .ai/scripts/contextctl.js verify-config
+node .ai/skills/features/context-awareness/scripts/contextctl.js list-envs
+node .ai/skills/features/context-awareness/scripts/contextctl.js add-env --id qa --description "QA environment"
+node .ai/skills/features/context-awareness/scripts/contextctl.js verify-config
 ```
 
 ## Verification
 
 ```bash
-node .ai/scripts/contextctl.js verify --strict
+node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict
 node .ai/scripts/projectctl.js verify
 ```
 

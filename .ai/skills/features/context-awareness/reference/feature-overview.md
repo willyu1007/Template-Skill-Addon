@@ -14,8 +14,8 @@ This feature provides a **stable, verifiable context contract** so an LLM can wo
 - `docs/context/` is the **only** supported entry point for "project context artifacts".
 - `docs/context/registry.json` is the canonical index for all context artifacts.
 - Any edits to registered artifacts MUST be followed by:
-  - `node .ai/scripts/contextctl.js touch`
-  - `node .ai/scripts/contextctl.js verify --strict`
+  - `node .ai/skills/features/context-awareness/scripts/contextctl.js touch`
+  - `node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict`
 
 ### Database schema contract (special rule)
 
@@ -33,4 +33,4 @@ This feature provides a **stable, verifiable context contract** so an LLM can wo
 
 ## Verification
 
-- `node .ai/scripts/contextctl.js verify --strict`
+- `node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict`

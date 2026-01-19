@@ -188,15 +188,16 @@ node .ai/scripts/sync-skills.cjs --delete-skills "<csv>" --yes
 This template ships:
 
 - Central feature-pack tests under `.ai/tests/` (not per-skill `tests/` folders)
-- Feature controller scripts under `.ai/scripts/`
+- Feature controller scripts under `.ai/skills/features/**/scripts/` (plus cross-cutting controllers under `.ai/scripts/`)
 
 Initialization does **not** auto-delete these. If the user explicitly does not need the corresponding feature packs, you MAY remove the related paths (after confirmation), for example:
 
 - DB mirror tooling: `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js`, `.ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js`
-- Deployment tooling: `.ai/scripts/deployctl.js`, `.ai/scripts/rollback.js`
-- Packaging tooling: `.ai/scripts/packctl.js`
-- Release tooling: `.ai/scripts/releasectl.js`
-- Observability tooling: `.ai/scripts/obsctl.js`
+- CI tooling: `.ai/skills/features/ci/scripts/cictl.js`
+- Deployment tooling: `.ai/skills/features/deployment/scripts/deployctl.js`, `.ai/skills/features/deployment/scripts/rollback.js`
+- Packaging tooling: `.ai/skills/features/packaging/scripts/packctl.js`
+- Release tooling: `.ai/skills/features/release/scripts/releasectl.js`
+- Observability tooling: `.ai/skills/features/observability/scripts/obsctl.js`
 - Feature-pack test suites: `.ai/tests/suites/database/`, `.ai/tests/suites/environment/`, `.ai/tests/suites/ui/`
 
 After pruning, re-run wrapper sync:
@@ -240,7 +241,7 @@ Optional (configuration only; does not trigger enabling):
 
 ### Key scripts
 
-- `.ai/scripts/contextctl.js`
+- `.ai/skills/features/context-awareness/scripts/contextctl.js`
   - `init`: initializes the `docs/context/` scaffold (idempotent)
 - `.ai/scripts/projectctl.js`
   - `init`: initializes `.ai/project/state.json` (idempotent)

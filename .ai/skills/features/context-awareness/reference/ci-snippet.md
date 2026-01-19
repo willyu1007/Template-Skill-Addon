@@ -2,7 +2,7 @@
 
 Add a step in your CI pipeline that runs:
 
-- `node .ai/scripts/contextctl.js verify --strict`
+- `node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict`
 - `node .ai/scripts/projectctl.js verify`
 
 This enforces that:

@@ -3,7 +3,7 @@
 ## Quick Steps
 
 1. Identify the issue
-2. Check deployment history: `node .ai/scripts/deployctl.js history --service <id>`
+2. Check deployment history: `node .ai/skills/features/deployment/scripts/deployctl.js history --service <id>`
 3. Execute rollback (see below)
 
 ## Detailed Procedure
@@ -56,4 +56,3 @@ helm rollback <release-name> <revision> -n <namespace>
 - Identify root cause
 - Plan preventive measures
 - Update this runbook if needed
-

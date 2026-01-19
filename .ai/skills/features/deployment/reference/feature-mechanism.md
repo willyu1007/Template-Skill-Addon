@@ -18,10 +18,9 @@ New files/directories (created if missing):
   - `ops/deploy/k8s/` (Kubernetes-specific, if enabled)
   - `ops/deploy/environments/` (environment configs)
   - `ops/deploy/scripts/` (deployment scripts)
-  - `ops/deploy/workdocs/` (deployment plans)
-- `.ai/scripts/deployctl.js` (deployment management)
-- `.ai/scripts/deploy.js` (deploy execution entry)
-- `.ai/scripts/rollback.js` (rollback script)
+- `ops/deploy/workdocs/` (deployment plans)
+- `.ai/skills/features/deployment/scripts/deployctl.js` (deployment management)
+- `.ai/skills/features/deployment/scripts/rollback.js` (rollback script)
 - `.ai/skills/features/deployment/` (feature documentation)
 
 ## Install
@@ -53,12 +52,12 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 2. Initialize:
 
    ```bash
-   node .ai/scripts/deployctl.js init
+   node .ai/skills/features/deployment/scripts/deployctl.js init
    ```
 3. Optional verification:
 
    ```bash
-   node .ai/scripts/deployctl.js verify
+   node .ai/skills/features/deployment/scripts/deployctl.js verify
    ```
 
 
@@ -68,37 +67,37 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 
 ```bash
 # Initialize with Kubernetes
-node .ai/scripts/deployctl.js init --model k8s
+node .ai/skills/features/deployment/scripts/deployctl.js init --model k8s
 
 # Initialize for serverless
-node .ai/scripts/deployctl.js init --model serverless
+node .ai/skills/features/deployment/scripts/deployctl.js init --model serverless
 ```
 
 ### Register Services
 
 ```bash
 # Register a service for deployment
-node .ai/scripts/deployctl.js add-service --id api --artifact api:v1.0.0
+node .ai/skills/features/deployment/scripts/deployctl.js add-service --id api --artifact api:v1.0.0
 
 # List registered services
-node .ai/scripts/deployctl.js list
+node .ai/skills/features/deployment/scripts/deployctl.js list
 ```
 
 ### Plan Deployment
 
 ```bash
 # Generate deployment plan
-node .ai/scripts/deployctl.js plan --service api --env staging
+node .ai/skills/features/deployment/scripts/deployctl.js plan --service api --env staging
 
 # Show deployment status
-node .ai/scripts/deployctl.js status --env staging
+node .ai/skills/features/deployment/scripts/deployctl.js status --env staging
 ```
 
 ### View History
 
 ```bash
 # Show deployment history
-node .ai/scripts/deployctl.js history --service api
+node .ai/skills/features/deployment/scripts/deployctl.js history --service api
 ```
 
 ## Deployment Models
@@ -122,10 +121,10 @@ When using `k8s` model:
 
 ```bash
 # Verify deployment configuration
-node .ai/scripts/deployctl.js verify
+node .ai/skills/features/deployment/scripts/deployctl.js verify
 
 # Check status
-node .ai/scripts/deployctl.js status --env staging
+node .ai/skills/features/deployment/scripts/deployctl.js status --env staging
 ```
 
 ## Rollback / Uninstall
@@ -133,7 +132,6 @@ node .ai/scripts/deployctl.js status --env staging
 Delete these paths:
 
 - `ops/deploy/`
-- `.ai/scripts/deployctl.js`
-- `.ai/scripts/deploy.js`
-- `.ai/scripts/rollback.js`
+- `.ai/skills/features/deployment/scripts/deployctl.js`
+- `.ai/skills/features/deployment/scripts/rollback.js`
 - `.ai/skills/features/deployment/`

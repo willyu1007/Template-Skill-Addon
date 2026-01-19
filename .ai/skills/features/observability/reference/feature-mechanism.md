@@ -18,7 +18,7 @@ New files/directories (created if missing):
   - `observability/AGENTS.md` (LLM guidance)
   - `observability/config.json` (observability configuration)
   - `observability/workdocs/` (observability planning)
-- `.ai/scripts/obsctl.js` (observability management)
+- `.ai/skills/features/observability/scripts/obsctl.js` (observability management)
 - `.ai/skills/features/observability/` (feature documentation)
 
 ## Install
@@ -55,7 +55,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 2. Initialize:
 
 ```bash
-node .ai/scripts/obsctl.js init
+node .ai/skills/features/observability/scripts/obsctl.js init
 ```
 
 
@@ -64,34 +64,34 @@ node .ai/scripts/obsctl.js init
 ### Initialize Observability
 
 ```bash
-node .ai/scripts/obsctl.js init
+node .ai/skills/features/observability/scripts/obsctl.js init
 ```
 
 ### Manage Metrics
 
 ```bash
 # Add a metric
-node .ai/scripts/obsctl.js add-metric --name request_duration --type histogram --unit seconds
+node .ai/skills/features/observability/scripts/obsctl.js add-metric --name request_duration --type histogram --unit seconds
 
 # List metrics
-node .ai/scripts/obsctl.js list-metrics
+node .ai/skills/features/observability/scripts/obsctl.js list-metrics
 ```
 
 ### Manage Log Fields
 
 ```bash
 # Add a log field
-node .ai/scripts/obsctl.js add-log-field --name user_id --type string
+node .ai/skills/features/observability/scripts/obsctl.js add-log-field --name user_id --type string
 
 # List log fields
-node .ai/scripts/obsctl.js list-log-fields
+node .ai/skills/features/observability/scripts/obsctl.js list-log-fields
 ```
 
 ### Generate Instrumentation Hints
 
 ```bash
 # Generate instrumentation code hints
-node .ai/scripts/obsctl.js generate-instrumentation --lang typescript
+node .ai/skills/features/observability/scripts/obsctl.js generate-instrumentation --lang typescript
 ```
 
 ## Observability Contracts
@@ -121,7 +121,7 @@ node .ai/scripts/obsctl.js generate-instrumentation --lang typescript
 
 ```bash
 # Verify observability configuration
-node .ai/scripts/obsctl.js verify
+node .ai/skills/features/observability/scripts/obsctl.js verify
 ```
 
 ## Rollback / Uninstall
@@ -130,5 +130,5 @@ Delete these paths:
 
 - `docs/context/observability/`
 - `observability/`
-- `.ai/scripts/obsctl.js`
+- `.ai/skills/features/observability/scripts/obsctl.js`
 - `.ai/skills/features/observability/`

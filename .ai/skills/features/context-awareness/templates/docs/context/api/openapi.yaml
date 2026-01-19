@@ -4,7 +4,7 @@ info:
   version: 0.1.0
   description: |
     This is the canonical API contract for this repository.
-    Update this file via `node .ai/scripts/contextctl.js` (registry + verification).
+    Update this file via `node .ai/skills/features/context-awareness/scripts/contextctl.js` (registry + verification).
 servers: []
 paths: {}
 components:

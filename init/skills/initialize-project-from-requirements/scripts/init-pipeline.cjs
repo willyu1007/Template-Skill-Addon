@@ -553,6 +553,20 @@ function validateBlueprint(blueprint) {
     errors.push('features.observability=true requires features.contextAwareness=true (observability contracts live under docs/context/).');
   }
 
+  // CI feature requirements
+  if (isCiEnabled(blueprint)) {
+    const provider = ciProvider(blueprint);
+    if (!provider) {
+      const ci = blueprint.ci && typeof blueprint.ci === 'object' ? blueprint.ci : {};
+      const platform = String(ci.platform || '').toLowerCase();
+      const hint =
+        platform === 'github-actions' ? ' (hint: set ci.provider=\"github\")'
+        : platform === 'gitlab-ci' ? ' (hint: set ci.provider=\"gitlab\")'
+        : '';
+      errors.push(`features.ci=true requires ci.provider to be \"github\" or \"gitlab\".${hint}`);
+    }
+  }
+
   if ((caps.database && caps.database.enabled) && db.ssot === 'none') {
     warnings.push('capabilities.database.enabled=true but db.ssot=none. The template will not manage schema synchronization.');
   }
@@ -651,6 +665,13 @@ function recommendedFeaturesFromBlueprint(blueprint) {
     (blueprint.release && blueprint.release.enabled);
   if (releaseEnabled) rec.push('release');
 
+  // ci: recommend when CI is explicitly configured/enabled
+  const ciCfg = blueprint.ci && typeof blueprint.ci === 'object' ? blueprint.ci : {};
+  const ciRecommended =
+    ciCfg.enabled === true ||
+    (q.ci && typeof q.ci === 'object' && q.ci.enabled === true);
+  if (ciRecommended) rec.push('ci');
+
   // observability: enabled when observability is configured
   const observabilityEnabled =
     (blueprint.observability && blueprint.observability.enabled);
@@ -669,6 +690,7 @@ function getEnabledFeatures(blueprint) {
   if (isPackagingEnabled(blueprint)) enabled.push('packaging');
   if (isDeploymentEnabled(blueprint)) enabled.push('deployment');
   if (isReleaseEnabled(blueprint)) enabled.push('release');
+  if (isCiEnabled(blueprint)) enabled.push('ci');
   if (isObservabilityEnabled(blueprint)) enabled.push('observability');
   
   return enabled;
@@ -1068,6 +1090,19 @@ function getContextMode(blueprint) {
   return 'contract';
 }
 
+function ciProvider(blueprint) {
+  const ci = blueprint && blueprint.ci && typeof blueprint.ci === 'object' ? blueprint.ci : {};
+  const provider = String(ci.provider || '').trim().toLowerCase();
+  if (provider === 'github' || provider === 'gitlab') return provider;
+
+  // Compatibility hint: allow derivation from ci.platform when present.
+  const platform = String(ci.platform || '').trim().toLowerCase();
+  if (platform === 'github-actions') return 'github';
+  if (platform === 'gitlab-ci') return 'gitlab';
+
+  return null;
+}
+
 
 
 // ============================================================================
@@ -1270,7 +1305,7 @@ function refreshDbContextContract(repoRoot, blueprint, apply, verifyFeatures) {
   const actions = [run1];
 
   if (verifyFeatures && apply) {
-    const contextCtl = path.join(repoRoot, '.ai', 'scripts', 'contextctl.js');
+    const contextCtl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'contextctl.js');
     if (fs.existsSync(contextCtl)) {
       actions.push(runNodeScriptWithRepoRootFallback(repoRoot, contextCtl, ['verify', '--repo-root', repoRoot], apply));
     }
@@ -1324,9 +1359,34 @@ function isObservabilityEnabled(blueprint) {
   return flags.observability === true;
 }
 
+function isCiEnabled(blueprint) {
+  const flags = featureFlags(blueprint);
+  // Only feature flags trigger materialization; ci.* is configuration only
+  return flags.ci === true;
+}
+
 // ============================================================================
 // Feature Materialization (templates + ctl scripts)
 // ============================================================================
+
+function findFeatureCtlScript(repoRoot, featureId, ctlScriptName) {
+  if (!ctlScriptName) return null;
+
+  const dash = String(featureId || '').replace(/_/g, '-');
+  const candidates = [
+    // preferred: feature-local controller
+    path.join(repoRoot, '.ai', 'skills', 'features', dash, 'scripts', ctlScriptName),
+    // back-compat: repo-level controller
+    path.join(repoRoot, '.ai', 'scripts', ctlScriptName),
+  ];
+
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  // Default expected path for error messages
+  return candidates[0];
+}
 
 function ensureFeature(repoRoot, featureId, apply, ctlScriptName, options = {}) {
   const { force = false, verify = false, stateKey } = options;
@@ -1371,7 +1431,7 @@ function ensureFeature(repoRoot, featureId, apply, ctlScriptName, options = {}) 
 
   // Optional: run feature controller init/verify (best-effort)
   if (ctlScriptName) {
-    const ctlPath = path.join(repoRoot, '.ai', 'scripts', ctlScriptName);
+    const ctlPath = findFeatureCtlScript(repoRoot, featureId, ctlScriptName);
     if (fs.existsSync(ctlPath)) {
       result.actions.push(runNodeScriptWithRepoRootFallback(repoRoot, ctlPath, ['init', '--repo-root', repoRoot], apply));
       if (verify && apply) {
@@ -1383,7 +1443,8 @@ function ensureFeature(repoRoot, featureId, apply, ctlScriptName, options = {}) 
         }
       }
     } else if (apply) {
-      result.errors.push(`Feature "${featureId}" control script not found: .ai/scripts/${ctlScriptName}`);
+      const expected = path.relative(repoRoot, ctlPath);
+      result.errors.push(`Feature "${featureId}" control script not found: ${expected}`);
     }
   }
 
@@ -1547,6 +1608,43 @@ function ensureEnvironmentFeature(repoRoot, blueprint, apply, options = {}) {
   return result;
 }
 
+function ensureCiFeature(repoRoot, blueprint, apply, options = {}) {
+  const { verify = false } = options;
+  const enabled = isCiEnabled(blueprint);
+  const result = { enabled, featureId: 'ci', op: enabled ? 'ensure' : 'skip', actions: [], warnings: [], errors: [] };
+
+  if (!enabled) return result;
+
+  result.actions.push(markProjectFeature(repoRoot, 'ci', apply));
+
+  const provider = ciProvider(blueprint);
+  if (!provider) {
+    result.errors.push('CI feature is enabled but ci.provider is missing/invalid. Expected: "github" or "gitlab".');
+    return result;
+  }
+
+  const cictl = path.join(repoRoot, '.ai', 'skills', 'features', 'ci', 'scripts', 'cictl.js');
+  if (!fs.existsSync(cictl)) {
+    result.errors.push(`CI control script not found: ${path.relative(repoRoot, cictl)}`);
+    return result;
+  }
+
+  result.actions.push(
+    runNodeScriptWithRepoRootFallback(repoRoot, cictl, ['init', '--provider', provider, '--repo-root', repoRoot], apply)
+  );
+
+  if (verify && apply) {
+    const verifyRes = runNodeScriptWithRepoRootFallback(repoRoot, cictl, ['verify', '--repo-root', repoRoot], apply);
+    result.actions.push(verifyRes);
+    if (verifyRes.mode === 'failed') {
+      result.verifyFailed = true;
+      result.verifyError = 'CI feature verify failed';
+    }
+  }
+
+  return result;
+}
+
 function ensureContextAwarenessFeature(repoRoot, blueprint, apply, options = {}) {
   const { force = false, verify = false } = options;
   const enabled = isContextAwarenessEnabled(blueprint);
@@ -1582,11 +1680,11 @@ function ensureContextAwarenessFeature(repoRoot, blueprint, apply, options = {})
   });
   result.actions.push(...copyRes.actions);
 
-  const contextctl = path.join(repoRoot, '.ai', 'scripts', 'contextctl.js');
+  const contextctl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'contextctl.js');
   const projectctl = path.join(repoRoot, '.ai', 'scripts', 'projectctl.js');
 
   if (!fs.existsSync(contextctl)) {
-    result.errors.push('contextctl.js not found under .ai/scripts.');
+    result.errors.push('contextctl.js not found under .ai/skills/features/context-awareness/scripts/.');
     return result;
   }
 
@@ -2557,6 +2655,13 @@ if (command === 'validate') {
       console.log('[info] Enabling Environment feature...');
       const res = ensureEnvironmentFeature(repoRoot, blueprint, true, featureOptions);
       handleFeatureResult(res, 'environment');
+    }
+
+    // CI feature
+    if (isCiEnabled(blueprint)) {
+      console.log('[info] Enabling CI feature...');
+      const res = ensureCiFeature(repoRoot, blueprint, true, featureOptions);
+      handleFeatureResult(res, 'ci');
     }
 
     // Packaging feature
