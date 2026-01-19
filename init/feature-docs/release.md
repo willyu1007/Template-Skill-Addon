@@ -28,7 +28,7 @@ In `init/project-blueprint.json`:
 When enabled, Stage C:
 
 1) Copies templates from:
-- `.ai/skills/features/release/feature-release/templates/`
+- `.ai/skills/features/release/templates/`
 
 2) Runs the controller:
 
@@ -46,4 +46,3 @@ node .ai/scripts/releasectl.js verify --repo-root .
 
 - `release/**`
 - `.releaserc.json.template`
-

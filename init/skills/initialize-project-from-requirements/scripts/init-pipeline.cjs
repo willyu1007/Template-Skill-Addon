@@ -446,6 +446,8 @@ function packPrefixMap() {
     workflows: 'workflows/',
     standards: 'standards/',
     testing: 'testing/',
+    'context-core': 'scaffold/context/',
+    'scaffold-core': 'scaffold/',
     backend: 'backend/',
     frontend: 'frontend/'
   };
@@ -453,7 +455,7 @@ function packPrefixMap() {
 
 function packOrder() {
   // Base packs available in template (matches .ai/skills/_meta/packs/)
-  return ['workflows', 'standards', 'testing', 'backend', 'frontend'];
+  return ['workflows', 'standards', 'testing', 'context-core', 'scaffold-core', 'backend', 'frontend'];
 }
 
 function normalizePackList(packs) {
@@ -532,12 +534,18 @@ function validateBlueprint(blueprint) {
     errors.push(`db.ssot is required and must be one of: ${validSsot.join(', ')}`);
   }
 
-  const dbMirrorEnabled = isDbMirrorEnabled(blueprint);
-  if (db.ssot === 'database' && !dbMirrorEnabled) {
-    errors.push('db.ssot=database requires features.dbMirror=true (DB Mirror feature).');
+  const flags = featureFlags(blueprint);
+  if (Object.prototype.hasOwnProperty.call(flags, 'dbMirror')) {
+    errors.push('features.dbMirror is not supported. Use features.database instead.');
   }
-  if (db.ssot !== 'database' && dbMirrorEnabled) {
-    errors.push('features.dbMirror=true is only valid when db.ssot=database.');
+
+  const databaseEnabled = isDatabaseEnabled(blueprint);
+
+  if (db.ssot !== 'none' && !databaseEnabled) {
+    errors.push('db.ssot != none requires features.database=true (Database feature).');
+  }
+  if (db.ssot === 'none' && databaseEnabled) {
+    errors.push('features.database=true is only valid when db.ssot != none.');
   }
 
   // Feature dependencies
@@ -607,21 +615,36 @@ function recommendedFeaturesFromBlueprint(blueprint) {
     (caps.bpmn && caps.bpmn.enabled);
   if (needsContext) rec.push('contextAwareness');
 
-  // db-mirror: enabled only when DB SSOT is the real database
+  // database: enable when DB SSOT is managed (repo-prisma or database)
   const db = blueprint.db || {};
-  if (db.ssot === 'database') rec.push('dbMirror');
+  if (db.ssot && db.ssot !== 'none') rec.push('database');
+
+  // ui: enable when a frontend capability exists
+  if (caps.frontend && caps.frontend.enabled) rec.push('ui');
 
   // packaging: enabled when containerization/packaging is configured
   const packagingEnabled =
+    (blueprint.packaging && blueprint.packaging.enabled) ||
     (devops.packaging && devops.packaging.enabled) ||
-    (q.devops && q.devops.containerize);
+    devops.enabled === true ||
+    (q.devops && (q.devops.enabled || q.devops.containerize || q.devops.packaging));
   if (packagingEnabled) rec.push('packaging');
 
   // deployment: enabled when deployment is configured
   const deploymentEnabled =
     (devops.deploy && devops.deploy.enabled) ||
-    (blueprint.deploy && blueprint.deploy.enabled);
+    devops.enabled === true ||
+    (blueprint.deploy && blueprint.deploy.enabled) ||
+    (q.devops && (q.devops.enabled || q.devops.deployment));
   if (deploymentEnabled) rec.push('deployment');
+
+  // environment: recommend when the project likely needs env var contracts
+  const envLikely =
+    (caps.backend && caps.backend.enabled) ||
+    packagingEnabled ||
+    deploymentEnabled ||
+    (blueprint.observability && blueprint.observability.enabled);
+  if (envLikely) rec.push('environment');
 
   // release: enabled when release management is configured
   const releaseEnabled =
@@ -640,7 +663,9 @@ function getEnabledFeatures(blueprint) {
   const enabled = [];
   
   if (isContextAwarenessEnabled(blueprint)) enabled.push('contextAwareness');
-  if (isDbMirrorEnabled(blueprint)) enabled.push('dbMirror');
+  if (isDatabaseEnabled(blueprint)) enabled.push('database');
+  if (isUiEnabled(blueprint)) enabled.push('ui');
+  if (isEnvironmentEnabled(blueprint)) enabled.push('environment');
   if (isPackagingEnabled(blueprint)) enabled.push('packaging');
   if (isDeploymentEnabled(blueprint)) enabled.push('deployment');
   if (isReleaseEnabled(blueprint)) enabled.push('release');
@@ -650,18 +675,18 @@ function getEnabledFeatures(blueprint) {
 }
 
 function checkPackInstall(repoRoot, pack) {
-const packFile = path.join(repoRoot, '.ai', 'skills', '_meta', 'packs', `${pack}.json`);
-if (fs.existsSync(packFile)) {
-  return { pack, installed: true, via: 'pack-file', path: path.relative(repoRoot, packFile) };
-}
+  const packFile = path.join(repoRoot, '.ai', 'skills', '_meta', 'packs', `${pack}.json`);
+  if (fs.existsSync(packFile)) {
+    return { pack, installed: true, via: 'pack-file', path: path.relative(repoRoot, packFile) };
+  }
 
-// Back-compat for repos without pack files: infer install by prefix presence
-const prefix = packPrefixMap()[pack];
-if (!prefix) return { pack, installed: false, reason: 'missing pack-file and no prefix mapping' };
+  // Back-compat for repos without pack files: infer install by prefix presence
+  const prefix = packPrefixMap()[pack];
+  if (!prefix) return { pack, installed: false, reason: 'missing pack-file and no prefix mapping' };
 
-const dir = path.join(repoRoot, '.ai', 'skills', prefix.replace(/\/$/, ''));
-if (!fs.existsSync(dir)) return { pack, installed: false, reason: `missing ${path.relative(repoRoot, dir)}` };
-return { pack, installed: true, via: 'prefix-dir', path: path.relative(repoRoot, dir) };
+  const dir = path.join(repoRoot, '.ai', 'skills', prefix.replace(/\/$/, ''));
+  if (!fs.existsSync(dir)) return { pack, installed: false, reason: `missing ${path.relative(repoRoot, dir)}` };
+  return { pack, installed: true, via: 'prefix-dir', path: path.relative(repoRoot, dir) };
 }
 
 function printResult(result, format) {
@@ -691,7 +716,7 @@ function checkDocs(docsRoot) {
       ok: false,
       errors: [
         `Stage A docs directory not found: ${docsRoot}`,
-        `Run: scaffold --blueprint <path> --apply  to create templates`
+        `Run: node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs start --repo-root <repo-root>`
       ],
       warnings: []
     };
@@ -985,10 +1010,17 @@ function copyDirIfMissing(srcDir, destDir, apply, force = false) {
 function findFeatureTemplatesDir(repoRoot, featureId) {
   const id = String(featureId || '');
   const dash = id.replace(/_/g, '-');
+
+  // Some feature IDs may source templates from a different skill location.
+  const overrides = new Map([
+    ['database', path.join(repoRoot, '.ai', 'skills', 'features', 'database', 'sync-code-schema-from-db', 'templates')],
+  ]);
+  const override = overrides.get(dash);
+  if (override && fs.existsSync(override) && fs.statSync(override).isDirectory()) return override;
+
   const candidates = [
-    path.join(repoRoot, '.ai', 'skills', 'features', dash, 'feature-' + dash, 'templates'),
-    // fallbacks
-    path.join(repoRoot, '.ai', 'skills', 'features', dash.replace(/-/g, '_'), 'feature-' + dash.replace(/-/g, '_'), 'templates'),
+    // preferred (single-level feature folder)
+    path.join(repoRoot, '.ai', 'skills', 'features', dash, 'templates'),
   ];
   for (const p of candidates) {
     if (fs.existsSync(p) && fs.statSync(p).isDirectory()) return p;
@@ -1065,7 +1097,7 @@ function writeDbSsotConfig(repoRoot, blueprint, apply) {
     mode,
     paths: {
       prismaSchema: 'prisma/schema.prisma',
-      dbMirror: 'db/schema/tables.json',
+      dbSchemaTables: 'db/schema/tables.json',
       dbContextContract: 'docs/context/db/schema.json'
     }
   };
@@ -1079,7 +1111,6 @@ function writeDbSsotConfig(repoRoot, blueprint, apply) {
 }
 
 function ensureDbSsotConfig(repoRoot, blueprint, apply) {
-  // Backward-compatible alias used by apply stage.
   // Writes docs/project/db-ssot.json reflecting the selected db.ssot mode.
   return writeDbSsotConfig(repoRoot, blueprint, apply);
 }
@@ -1188,7 +1219,6 @@ ${end}${after}`;
 }
 
 function patchRootAgentsDbSsotSection(repoRoot, blueprint, apply) {
-  // Backward-compatible alias used by apply stage.
   return patchRootAgentsDbSsot(repoRoot, blueprint, apply);
 }
 
@@ -1254,10 +1284,20 @@ function refreshDbContextContract(repoRoot, blueprint, apply, verifyFeatures) {
 // Feature Detection Functions
 // ============================================================================
 
-function isDbMirrorEnabled(blueprint) {
+function isDatabaseEnabled(blueprint) {
   const flags = featureFlags(blueprint);
-  // Only feature flags trigger materialization; db.* is configuration only
-  return flags.dbMirror === true;
+  // Only feature flags trigger materialization; db.* is configuration only.
+  return flags.database === true;
+}
+
+function isUiEnabled(blueprint) {
+  const flags = featureFlags(blueprint);
+  return flags.ui === true;
+}
+
+function isEnvironmentEnabled(blueprint) {
+  const flags = featureFlags(blueprint);
+  return flags.environment === true;
 }
 
 function isPackagingEnabled(blueprint) {
@@ -1294,8 +1334,12 @@ function ensureFeature(repoRoot, featureId, apply, ctlScriptName, options = {}) 
 
   const templatesDir = findFeatureTemplatesDir(repoRoot, featureId);
   if (!templatesDir) {
+    const expectedHint =
+      String(featureId) === 'database'
+        ? '.ai/skills/features/database/sync-code-schema-from-db/templates/'
+        : `.ai/skills/features/${featureId}/templates/`;
     result.errors.push(
-      `Feature "${featureId}" is enabled but templates were not found. Expected: .ai/skills/features/${featureId}/feature-${featureId}/templates/`
+      `Feature "${featureId}" is enabled but templates were not found. Expected: ${expectedHint}`
     );
     return result;
   }
@@ -1340,6 +1384,141 @@ function ensureFeature(repoRoot, featureId, apply, ctlScriptName, options = {}) 
       }
     } else if (apply) {
       result.errors.push(`Feature "${featureId}" control script not found: .ai/scripts/${ctlScriptName}`);
+    }
+  }
+
+  return result;
+}
+
+function markProjectFeature(repoRoot, featureKey, apply) {
+  const projectctl = path.join(repoRoot, '.ai', 'scripts', 'projectctl.js');
+  if (!fs.existsSync(projectctl)) {
+    return { op: 'skip', path: projectctl, mode: apply ? 'skipped' : 'dry-run', reason: 'projectctl.js not found' };
+  }
+  return runNodeScriptWithRepoRootFallback(
+    repoRoot,
+    projectctl,
+    ['set', `features.${featureKey}`, 'true', '--repo-root', repoRoot],
+    apply
+  );
+}
+
+function runPythonScript(repoRoot, scriptPath, args, apply) {
+  const fullArgs = ['-B', '-S', scriptPath, ...args];
+  const candidates = ['python3', 'python'];
+
+  const printable = `${candidates[0]} ${fullArgs.join(' ')}`;
+  if (!apply) return { op: 'run', cmd: printable, mode: 'dry-run', note: 'will try python3 then python' };
+
+  for (const cmd of candidates) {
+    const res = childProcess.spawnSync(cmd, fullArgs, { stdio: 'inherit', cwd: repoRoot });
+    if (res.error && res.error.code === 'ENOENT') continue; // try next candidate
+    if (res.status !== 0) return { op: 'run', cmd: `${cmd} ${fullArgs.join(' ')}`, mode: 'failed', exitCode: res.status };
+    return { op: 'run', cmd: `${cmd} ${fullArgs.join(' ')}`, mode: 'applied' };
+  }
+
+  return { op: 'run', cmd: printable, mode: 'failed', reason: 'python interpreter not found (tried python3, python)' };
+}
+
+function ensureDatabaseFeature(repoRoot, blueprint, apply, options = {}) {
+  const { force = false, verify = false } = options;
+  const mode = dbSsotMode(blueprint);
+
+  const result = {
+    enabled: true,
+    featureId: 'database',
+    op: 'ensure',
+    actions: [],
+    warnings: [],
+    errors: []
+  };
+
+  // Always mark enabled in project state (best-effort)
+  result.actions.push(markProjectFeature(repoRoot, 'database', apply));
+
+  if (mode === 'database') {
+    // In DB SSOT mode, materialize db/ mirrors and run dbctl init/verify.
+    const res = ensureFeature(repoRoot, 'database', apply, 'dbctl.js', { force, verify, stateKey: 'database' });
+    result.actions.push(res);
+    if (res.errors && res.errors.length > 0) result.errors.push(...res.errors);
+    if (res.warnings && res.warnings.length > 0) result.warnings.push(...res.warnings);
+    if (res.verifyFailed) {
+      result.verifyFailed = true;
+      result.verifyError = res.verifyError || 'Database feature verify failed';
+    }
+    return result;
+  }
+
+  if (mode === 'repo-prisma') {
+    // In repo-prisma mode, do not install db/ mirrors; ensure prisma/ exists as a convention anchor.
+    result.actions.push(ensureDir(path.join(repoRoot, 'prisma'), apply));
+    return result;
+  }
+
+  // mode === 'none' (should be rejected by validateBlueprint when feature is enabled)
+  result.warnings.push('db.ssot=none: database feature has nothing to materialize.');
+  return result;
+}
+
+function ensureUiFeature(repoRoot, blueprint, apply, options = {}) {
+  const { force = false, verify = false } = options;
+  const result = { enabled: true, featureId: 'ui', op: 'ensure', actions: [], warnings: [], errors: [] };
+
+  result.actions.push(markProjectFeature(repoRoot, 'ui', apply));
+
+  const script = path.join(repoRoot, '.ai', 'skills', 'features', 'ui', 'ui-system-bootstrap', 'scripts', 'ui_specctl.py');
+  if (!fs.existsSync(script)) {
+    result.errors.push(`UI feature script not found: ${path.relative(repoRoot, script)}`);
+    return result;
+  }
+
+  const initArgs = ['init'];
+  if (force) initArgs.push('--force');
+  result.actions.push(runPythonScript(repoRoot, script, initArgs, apply));
+
+  if (verify && apply) {
+    result.actions.push(runPythonScript(repoRoot, script, ['codegen'], apply));
+    const v = runPythonScript(repoRoot, script, ['validate'], apply);
+    result.actions.push(v);
+    if (v.mode === 'failed') {
+      result.verifyFailed = true;
+      result.verifyError = 'UI feature verify failed';
+    }
+  }
+
+  return result;
+}
+
+function ensureEnvironmentFeature(repoRoot, blueprint, apply, options = {}) {
+  const { force = false, verify = false } = options;
+  const result = { enabled: true, featureId: 'environment', op: 'ensure', actions: [], warnings: [], errors: [] };
+
+  result.actions.push(markProjectFeature(repoRoot, 'environment', apply));
+
+  const script = path.join(repoRoot, '.ai', 'skills', 'features', 'environment', 'env-contractctl', 'scripts', 'env_contractctl.py');
+  if (!fs.existsSync(script)) {
+    result.errors.push(`Environment feature script not found: ${path.relative(repoRoot, script)}`);
+    return result;
+  }
+
+  // init is conservative: it won't overwrite unless --force is passed.
+  const initArgs = ['init', '--root', repoRoot];
+  if (force) initArgs.push('--force');
+  result.actions.push(runPythonScript(repoRoot, script, initArgs, apply));
+
+  if (verify && apply) {
+    const validateRes = runPythonScript(repoRoot, script, ['validate', '--root', repoRoot], apply);
+    result.actions.push(validateRes);
+    if (validateRes.mode === 'failed') {
+      result.verifyFailed = true;
+      result.verifyError = 'Environment feature validate failed';
+      return result;
+    }
+    const genRes = runPythonScript(repoRoot, script, ['generate', '--root', repoRoot], apply);
+    result.actions.push(genRes);
+    if (genRes.mode === 'failed') {
+      result.verifyFailed = true;
+      result.verifyError = 'Environment feature generate failed';
     }
   }
 
@@ -1492,27 +1671,37 @@ function planScaffold(repoRoot, blueprint, apply) {
     }
   }
 
-        // Optional: DevOps scaffolding (packaging/deploy conventions)
-  // Enabled when either:
-  // - blueprint.devops.enabled (or sub-flags) is true
-  // - blueprint.quality.ci.enabled is true
-  // - blueprint.quality.devops.* indicates containerization/packaging/deploy
+
+  // Optional: Ops scaffolding (packaging/deploy conventions)
+  // Notes:
+  // - Feature templates can also materialize these paths (non-destructive copy-if-missing).
+  // - CI alone should not create `ops/packaging` or `ops/deploy`.
   const q = blueprint.quality || {};
   const devops = blueprint.devops || {};
-  const devopsEnabled =
-    (q.ci && q.ci.enabled) ||
-    (q.devops && (q.devops.enabled || q.devops.containerize || q.devops.packaging || q.devops.deployment)) ||
-    (devops && (devops.enabled || (devops.packaging && devops.packaging.enabled) || (devops.deploy && devops.deploy.enabled)));
 
-  if (devopsEnabled) {
+  const wantsPackaging =
+    isPackagingEnabled(blueprint) ||
+    (blueprint.packaging && blueprint.packaging.enabled) ||
+    devops.enabled === true ||
+    (devops.packaging && devops.packaging.enabled) ||
+    (q.devops && (q.devops.enabled || q.devops.containerize || q.devops.packaging));
+
+  const wantsDeployment =
+    isDeploymentEnabled(blueprint) ||
+    (blueprint.deploy && blueprint.deploy.enabled) ||
+    devops.enabled === true ||
+    (devops.deploy && devops.deploy.enabled) ||
+    (q.devops && (q.devops.enabled || q.devops.deployment));
+
+  if (wantsPackaging || wantsDeployment) {
     results.push(ensureDir(path.join(repoRoot, 'ops'), apply));
     results.push(writeFileIfMissing(
       path.join(repoRoot, 'ops', 'README.md'),
-      `# Ops (Packaging & Deploy)
+      `# Ops
 
 This folder holds DevOps-oriented configuration and workdocs.
 
-High-level split:
+High-level split (created only when enabled):
 - ops/packaging/  Build artifacts (often container images for services)
 - ops/deploy/     Run artifacts in environments (deploy/rollback/runbooks)
 
@@ -1525,15 +1714,16 @@ Guidelines:
     ));
 
     // Packaging (services, jobs, apps)
-    results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging'), apply));
-    results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'services'), apply));
-    results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'jobs'), apply));
-    results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'apps'), apply));
-    results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'scripts'), apply));
-    results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'workdocs'), apply));
-    results.push(writeFileIfMissing(
-      path.join(repoRoot, 'ops', 'packaging', 'README.md'),
-      `# Packaging
+    if (wantsPackaging) {
+      results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging'), apply));
+      results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'services'), apply));
+      results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'jobs'), apply));
+      results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'apps'), apply));
+      results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'scripts'), apply));
+      results.push(ensureDir(path.join(repoRoot, 'ops', 'packaging', 'workdocs'), apply));
+      results.push(writeFileIfMissing(
+        path.join(repoRoot, 'ops', 'packaging', 'README.md'),
+        `# Packaging
 
 Goal: turn code into runnable artifacts.
 
@@ -1549,22 +1739,22 @@ Guidelines:
 - For services, container images are a common packaging target.
 - Treat artifact naming, versioning, and provenance as first-class.
 `,
-      apply
-    ));
-    results.push(writeFileIfMissing(
-      path.join(repoRoot, 'ops', 'packaging', 'workdocs', 'README.md'),
-      `# Packaging workdocs
+        apply
+      ));
+      results.push(writeFileIfMissing(
+        path.join(repoRoot, 'ops', 'packaging', 'workdocs', 'README.md'),
+        `# Packaging workdocs
 
 Use this folder for:
 - Packaging plans (inputs, outputs, artifact naming)
 - Build checklists
 - Build logs (what was built, when, from which revision, by whom)
 `,
-      apply
-    ));
-    results.push(writeFileIfMissing(
-      path.join(repoRoot, 'ops', 'packaging', 'scripts', 'build.js'),
-      `#!/usr/bin/env node
+        apply
+      ));
+      results.push(writeFileIfMissing(
+        path.join(repoRoot, 'ops', 'packaging', 'scripts', 'build.js'),
+        `#!/usr/bin/env node
 /**
  * build.js (placeholder)
  *
@@ -1575,19 +1765,21 @@ Use this folder for:
 console.log("[todo] Implement packaging build pipeline for this repo.");
 process.exit(0);
 `,
-      apply
-    ));
+        apply
+      ));
+    }
 
     // Deploy (http services, workloads, clients)
-    results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy'), apply));
-    results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'http_services'), apply));
-    results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'workloads'), apply));
-    results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'clients'), apply));
-    results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'scripts'), apply));
-    results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'workdocs'), apply));
-    results.push(writeFileIfMissing(
-      path.join(repoRoot, 'ops', 'deploy', 'README.md'),
-      `# Deploy
+    if (wantsDeployment) {
+      results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy'), apply));
+      results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'http_services'), apply));
+      results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'workloads'), apply));
+      results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'clients'), apply));
+      results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'scripts'), apply));
+      results.push(ensureDir(path.join(repoRoot, 'ops', 'deploy', 'workdocs'), apply));
+      results.push(writeFileIfMissing(
+        path.join(repoRoot, 'ops', 'deploy', 'README.md'),
+        `# Deploy
 
 Goal: take packaged artifacts and run them in target environments.
 
@@ -1602,22 +1794,22 @@ Guidelines:
 - Capture environment-specific parameters explicitly.
 - Keep rollback paths documented and tested.
 `,
-      apply
-    ));
-    results.push(writeFileIfMissing(
-      path.join(repoRoot, 'ops', 'deploy', 'workdocs', 'README.md'),
-      `# Deploy workdocs
+        apply
+      ));
+      results.push(writeFileIfMissing(
+        path.join(repoRoot, 'ops', 'deploy', 'workdocs', 'README.md'),
+        `# Deploy workdocs
 
 Use this folder for:
 - Environment definitions (dev/stage/prod)
 - Runbooks (how to deploy, verify, rollback)
 - Postmortems and deployment incident notes
 `,
-      apply
-    ));
-    results.push(writeFileIfMissing(
-      path.join(repoRoot, 'ops', 'deploy', 'scripts', 'deploy.js'),
-      `#!/usr/bin/env node
+        apply
+      ));
+      results.push(writeFileIfMissing(
+        path.join(repoRoot, 'ops', 'deploy', 'scripts', 'deploy.js'),
+        `#!/usr/bin/env node
 /**
  * deploy.js (placeholder)
  *
@@ -1628,11 +1820,11 @@ Use this folder for:
 console.log("[todo] Implement deployment automation for this repo.");
 process.exit(0);
 `,
-      apply
-    ));
-    results.push(writeFileIfMissing(
-      path.join(repoRoot, 'ops', 'deploy', 'scripts', 'rollback.js'),
-      `#!/usr/bin/env node
+        apply
+      ));
+      results.push(writeFileIfMissing(
+        path.join(repoRoot, 'ops', 'deploy', 'scripts', 'rollback.js'),
+        `#!/usr/bin/env node
 /**
  * rollback.js (placeholder)
  *
@@ -1642,8 +1834,9 @@ process.exit(0);
 console.log("[todo] Implement rollback procedure for this repo.");
 process.exit(0);
 `,
-      apply
-    ));
+        apply
+      ));
+    }
   }
 
 
@@ -2323,11 +2516,25 @@ if (command === 'validate') {
       }
     }
 
-    // DB Mirror feature
-    if (isDbMirrorEnabled(blueprint)) {
-      console.log('[info] Enabling DB Mirror feature...');
-      const res = ensureFeature(repoRoot, 'db-mirror', true, 'dbctl.js', { ...featureOptions, stateKey: 'dbMirror' });
-      handleFeatureResult(res, 'db-mirror');
+    // Database feature (SSOT-aware)
+    if (isDatabaseEnabled(blueprint)) {
+      console.log('[info] Enabling Database feature...');
+      const res = ensureDatabaseFeature(repoRoot, blueprint, true, featureOptions);
+      handleFeatureResult(res, 'database');
+    }
+
+    // UI feature
+    if (isUiEnabled(blueprint)) {
+      console.log('[info] Enabling UI feature...');
+      const res = ensureUiFeature(repoRoot, blueprint, true, featureOptions);
+      handleFeatureResult(res, 'ui');
+    }
+
+    // Environment feature
+    if (isEnvironmentEnabled(blueprint)) {
+      console.log('[info] Enabling Environment feature...');
+      const res = ensureEnvironmentFeature(repoRoot, blueprint, true, featureOptions);
+      handleFeatureResult(res, 'environment');
     }
 
     // Packaging feature

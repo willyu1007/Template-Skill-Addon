@@ -262,15 +262,23 @@
     },
     "features": {
       "type": "object",
-      "description": "Optional feature flags. When enabled, init will materialize the corresponding templates into the repo (e.g., ops/, db/, docs/context/) and run the relevant .ai/scripts/*ctl init/verify steps.",
+      "description": "Optional feature flags. When enabled, init will materialize the corresponding templates into the repo (e.g., ops/, db/, docs/context/) and run the relevant control scripts (Node under .ai/scripts and/or Python under .ai/skills/features/**/scripts).",
       "properties": {
         "contextAwareness": {
           "type": "boolean",
           "description": "Enable the context-awareness feature (API/DB/BPMN contracts for LLM)."
         },
-        "dbMirror": {
+        "database": {
           "type": "boolean",
-          "description": "Enable the db-mirror feature (database schema mirroring and migrations)."
+          "description": "Enable the database feature (DB schema SSOT scaffolding; behavior depends on db.ssot)."
+        },
+        "ui": {
+          "type": "boolean",
+          "description": "Enable the UI feature (UI SSOT + UI context contract scaffolding)."
+        },
+        "environment": {
+          "type": "boolean",
+          "description": "Enable the environment feature (env contract SSOT scaffolding + generated non-secret artifacts)."
         },
         "packaging": {
           "type": "boolean",

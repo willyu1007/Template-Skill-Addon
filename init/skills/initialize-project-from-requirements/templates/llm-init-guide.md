@@ -210,19 +210,35 @@ Recommend features based on `capabilities` in the blueprint. See **Module D** in
 | Condition | Recommended feature |
 |----------|---------------------|
 | `api.style != "none"` or `database.enabled` or `bpmn.enabled` | `contextAwareness` |
-| `db.ssot == "database"` | `dbMirror` |
+| `db.ssot != "none"` | `database` |
+| `capabilities.frontend.enabled` | `ui` |
+| Project uses environment variables | `environment` |
 | Needs containerization | `packaging` |
 | Needs multi-environment deployment | `deployment` |
 | Needs versioning/changelog workflows | `release` |
 | Needs metrics/logging/tracing contracts | `observability` |
+
+### Write + verify (required)
+
+- You MUST write confirmed decisions into `init/project-blueprint.json` under `features.*`.
+- `features.*` drives Stage C materialization; `context.*` and other config sections are configuration only.
+
+Verification commands (run from repo root):
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
+```
 
 ### Example prompt
 
 ```
 Based on your project needs, I recommend these features:
 
-1. ✅ context-awareness - your project has an API and a database
-2. ✅ db-mirror - database schema management
+1. contextAwareness - your project has an API and a database
+2. database - database schema SSOT scaffolding
+3. ui - UI SSOT scaffolding (frontend enabled)
+4. environment - env contract SSOT scaffolding
 
 Do you want to enable these features?
 ```
@@ -430,7 +446,7 @@ check capabilities
 ├── database.enabled
 │   └── recommended: contextAwareness
 ├── db.ssot == "database"
-│   └── recommended: dbMirror
+│   └── recommended: database
 ├── bpmn.enabled
 │   └── recommended: contextAwareness
 └── devops needs
@@ -487,8 +503,8 @@ AI: Great. I'll generate the project blueprint. Based on your needs, I recommend
 - Database: PostgreSQL
 
 Recommended features:
-- ✅ context-awareness (API/database contract management)
-- ✅ db-mirror (database schema management)
+- contextAwareness (API/database contract management)
+- database (database schema management)
 
 Do you want to confirm this configuration?
 ```

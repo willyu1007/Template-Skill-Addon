@@ -28,7 +28,7 @@ In `init/project-blueprint.json`:
 When enabled, Stage C:
 
 1) Copies templates from:
-- `.ai/skills/features/deployment/feature-deployment/templates/`
+- `.ai/skills/features/deployment/templates/`
 
 2) Runs the controller:
 
@@ -52,4 +52,3 @@ node .ai/scripts/deployctl.js verify --repo-root .
 # List deployment targets/environments (controller-defined)
 node .ai/scripts/deployctl.js list
 ```
-

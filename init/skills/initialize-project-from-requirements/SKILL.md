@@ -33,9 +33,9 @@ Feature flags live under `blueprint.features`.
 
 **No external payload directory is required.** Feature templates are integrated in this template under:
 
-- `.ai/skills/features/<feature-id>/feature-<feature-id>/templates/`
+- `.ai/skills/features/<feature-id>/templates/` (some features source templates from nested skills; for database: `.ai/skills/features/database/sync-code-schema-from-db/templates/`)
 
-Stage C `apply` materializes enabled features by copying templates into the repo (copy-if-missing by default) and then running the corresponding `.ai/scripts/*ctl.js init` commands.
+Stage C `apply` materializes enabled features by copying templates into the repo (copy-if-missing by default) and then running the corresponding control scripts (Node under `.ai/scripts/` and/or Python under `.ai/skills/features/**/scripts/`, depending on the feature).
 
 ---
 
@@ -72,7 +72,9 @@ Stage C `apply` materializes enabled features by copying templates into the repo
 Depending on `blueprint.features`, Stage C may also materialize:
 
 - Context Awareness: `docs/context/**` + `config/environments/**` (and related context contracts)
-- DB Mirror: `db/**`
+- Database: `db/**` (when `db.ssot=database`) or `prisma/**` (when `db.ssot=repo-prisma`)
+- UI: `ui/**` + `docs/context/ui/**`
+- Environment: `env/**` + `docs/project/env-ssot.json` (and optionally generated `.env.example` + `docs/env.md`)
 - Packaging: `ops/packaging/**` + `docs/packaging/registry.json`
 - Deployment: `ops/deploy/**`
 - Observability: `observability/**` + `docs/context/observability/**`
@@ -183,6 +185,28 @@ node .ai/scripts/delete-skills.cjs --skills "<csv>" --yes
 
 (`delete-skills.cjs` is an alias of `delete-skill.cjs`.)
 
+### Optional: prune unused feature tooling (tests/scripts)
+
+This template ships:
+
+- Central feature-pack tests under `.ai/tests/` (not per-skill `tests/` folders)
+- Feature controller scripts under `.ai/scripts/`
+
+Initialization does **not** auto-delete these. If the user explicitly does not need the corresponding feature packs, you MAY remove the related paths (after confirmation), for example:
+
+- DB mirror tooling: `.ai/scripts/dbctl.js`, `.ai/scripts/migrate.js`
+- Deployment tooling: `.ai/scripts/deployctl.js`, `.ai/scripts/rollback.js`
+- Packaging tooling: `.ai/scripts/packctl.js`
+- Release tooling: `.ai/scripts/releasectl.js`
+- Observability tooling: `.ai/scripts/obsctl.js`
+- Feature-pack test suites: `.ai/tests/suites/database/`, `.ai/tests/suites/environment/`, `.ai/tests/suites/ui/`
+
+After pruning, re-run wrapper sync:
+
+```bash
+node .ai/scripts/sync-skills.cjs --scope current --providers both --mode reset --yes
+```
+
 ### 5) Post-init: update root README.md and AGENTS.md (recommended)
 
 After Stage C approval, explicitly ask:
@@ -226,4 +250,4 @@ Optional (configuration only; does not trigger enabling):
 - `.ai/scripts/skillsctl.js`
   - `enable-pack <packId> --no-sync`: enables a pack (writes manifest)
 
-For full details, see `.ai/skills/features/context-awareness/feature-context-awareness/`.
+For full details, see `.ai/skills/features/context-awareness/`.

@@ -28,7 +28,7 @@ In `init/project-blueprint.json`:
 When enabled, Stage C:
 
 1) Copies templates from:
-- `.ai/skills/features/packaging/feature-packaging/templates/`
+- `.ai/skills/features/packaging/templates/`
 
 2) Runs the controller:
 
@@ -59,4 +59,3 @@ node .ai/scripts/packctl.js add-job --id cron-task
 # List packaging targets
 node .ai/scripts/packctl.js list
 ```
-

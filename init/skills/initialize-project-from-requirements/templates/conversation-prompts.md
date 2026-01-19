@@ -80,7 +80,7 @@ Ask if `capabilities.database.enabled == true`.
   - `repo-prisma` (SSOT = `prisma/schema.prisma`; developers manage migrations)
   - `database` (SSOT = real DB; repo keeps mirrors via introspection)
 
-  → Write to Stage B: `db.ssot` and align `features.dbMirror` accordingly.
+  → Write to Stage B: `db.ssot` and align `features.database` accordingly.
 - Backup / restore requirements
 
 Write to:
@@ -146,13 +146,13 @@ Ask if the project needs:
 
 → If YES to any: Enable `features.contextAwareness: true`
 
-### D2. Database Schema Management (SSOT choice + db-mirror)
+### D2. Database Schema Management (SSOT choice + database feature)
 
 First decide the DB schema SSOT mode (MUST): `none` / `repo-prisma` / `database`.
 
 Then:
-- If SSOT is `database`: Enable `features.dbMirror: true` (repo stores mirrors under `db/`).
-- Otherwise: Keep `features.dbMirror: false`.
+- If SSOT is `none`: Keep `features.database: false`.
+- Otherwise: Enable `features.database: true` (SSOT scaffolding; behavior depends on `db.ssot`).
 
 ### D3. Container/Artifact Packaging (packaging)
 
@@ -190,8 +190,31 @@ Ask if:
 
 → If YES: Enable `features.observability: true`
 
+### D7. UI System SSOT (ui)
+
+Ask if the project needs a stable UI/UX foundation:
+- UI tokens and contract SSOT (so UI changes are deterministic)
+- Generated UI context for LLMs (under `docs/context/ui/`)
+
+→ If YES: Enable `features.ui: true`
+
+### D8. Environment Contract SSOT (environment)
+
+Ask if the project needs a strict env var contract:
+- `env/contract.yaml` as SSOT
+- Generate non-secret developer artifacts (`.env.example`, `docs/env.md`, `docs/context/env/contract.json`)
+
+→ If YES: Enable `features.environment: true`
+
 Write feature decisions to:
 - Stage B: `features.*` section in `init/project-blueprint.json`
+
+Verification (run from repo root):
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
+```
 
 ## E. Technology Stack Selection
 

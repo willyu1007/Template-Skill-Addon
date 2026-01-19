@@ -31,7 +31,9 @@
   },
   "features": {
     "contextAwareness": false,
-    "dbMirror": false,
+    "database": false,
+    "ui": false,
+    "environment": false,
     "packaging": false,
     "deployment": false,
     "release": false,

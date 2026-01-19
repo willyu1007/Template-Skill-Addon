@@ -79,20 +79,20 @@ The blueprint must specify technology-stack related fields:
 
 | Language | Has built-in template | Recommended package manager |
 |------|-----------|-------------|
-| typescript | ✅ | pnpm |
-| javascript | ✅ | pnpm |
-| go | ✅ | go |
-| c | ✅ | xmake |
-| cpp | ✅ | xmake |
-| react-native | ✅ | pnpm |
-| python | ❌ (LLM-generated) | poetry |
-| java | ❌ (LLM-generated) | gradle |
-| kotlin | ❌ (LLM-generated) | gradle |
-| dotnet | ❌ (LLM-generated) | dotnet |
-| rust | ❌ (LLM-generated) | cargo |
-| ruby | ❌ (LLM-generated) | bundler |
-| php | ❌ (LLM-generated) | composer |
-| other | ❌ (LLM-generated) | - |
+| typescript | yes | pnpm |
+| javascript | yes | pnpm |
+| go | yes | go |
+| c | yes | xmake |
+| cpp | yes | xmake |
+| react-native | yes | pnpm |
+| python | LLM-generated | poetry |
+| java | LLM-generated | gradle |
+| kotlin | LLM-generated | gradle |
+| dotnet | LLM-generated | dotnet |
+| rust | LLM-generated | cargo |
+| ruby | LLM-generated | bundler |
+| php | LLM-generated | composer |
+| other | LLM-generated | - |
 
 For languages without built-in templates, the `apply` command will print guidance and the LLM should generate config files based on `templates/llm-init-guide.md`.
 
@@ -109,19 +109,38 @@ If you're using an AI assistant to guide initialization, refer to:
 
 Feature flags are configured in the blueprint under `features`.
 
-To enable Context Awareness, set:
+### Key rules
 
-- `features.contextAwareness: true`
+- You MUST set `features.<id>: true` to install a feature during Stage C.
+- `context.*` (and other config sections like `db.*`, `deploy.*`, `packaging.*`, `release.*`, `observability.*`) are configuration only; they do not install features by themselves.
 
-Optional configuration:
+### Recommended workflow
 
-- `context.mode: "contract" | "snapshot"` (default: `contract`)
+1) Validate the blueprint:
 
-`context.*` is configuration only and does not trigger enabling by itself.
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
+```
 
-Note: Stage C `apply` will materialize feature templates from `.ai/skills/features/.../templates/` and run the corresponding control scripts under `.ai/scripts/...`.
+2) Ask the pipeline for recommended features:
 
-Other supported features: `dbMirror`, `packaging`, `deployment`, `release`, `observability` (some features have dependencies; for example Observability requires Context Awareness). See `init/README.md`.
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features --repo-root .
+```
+
+Optional: safe-add missing recommended features into `features.*`:
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features --repo-root . --write
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
+```
+
+### Dependencies (common)
+
+- `features.database=true` requires `db.ssot != "none"`.
+- `features.observability=true` requires `features.contextAwareness=true`.
+
+See `init/README.md` and `init/feature-docs/README.md` for the full feature list and behavior.
 
 ---
 

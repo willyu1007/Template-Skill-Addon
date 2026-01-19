@@ -147,10 +147,10 @@ function loadDbSsotConfig(repoRoot) {
 
 function inferMode(repoRoot) {
   const prismaSchema = path.join(repoRoot, 'prisma', 'schema.prisma');
-  const dbMirror = path.join(repoRoot, 'db', 'schema', 'tables.json');
+  const dbSchemaTables = path.join(repoRoot, 'db', 'schema', 'tables.json');
 
   if (exists(prismaSchema)) return 'repo-prisma';
-  if (exists(dbMirror)) return 'database';
+  if (exists(dbSchemaTables)) return 'database';
   return 'none';
 }
 
@@ -220,7 +220,7 @@ function buildContractFromDbMirror({ repoRoot, mode }) {
         database: { kind: 'relational', dialect: 'generic', name: '', schemas: [] },
         enums: [],
         tables: [],
-        notes: `Missing DB mirror at ${toPosix(path.relative(repoRoot, mirrorPath))}. Initialize db-mirror and import schema, then re-run dbssotctl.`
+        notes: `Missing DB mirror at ${toPosix(path.relative(repoRoot, mirrorPath))}. Enable the database feature (db.ssot=database) and import schema, then re-run dbssotctl.`
       }),
       warnings: [`Missing DB mirror: ${toPosix(path.relative(repoRoot, mirrorPath))}`]
     };
@@ -282,12 +282,12 @@ function cmdStatus(repoRoot, format) {
     configPath: toPosix(path.relative(repoRoot, resolved.configPath)),
     paths: {
       prismaSchema: toPosix(path.relative(repoRoot, prismaPath)),
-      dbMirror: toPosix(path.relative(repoRoot, mirrorPath)),
+      dbSchemaTables: toPosix(path.relative(repoRoot, mirrorPath)),
       contextContract: toPosix(path.relative(repoRoot, outPath))
     },
     exists: {
       prismaSchema: exists(prismaPath),
-      dbMirror: exists(mirrorPath),
+      dbSchemaTables: exists(mirrorPath),
       contextContract: exists(outPath)
     }
   };
@@ -305,7 +305,7 @@ function cmdStatus(repoRoot, format) {
   console.log('');
   console.log('  Key paths:');
   console.log(`    - Prisma schema:   ${status.paths.prismaSchema} (${status.exists.prismaSchema ? 'present' : 'missing'})`);
-  console.log(`    - DB mirror:       ${status.paths.dbMirror} (${status.exists.dbMirror ? 'present' : 'missing'})`);
+  console.log(`    - DB schema tables:${status.paths.dbSchemaTables} (${status.exists.dbSchemaTables ? 'present' : 'missing'})`);
   console.log(`    - Context contract:${status.paths.contextContract} (${status.exists.contextContract ? 'present' : 'missing'})`);
 }
 

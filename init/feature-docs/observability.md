@@ -34,7 +34,7 @@ In `init/project-blueprint.json`:
 When enabled, Stage C:
 
 1) Copies templates from:
-- `.ai/skills/features/observability/feature-observability/templates/`
+- `.ai/skills/features/observability/templates/`
 
 2) Runs the controller:
 
@@ -52,4 +52,3 @@ node .ai/scripts/obsctl.js verify --repo-root .
 
 - `docs/context/observability/**`
 - `observability/**`
-

@@ -38,7 +38,7 @@ Supported modes:
 When enabled, Stage C:
 
 1) Copies templates from:
-- `.ai/skills/features/context-awareness/feature-context-awareness/templates/`
+- `.ai/skills/features/context-awareness/templates/`
 
 2) Initializes project state (best-effort):
 
@@ -65,4 +65,3 @@ node .ai/scripts/contextctl.js verify --repo-root .
 
 - `docs/context/**` (registries + contracts)
 - `config/environments/**` (environment contract scaffolding, if present in templates)
-

@@ -46,7 +46,7 @@ See `./reference/database-ssot-mechanism.md` for the end-to-end pattern (includi
 
 - Target environment (`dev` / `staging` / `prod`) and how to connect (without exposing secrets)
 - Whether `prisma/schema.prisma` is already present
-- Whether the `db-mirror` feature assets are present (required for the mirror workflow)
+- Whether the DB mirror assets are present (`db/schema/tables.json`, `db/workdocs/`, etc)
 
 ## Outputs (evidence)
 
@@ -83,11 +83,14 @@ Record the instructions and the environment assumptions in `01-db-pull-instructi
 
 ### Phase B — Import Prisma schema into repo mirror (LLM-safe)
 
-6. Ensure the `db-mirror` feature assets are present (required for the mirror workflow):
+6. Ensure the DB mirror assets are present (required for the mirror workflow):
    - Required paths:
      - `.ai/scripts/dbctl.js`
      - `db/schema/tables.json`
-   - If `.ai/scripts/dbctl.js` is missing, enable the DB mirror feature via init Stage C (`features.dbMirror=true` + `db.ssot=database`), then re-run this phase (see `init/feature-docs/db-mirror.md`).
+   - If `db/schema/tables.json` is missing, install the mirror skeleton:
+     - Copy templates from `.ai/skills/features/database/sync-code-schema-from-db/templates/` into the repo root.
+     - Run `node .ai/scripts/dbctl.js init`, then re-run this phase.
+   - If `.ai/scripts/dbctl.js` is missing, enable the database feature via init (`features.database=true` + `db.ssot=database`), then re-run this phase (see `init/feature-docs/database.md`).
 
 7. Import `prisma/schema.prisma` into `db/schema/tables.json`:
 

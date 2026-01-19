@@ -38,7 +38,7 @@ Before drafting Stage A docs, ask whether the user wants to align/confirm termin
 
 See: `init/stages/00-preflight-terminology.md`.
 
-### 1) Stage A: validate docs → approve
+### 1) Stage A: validate docs -> approve
 ```bash
 # Edit templates in init/stage-a-docs/, then validate:
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs \
@@ -49,7 +49,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage A --repo-root .
 ```
 
-### 2) Stage B: validate blueprint → approve
+### 2) Stage B: validate blueprint -> approve
 ```bash
 # Edit init/project-blueprint.json, then validate:
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate \
@@ -65,7 +65,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage B --repo-root .
 ```
 
-### 3) Stage C: apply scaffold/configs/packs/features/wrappers → approve
+### 3) Stage C: apply scaffold/configs/packs/features/wrappers -> approve
 ```bash
 node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply \
   --repo-root . \
@@ -123,12 +123,14 @@ This template does **not** ship an `addons/` directory. Feature assets are integ
 - Control scripts: `.ai/scripts/...`
 - Project state (feature flags): `.ai/project/state.json`
 
-Stage C `apply` materializes a feature by copying templates into the repo and running the corresponding `*ctl.js init`.
+Stage C `apply` materializes a feature by copying templates into the repo (when the feature has templates) and running the corresponding control scripts (Node under `.ai/scripts/` and/or Python under `.ai/skills/features/**/scripts/`, depending on the feature).
 
-| Feature | Blueprint toggle | Materializes | Control script |
+| Feature | Blueprint toggle | Materializes | Control script(s) |
 |---------|------------------|--------------|----------------|
 | Context awareness | `features.contextAwareness` | `docs/context/**`, `config/environments/**` | `.ai/scripts/contextctl.js` |
-| DB mirror | `features.dbMirror` (requires `db.ssot=database`) | `db/**` | `.ai/scripts/dbctl.js` |
+| Database | `features.database` (requires `db.ssot != none`) | `db/**` (when `db.ssot=database`), `prisma/**` (when `db.ssot=repo-prisma`) | `.ai/scripts/dbctl.js` (when `db.ssot=database`); `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.cjs` (human interface) |
+| UI | `features.ui` | `ui/**`, `docs/context/ui/**` | `python3 .ai/skills/features/ui/ui-system-bootstrap/scripts/ui_specctl.py` |
+| Environment | `features.environment` | `env/**` (+ generated non-secret docs when `--verify-features`) | `python3 .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py` |
 | Packaging | `features.packaging` | `ops/packaging/**`, `docs/packaging/**` | `.ai/scripts/packctl.js` |
 | Deployment | `features.deployment` | `ops/deploy/**` | `.ai/scripts/deployctl.js` |
 | Observability | `features.observability` (requires context awareness) | `docs/context/observability/**`, `observability/**` | `.ai/scripts/obsctl.js` |
@@ -137,7 +139,33 @@ Stage C `apply` materializes a feature by copying templates into the repo and ru
 For feature-specific details, see:
 
 - `init/feature-docs/README.md`
-- `.ai/skills/features/<feature-id>/feature-<feature-id>/SKILL.md`
+- `.ai/skills/features/<feature-id>/**/SKILL.md`
+
+## Feature selection workflow (Stage B -> Stage C)
+
+### Key rules
+
+- You MUST set `features.<id>: true` to install a feature during Stage C.
+- `context.*`, `db.*`, `packaging.*`, `deploy.*`, `release.*`, and `observability.*` are configuration only; they do not install features by themselves.
+- Stage C is non-destructive: setting `features.<id>: false` later will NOT uninstall previously created files.
+
+### Recommended steps
+
+1) Fill `capabilities.*`, `db.*` (especially `db.ssot`), and any feature configuration sections.
+
+2) Ask the pipeline for recommendations:
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-packs --repo-root .
+```
+
+3) Decide which features to keep, then set `features.*` explicitly (or safe-add via `--write`):
+
+```bash
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features --repo-root . --write
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
+```
 
 ## Apply flags (Stage C)
 

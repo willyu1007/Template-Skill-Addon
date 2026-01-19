@@ -118,4 +118,4 @@ Implications:
 - Optional: add `context-core` to `skills.packs` if you want context-related scaffold skills/wrappers
 
 See:
-- `.ai/skills/features/context-awareness/feature-context-awareness/`
+- `.ai/skills/features/context-awareness/`
