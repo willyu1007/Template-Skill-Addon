@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Core context awareness skills for managing project context artifacts",
   "includePrefixes": [
-    "scaffold/context"
+    "features/context-awareness"
   ],
   "dependencies": [],
   "scripts": {

@@ -9,7 +9,7 @@ description: Plan/apply/verify cloud environment config and secret references us
 
 Manage cloud environment configuration under the `repo-env-contract` SSOT model, with a strict **plan → approval → apply → verify** workflow.
 
-This skill:
+The `env-cloudctl` skill:
 
 - computes desired runtime configuration from:
   - `env/contract.yaml`
@@ -119,7 +119,7 @@ python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.
 - target env
 - change summary
 - rollback expectations
-- whether this is within an approved maintenance window
+- whether the change is within an approved maintenance window
 
 ### Phase B — Apply (write)
 
@@ -173,6 +173,6 @@ python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.
 
 ## Boundaries
 
-- MUST NOT modify `env/contract.yaml` in this skill.
+- MUST NOT modify `env/contract.yaml` as part of the `env-cloudctl` workflow.
 - MUST NOT apply IAM/Identity changes automatically.
 - MUST NOT log secret values.

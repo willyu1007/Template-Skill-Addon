@@ -25,8 +25,7 @@ New files/directories (created if missing):
 - `.ai/scripts/projectctl.mjs`
 - `.ai/skills/_meta/skillpacksctl.mjs` (pack controller)
 - `.ai/project/{state.json,state.schema.json}`
-- `.ai/skills/scaffold/**` (optional scaffold skills for context/packs/state)
-- `.ai/skills/_meta/packs/{context-core.json,scaffold-core.json}` (pack definitions)
+- `.ai/skills/_meta/packs/context-core.json` (pack definition)
 
 
 ## Install
@@ -69,7 +68,7 @@ If you are not using the init pipeline, you can materialize the feature template
 	   node .ai/scripts/projectctl.mjs set context.enabled true
 	   node .ai/skills/features/context-awareness/scripts/contextctl.mjs init
 	   ```
-3. (Optional) Enable the scaffold/context pack and sync wrappers:
+3. (Optional) Enable the `context-core` pack and sync wrappers:
    ```bash
    node .ai/skills/_meta/skillpacksctl.mjs enable-pack context-core --providers both
    ```
@@ -156,9 +155,7 @@ Delete these paths (if you want a clean uninstall):
 - `.ai/scripts/projectctl.mjs`
 - `.ai/skills/_meta/skillpacksctl.mjs`
 - `.ai/project/`
-- `.ai/skills/scaffold/` (only if you installed the feature's scaffold skills)
 - `.ai/skills/_meta/packs/context-core.json`
-- `.ai/skills/_meta/packs/scaffold-core.json`
 
 Then re-sync wrappers:
 ```bash

@@ -5,15 +5,15 @@
 - `.ai/skills/_meta/packs/*.json`
   - Pack definitions (same schema as `sync-manifest.json`)
 - `.ai/skills/_meta/skillsctl-state.json`
-  - `base`: baseline selection
   - `enabledPacks`: enabled pack ids
+  - `lastSync`: last wrapper sync time (ISO string)
 - `.ai/skills/_meta/sync-manifest.json`
-  - Effective selection computed as: `base ∪ enabled packs`
+  - Effective selection used by `sync-skills.mjs`
 
 ## Why a state file exists
 
 Without state, disabling a pack is ambiguous (you cannot know which prefixes/skills were added by which pack).
-`skillpacksctl` persists a base selection so enable/disable is deterministic and auditable.
+`skillpacksctl` persists the set of enabled packs so disable/remove can avoid removing prefixes still required by other enabled packs.
 
 ## Verification
 
@@ -21,3 +21,4 @@ Without state, disabling a pack is ambiguous (you cannot know which prefixes/ski
   - `node .ai/skills/_meta/skillpacksctl.mjs status`
 - Re-generate wrappers:
   - `node .ai/skills/_meta/skillpacksctl.mjs sync --providers both`
+

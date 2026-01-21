@@ -451,8 +451,7 @@ function packPrefixMap() {
     workflows: 'workflows/',
     standards: 'standards/',
     testing: 'testing/',
-    'context-core': 'scaffold/context/',
-    'scaffold-core': 'scaffold/',
+    'context-core': 'features/context-awareness',
     backend: 'backend/',
     frontend: 'frontend/'
   };
@@ -460,7 +459,7 @@ function packPrefixMap() {
 
 function packOrder() {
   // Base packs available in template (matches .ai/skills/_meta/packs/)
-  return ['workflows', 'standards', 'testing', 'context-core', 'scaffold-core', 'backend', 'frontend'];
+  return ['workflows', 'standards', 'testing', 'context-core', 'backend', 'frontend'];
 }
 
 function normalizePackList(packs) {

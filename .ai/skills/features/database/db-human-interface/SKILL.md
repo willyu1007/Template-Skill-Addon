@@ -12,7 +12,7 @@ Provide a **human-friendly DB interaction entry point** for:
 1. **Reading**: turn the unified DB schema contract into skimmable Markdown.
 2. **Drafting changes**: draft structured change requests as `dbops` inside Markdown, suitable for human review.
 
-This feature is designed for **LLM-assisted development**:
+The Database Docs feature is designed for **LLM-assisted development**:
 
 - Human describes desired change in natural language.
 - LLM updates files.
@@ -20,7 +20,7 @@ This feature is designed for **LLM-assisted development**:
 
 ## Trigger policy (strict)
 
-Load and use this skill only when the user explicitly asks one of:
+Load and use the `db-human-interface` skill only when the user explicitly asks one of:
 
 - “What is the schema/structure for X?”
 - “Which table contains field X?”
@@ -32,13 +32,13 @@ If the user is executing schema sync, migrations, or DB pull/push workflows, rou
 
 ## Hard boundaries (do not overlap DB SSOT workflow skills)
 
-This feature **does not**:
+The Database Docs feature **does not**:
 
 - run Prisma migrations (`migrate dev/deploy`)
 - connect to or modify a real database
 - finalize SSOT synchronization
 
-It only produces **human-facing artifacts** and **plans/runbooks**, then hands off to:
+The Database Docs feature only produces **human-facing artifacts** and **plans/runbooks**, then hands off to:
 
 - `sync-db-schema-from-code` when `db.ssot = repo-prisma`
 - `sync-code-schema-from-db` when `db.ssot = database`
@@ -96,7 +96,7 @@ Supported commands:
 
 ## Efficient object resolution strategy
 
-When the user asks about “X”, use this resolution order:
+When the user asks about “X”, use the following resolution order:
 
 1. Exact table match (case-insensitive)
 2. Exact enum match
@@ -107,7 +107,7 @@ When the user asks about “X”, use this resolution order:
 
 If `X` matches multiple tables via column name:
 
-- Prefer `query X` first (it produces a cross-table column view)
+- Prefer `query X` first (the command produces a cross-table column view)
 - Then ask the user which table they mean, and run `query <Table>`
 
 ## Display rules for complex / coupled structures
@@ -119,7 +119,7 @@ When `query` renders a table, the doc should highlight:
 - **Multi-tenant**: `tenantId` propagation patterns
 - **JSON columns**: treat as DB-opaque; recommend app-layer schema documentation
 
-If a user asks about a concept (e.g. “permissions”) and it maps to a cluster:
+If a user asks about a concept (e.g. “permissions”) and the concept maps to a cluster:
 
 - Use `query permissions --view concept`
 - If they need a diagram: `query permissions --view graph`
@@ -161,7 +161,7 @@ High-risk ops (rename/drop/type changes/non-null backfills) should be represente
 - Run:
   - `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs plan <object>`
 
-This writes (base name derived from the modify doc filename; printed on stdout):
+The `plan` command writes (base name derived from the modify doc filename; printed on stdout):
 
 - `<base>.plan.md`
 - and, if `db.ssot=database`, `<base>.runbook.md`

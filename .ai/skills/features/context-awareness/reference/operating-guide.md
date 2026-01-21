@@ -1,8 +1,8 @@
-# Manage Project Context - Reference
+# Context Awareness - Operating Guide (Reference)
 
 ## Design goals
 
-- **Stable entry point**: `docs/context/INDEX.md` and `docs/context/registry.json` are the only supported context entry points.
+- **Stable entry point**: `docs/context/INDEX.md` and `docs/context/registry.json` are the supported context entry points.
 - **Verifiable updates**: artifact checksums enable CI to detect edits that bypass the scripts.
 - **Tool-agnostic artifacts**: OpenAPI, BPMN 2.0, and a normalized DB schema mapping.
 

@@ -27,7 +27,7 @@ When enabled (typically during init), the feature **materializes** these paths i
 
 And it assumes these controller scripts exist (they are part of the template SSOT under `.ai/`):
 
-- `node .ai/skills/features/context-awareness/scripts/contextctl.mjs` — context registry + artifacts + env registry
+- `node .ai/skills/features/context-awareness/scripts/contextctl.mjs` — context artifacts + registry + environments
 - `node .ai/scripts/projectctl.mjs` — project state (`.ai/project/state.json`)
 - `node .ai/skills/_meta/skillpacksctl.mjs` — skill pack switching + wrapper sync
 
@@ -81,6 +81,17 @@ node .ai/skills/features/context-awareness/scripts/contextctl.mjs touch
 
 ## Operating rules
 
+### Managing project state
+
+Use `projectctl` to maintain `.ai/project/state.json`:
+
+```bash
+node .ai/scripts/projectctl.mjs init
+node .ai/scripts/projectctl.mjs set custom.stage <prototype|mvp|production|maintenance|archived>
+node .ai/scripts/projectctl.mjs set-context-mode <contract|snapshot>
+node .ai/scripts/projectctl.mjs verify
+```
+
 ### Editing artifacts
 
 After editing any file under `docs/context/**`:
@@ -104,13 +115,12 @@ node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --stric
 node .ai/scripts/projectctl.mjs verify
 ```
 
-## Related skills
+## References
 
-- `manage-project-context` (scaffold skill)
-- `manage-project-state` (scaffold skill)
-- `manage-skill-packs` (scaffold skill)
-
-These live under `.ai/skills/scaffold/**` and can be enabled via packs.
+- `reference/feature-overview.md`
+- `reference/feature-mechanism.md`
+- `reference/operating-guide.md`
+- `reference/project-state-guide.md`
 
 ## Boundaries
 

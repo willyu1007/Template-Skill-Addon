@@ -4,7 +4,7 @@
 
 - Bootstraps the repo UI SSOT: `ui/tokens/`, `ui/contract/`, `ui/styles/`, `ui/codegen/`
 - Generates LLM-readable UI context: `docs/context/ui/ui-spec.json`
-- Uses the Python controller: `ui_specctl.py` (idempotent; non-destructive unless forced)
+- Uses the Python controller: `.ai/skills/features/ui/ui-system-bootstrap/scripts/ui_specctl.py` (idempotent; non-destructive unless forced)
 
 ## How to enable
 
@@ -20,6 +20,8 @@ In `init/project-blueprint.json`:
 ## What Stage C `apply` does
 
 When enabled, Stage C runs:
+
+Note (Windows): if `python3` is not available, use `python`.
 
 ```bash
 python3 -B -S .ai/skills/features/ui/ui-system-bootstrap/scripts/ui_specctl.py init

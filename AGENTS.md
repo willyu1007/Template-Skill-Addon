@@ -1,10 +1,10 @@
 # AI Assistant Instructions
 
-This is an **AI-Friendly Repository Template** - a starter kit for creating LLM-optimized codebases with optional features (no `addons/` directory).
+**AI-Friendly Repository Template**: a starter kit for creating LLM-optimized codebases with optional features.
 
 ## Project Type
 
-Template repository. Users clone this to start new AI-friendly projects.
+Template repository. Users clone the repository to start new AI-friendly projects.
 
 ## Key Directories
 
@@ -33,13 +33,16 @@ Template repository. Users clone this to start new AI-friendly projects.
 
 ## Coding Standards (RECOMMEND)
 
-- **ESM (.mjs)**: All scripts in this repository use ES Modules with `.mjs` extension. Use `import`/`export` syntax, not `require()`.
+- **ESM (.mjs)**: All scripts in the repository use ES Modules with `.mjs` extension. Use `import`/`export` syntax, not `require()`.
 
 ## Coding Workflow (MUST)
 
 - Before modifying code/config for a non-trivial task, apply the Decision Gate in `dev-docs/AGENTS.md` and create/update the dev-docs task bundle as required.
-- If the user asks for planning artifacts (plan/roadmap/milestones/implementation plan) before coding, use `plan-maker` first, then ask for confirmation to proceed with implementation.
-- If the task needs context preservation (multi-session, handoff) or qualifies as complex, follow `dev-docs/AGENTS.md` and use dev-docs workflows (`create-dev-docs-plan`, `update-dev-docs-for-handoff`).
+- If the user asks for planning artifacts (plan/roadmap/milestones/implementation plan) before coding:
+  - If the task meets the Decision Gate, use `plan-maker` first, then ask for confirmation to proceed with implementation.
+  - If the task is trivial (<30 min), provide an in-chat plan (do NOT write under `dev-docs/`).
+  - If the task needs context preservation (multi-session, handoff) or qualifies as complex, follow `dev-docs/AGENTS.md` and use dev-docs workflows.
+
 
 
 <!-- DB-SSOT:START -->

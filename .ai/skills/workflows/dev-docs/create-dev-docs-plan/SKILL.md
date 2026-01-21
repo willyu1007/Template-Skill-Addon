@@ -18,12 +18,16 @@ Use the `create-dev-docs-plan` skill when:
 ## Quick decision gate (MUST)
 Use the `create-dev-docs-plan` skill when **any** is true:
 - Expected duration is `> 2 hours`, or likely to span multiple sessions
-- Scope touches `>= 2` modules/directories, or requires `>= 3` sequential steps with verification
 - You need explicit handoff/context recovery documentation
+- The change is high-risk or cross-cutting (examples: DB/schema migration, auth/security, CI/CD/infra, multi-service/API boundary changes)
 
-Skip the `create-dev-docs-plan` skill when **all** are true:
-- Single-file change
+Notes:
+- Touching multiple folders (e.g., `src/` + `tests/` + docs) is **not** a sufficient trigger by itself.
+
+Skip the `create-dev-docs-plan` skill when **any** is true:
 - Trivial fix (`< 30 min`)
+- Single-file change (including adjacent tests/docs)
+- Simple refactor with clear scope (even if the change touches multiple folders)
 
 ## Inputs
 - Task name (short, kebab-case recommended)
@@ -52,7 +56,7 @@ dev-docs/active/<task-slug>/
 - The plan MUST include milestones and acceptance criteria.
 - The architecture doc MUST capture boundaries and contracts.
 - Verification MUST be concrete (commands/checks, expected results).
-- The task bundle MUST include `05-pitfalls.md` and it MUST be updated when failures are resolved (historical lessons, append-only).
+- The task bundle MUST include `05-pitfalls.md` and the pitfalls log MUST be updated when failures are resolved (historical lessons, append-only).
 - Avoid embedding secrets or real credentials.
 - For tasks that meet the Decision Gate, the bundle MUST be created before implementation work begins (before code/config changes).
 
@@ -102,7 +106,7 @@ dev-docs/active/<task-slug>/
 - SHOULD keep overview high-level (implementation detail belongs elsewhere)
 - PRODUCES implementation-level documentation bundle (overview, plan, architecture, notes, verification, pitfalls)
 - DOES NOT produce macro-level roadmaps (milestone definitions, scope/impact analysis, rollback strategies)
-- If a macro roadmap exists, use it as input; the `01-plan.md` here captures step-level execution detail, not phase/milestone planning
+- If a macro roadmap exists, use the roadmap as input; the `01-plan.md` here captures step-level execution detail, not phase/milestone planning
 
 ## Writing and collaboration tips (borrowed)
 

@@ -9,7 +9,7 @@ description: One-command UI governance gate that enforces the data-ui contract +
 
 Provide a **hard enforcement layer** for UI/UX consistency in LLM-led development.
 
-This skill runs deterministic checks (and records evidence) to prevent:
+The `ui-governance-gate` skill runs deterministic checks (and records evidence) to prevent:
 - Tailwind style drift beyond B1 (layout-only)
 - local hard-coded colors/shadows/radius/typography in feature code
 - contract misuse (`data-ui` roles/enums)
@@ -72,7 +72,7 @@ If missing, STOP and route to `ui-system-bootstrap`.
 python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py run --mode full
 ```
 
-This will:
+The gate will:
 - generate a run-id
 - write evidence under `.ai/.tmp/ui/<run-id>/`
 - exit non-zero if errors are found
@@ -88,7 +88,7 @@ This will:
 
 ### Real-time approval checkpoint (mandatory)
 
-4. This gate enforces approvals in real time (local workflow; not tied to PR):
+4. The gate enforces approvals in real time (local workflow; not tied to PR):
 
 - Spec changes (tokens/contract/patterns) require a `spec_change` approval.
 - Policy relaxations (Tailwind boundary, feature CSS relaxations, scan exclusions, etc.) require an `exception` approval.

@@ -252,7 +252,6 @@
               "frontend",
               "standards",
               "testing",
-              "scaffold-core",
               "context-core"
             ]
           },

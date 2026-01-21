@@ -29,6 +29,16 @@ The command creates:
 - `init/project-blueprint.json` - Blueprint template
 - `init/.init-state.json` - State tracking file
 
+### Check progress / next checkpoint
+
+```bash
+# Current progress (prints guidance when not started yet)
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs status --repo-root .
+
+# Next checkpoint actions (requires init state; exits non-zero if `start` was not run)
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs advance --repo-root .
+```
+
 ### Preflight (recommended): terminology alignment
 
 Before drafting Stage A docs, ask whether the user wants to align/confirm terminology now.
@@ -125,6 +135,8 @@ This template does **not** ship an `addons/` directory. Feature assets are integ
 - Project state (feature flags): `.ai/project/state.json`
 
 Stage C `apply` materializes a feature by copying templates into the repo (when the feature has templates) and running the corresponding control scripts (typically under `.ai/skills/features/**/scripts/`, plus cross-cutting `.ai/scripts/projectctl.mjs` for feature state).
+
+Note (Windows): `python3` may not exist on PATH. Use `python` instead. (Stage C `apply` will try `python3` then `python`.)
 
 | Feature | Blueprint toggle | Materializes | Control script(s) |
 |---------|------------------|--------------|----------------|

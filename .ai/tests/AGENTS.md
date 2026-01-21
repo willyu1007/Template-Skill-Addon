@@ -1,18 +1,18 @@
-# `.ai/tests/` — Feature Smoke Tests
+# `.ai/tests/` - Feature Smoke Tests
 
 ## Purpose
 
-Centralized smoke tests for feature-pack `*ctl.mjs` scripts. Validates init → verify workflows.
+Centralized smoke tests for feature-pack `*ctl.mjs` scripts. Validates init -> verify workflows.
 
 ## Quick Reference
 
 | Suite | Script Under Test | Key Workflow |
 |-------|-------------------|--------------|
 | `ui` | `ui_gate.py`, `image_style_probe.py` | governance gate, style intake |
-| `environment` | `env_contractctl.py`, `env_localctl.py`, `env_cloudctl.py` | contract → local → cloud |
-| `database` | `db_connect_check.py`, `db_schema_snapshot.py` | connect → snapshot |
-| `context-awareness` | `contextctl.mjs` | init → add-artifact → touch → verify |
-| `deployment` | `deployctl.mjs` | init → add-service → plan → verify |
+| `environment` | `env_contractctl.py`, `env_localctl.py`, `env_cloudctl.py` | contract -> local -> cloud |
+| `database` | `db_connect_check.py`, `db_schema_snapshot.py` | connect -> snapshot |
+| `context-awareness` | `contextctl.mjs` | init -> add-artifact -> touch -> verify |
+| `deployment` | `deployctl.mjs` | init -> add-service -> plan -> verify |
 
 ## Commands
 
@@ -45,27 +45,27 @@ Evidence includes: `run.json`, `runner.log`, per-test `*.stdout.log`, `*.stderr.
 
 ```
 .ai/tests/
-├── run.mjs              # Entry point
-├── lib/
-│   ├── evidence.mjs     # Evidence dir + logging
-│   ├── exec.mjs         # Command runner
-│   ├── python.mjs       # Python interpreter detection
-│   └── text.mjs         # Assertion helpers
-└── suites/
-    ├── ui/
-    ├── environment/
-    ├── database/
-    ├── context-awareness/
-    └── deployment/
+|-- run.mjs              # Entry point
+|-- lib/
+|   |-- evidence.mjs     # Evidence dir + logging
+|   |-- exec.mjs         # Command runner
+|   |-- python.mjs       # Python interpreter detection
+|   `-- text.mjs         # Assertion helpers
+`-- suites/
+    |-- ui/
+    |-- environment/
+    |-- database/
+    |-- context-awareness/
+    `-- deployment/
 ```
 
 ## Adding a New Suite
 
 1. Create `suites/<name>/index.mjs` exporting `run(ctx)`
 2. Create test files (e.g., `suites/<name>/<test>-smoke.mjs`)
-3. Register in `run.mjs`: import and add to `SUITES` object
+3. Register in `run.mjs`: import and add to the `SUITES` object
 
 ## Dependencies
 
-- Node.js ≥18
+- Node.js >= 18
 - Python 3.9+ (for `ui`, `environment`, `database` suites)

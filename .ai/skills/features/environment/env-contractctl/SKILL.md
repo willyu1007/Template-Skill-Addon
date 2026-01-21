@@ -7,7 +7,7 @@ description: Maintain env contract SSOT (env/contract.yaml), validate env/values
 
 ## Purpose
 
-Treat `env/contract.yaml` as the **configuration contract** Single Source of Truth (SSOT). Use this skill to:
+Treat `env/contract.yaml` as the **configuration contract** Single Source of Truth (SSOT). Use the `env-contractctl` skill to:
 
 - define/rename/deprecate environment variables (schema)
 - validate coverage across environments (`env/values/*`, `env/secrets/*`)
@@ -16,20 +16,20 @@ Treat `env/contract.yaml` as the **configuration contract** Single Source of Tru
   - `docs/env.md`
   - `docs/context/env/contract.json` (LLM-readable contract)
 
-This skill is designed for **LLM-led development**:
+The `env-contractctl` skill is designed for **LLM-led development**:
 
 - prefer deterministic scripts for validation and generation
 - prefer a strict contract over ad-hoc `.env` tribal knowledge
 
 ## Hard precondition (SSOT mode gate)
 
-This skill MUST be used only when the project env SSOT mode is `repo-env-contract`.
+Use the skill only when the project env SSOT mode is `repo-env-contract`.
 
 To check the mode, read:
 
 - `docs/project/env-ssot.json`
 
-If the project is not in this mode, STOP and do not apply this workflow.
+If the project is not in the required mode, STOP and do not apply the workflow.
 
 If the file does not exist (first-time setup), you can scaffold the required structure using:
 
@@ -37,7 +37,7 @@ If the file does not exist (first-time setup), you can scaffold the required str
 python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py init --root . --out <EVIDENCE_DIR>/00-bootstrap.md
 ```
 
-This scaffolds a minimal safe template (no secret values) and will not overwrite existing files unless you pass `--force`.
+The command scaffolds a minimal safe template (no secret values) and will not overwrite existing files unless you pass `--force`.
 
 ## When to use
 
@@ -165,5 +165,5 @@ python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contra
 
 - MUST NOT request users to paste secret values into chat.
 - MUST NOT store secret values in repo.
-- MUST NOT generate cloud-side changes (deploy/rotate) in this skill.
+- MUST NOT generate cloud-side changes (deploy/rotate) in the `env-contractctl` workflow.
 - SHOULD keep the contract stable and backward compatible when possible.

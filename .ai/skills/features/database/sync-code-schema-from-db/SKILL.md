@@ -9,11 +9,11 @@ description: Mirror schema changes from a real database (SSOT) into repo artifac
 
 Treat the **real database** as the schema Single Source of Truth (SSOT) and keep repo-local schema artifacts in sync so developers and LLMs can work without direct DB access.
 
-This skill is the inverse of `sync-db-schema-from-code`. Use it when **DB → code** is the authoritative direction.
+The `sync-code-schema-from-db` skill is the inverse of `sync-db-schema-from-code`. Use the skill when **DB → code** is the authoritative direction.
 
 ## Hard precondition (SSOT mode gate)
 
-This skill MUST be used only when the project DB SSOT is `database`:
+Use the skill only when the project DB SSOT is `database`:
 
 - Source of truth: the running database
 - Repo contains mirrors:
@@ -87,10 +87,10 @@ Record the instructions and the environment assumptions in `01-db-pull-instructi
    - Required paths:
      - `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs`
      - `db/schema/tables.json`
-   - If `db/schema/tables.json` is missing, install the mirror skeleton:
-     - Copy templates from `.ai/skills/features/database/sync-code-schema-from-db/templates/` into the repo root.
-     - Run `node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs init`, then re-run this phase.
-   - If `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs` is missing, enable the database feature via init (`features.database=true` + `db.ssot=database`), then re-run this phase (see `init/feature-docs/database.md`).
+    - If `db/schema/tables.json` is missing, install the mirror skeleton:
+      - Copy templates from `.ai/skills/features/database/sync-code-schema-from-db/templates/` into the repo root.
+      - Run `node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs init`, then re-run Phase B.
+    - If `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs` is missing, enable the database feature via init (`features.database=true` + `db.ssot=database`), then re-run Phase B (see `init/feature-docs/database.md`).
 
 7. Import `prisma/schema.prisma` into `db/schema/tables.json`:
 

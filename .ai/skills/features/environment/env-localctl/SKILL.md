@@ -9,7 +9,7 @@ description: Bootstrap, diagnose (doctor), and reconcile local dev environment f
 
 Make local development environments **predictable and self-healing** under the `repo-env-contract` SSOT model.
 
-This skill:
+The `env-localctl` skill:
 
 - validates local requirements against the repo contract (`env/contract.yaml`)
 - checks that non-secret values and secret references exist for a chosen env
@@ -19,13 +19,13 @@ This skill:
 
 ## Hard precondition (SSOT mode gate)
 
-This skill MUST be used only when the project env SSOT mode is `repo-env-contract`.
+Use the skill only when the project env SSOT mode is `repo-env-contract`.
 
 To check the mode, read:
 
 - `docs/project/env-ssot.json`
 
-If the project is not in this mode, STOP.
+If the project is not in the required mode, STOP.
 
 If `docs/project/env-ssot.json` does not exist (first-time setup), run:
 
@@ -147,6 +147,6 @@ python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.
 
 ## Boundaries
 
-- MUST NOT modify `env/contract.yaml` in this skill.
+- MUST NOT modify `env/contract.yaml` in the `env-localctl` workflow.
 - MUST NOT perform cloud-side apply/rotate/decommission.
 - MUST NOT print or store secret values in logs/evidence.

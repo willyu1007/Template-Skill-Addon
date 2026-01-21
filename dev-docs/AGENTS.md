@@ -13,12 +13,29 @@ Persistent task documentation for context preservation across sessions.
 
 ## Decision Gate (MUST)
 
-Create a dev-docs task bundle under `dev-docs/active/<task-slug>/` when **any** is true:
-- Expected duration is `> 2 hours`, or likely to span multiple sessions
-- Scope touches `>= 2` modules/directories, or requires `>= 3` sequential steps with verification
-- The user explicitly needs handoff/context recovery artifacts (交接/上下文恢复/归档)
+Create a dev-docs task bundle under `dev-docs/active/<task-slug>/` only when the task is **complex** and benefits from context preservation.
 
-If the user asks for a roadmap/plan before coding (规划/方案/路线图/里程碑/实施计划), use `plan-maker` first to create `roadmap.md`, then use `create-dev-docs-plan` to create the full bundle when the task meets the criteria above.
+### Skip Conditions (fast path)
+
+Do NOT create dev-docs when **any** is true:
+- Single-file change (including adjacent tests/docs)
+- Trivial fix (`< 30 min`)
+- Simple refactor with clear scope (even if it touches multiple folders)
+
+### Create Conditions
+
+Create a dev-docs task bundle when **any** is true:
+- Expected duration is `> 2 hours`, or likely to span multiple sessions
+- The work will be paused/handed off, archived, or otherwise needs context recovery artifacts
+- The change is high-risk or cross-cutting (examples: DB/schema migration, auth/security, CI/CD/infra, multi-service/API boundary changes)
+
+Notes:
+- Touching multiple folders (e.g., `src/` + `tests/` + docs) is **not** a sufficient trigger by itself.
+- “>= 3 sequential steps with verification” is too common; it is **not** a trigger for dev-docs.
+
+If the user asks for a roadmap/plan before coding:
+- If the task meets the Create Conditions above, use `plan-maker` to create `roadmap.md`, then use `create-dev-docs-plan` for the full bundle.
+- Otherwise, provide an in-chat plan and do NOT write under `dev-docs/`.
 
 ## Coding Gate (MUST)
 

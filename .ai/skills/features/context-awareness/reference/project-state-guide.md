@@ -1,4 +1,4 @@
-# Manage Project State - Reference
+# Context Awareness - Project State (Reference)
 
 ## Why this exists
 

@@ -13,11 +13,11 @@ Make observability contracts explicit and reviewable:
 - Logs schema
 - Tracing conventions
 
-This feature integrates with Context Awareness by placing contracts under `docs/context/observability/`.
+The Observability feature integrates with Context Awareness by placing contracts under `docs/context/observability/`.
 
 ## What gets enabled
 
-When enabled, this feature materializes:
+When enabled, the feature materializes:
 
 - `docs/context/observability/**`
 - `observability/**` (configuration and runbooks)
@@ -29,7 +29,7 @@ Controller script (provided by the template SSOT):
 ## Dependency
 
 - **Context Awareness** SHOULD be enabled.
-  - Init enforces this dependency (observability requires a context root).
+  - Init enforces the dependency (observability requires a context root).
 
 ## How to enable
 

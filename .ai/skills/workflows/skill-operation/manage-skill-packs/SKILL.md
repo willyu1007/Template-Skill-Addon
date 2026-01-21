@@ -29,7 +29,7 @@ Do NOT use this skill if:
 ## Outputs
 
 - Updated `.ai/skills/_meta/sync-manifest.json` (effective selection)
-- Updated `.ai/skills/_meta/skillsctl-state.json` (base + enabled packs)
+- Updated `.ai/skills/_meta/skillsctl-state.json` (enabled packs + last sync)
 - Regenerated wrappers under provider skill roots (via `sync-skills.mjs`)
 
 ## Steps

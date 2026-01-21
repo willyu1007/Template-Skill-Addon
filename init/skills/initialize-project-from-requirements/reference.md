@@ -1,13 +1,13 @@
 # Reference: initialize-project-from-requirements
 
 This reference describes the behavior of the init pipeline implementation (scripts + templates).
-It is the SSOT; other references should link here.
+The file is the SSOT; other references should link here.
 
 ---
 
 ## Key conclusions
 
-- Stage A quality is enforced by **structure + placeholder checks** (`check-docs`). It does not attempt deep semantic evaluation.
+- Stage A quality is enforced by **structure + placeholder checks** (`check-docs`). The check does not attempt deep semantic evaluation.
 - Stage B blueprint is the **machine-readable SSOT** used for Stage C scaffold/config generation and pack selection.
 - Pack selection is explicit:
   - declared in `init/project-blueprint.json` (`skills.packs`) during initialization
@@ -15,7 +15,7 @@ It is the SSOT; other references should link here.
   - materialized into `.ai/skills/_meta/sync-manifest.json` (flat schema)
   - synced into provider wrappers by `node .ai/scripts/sync-skills.mjs`
 - Stage transitions require explicit approval (`approve`), not manual state edits.
-- When `.ai/skills/_meta/skillpacksctl.mjs` is available, pack enabling is performed through it; otherwise Stage C falls back to editing the sync manifest.
+- When `.ai/skills/_meta/skillpacksctl.mjs` is available, pack enabling is performed through `skillpacksctl`; otherwise Stage C falls back to editing the sync manifest.
 - Optional **features** are materialized in Stage C from templates stored under `.ai/skills/features/...`.
 
 ---
@@ -115,7 +115,7 @@ Enable via blueprint:
 
 Implications:
 - Stage C materializes `docs/context/**` and environment templates, then runs `.ai/skills/features/context-awareness/scripts/contextctl.mjs init`
-- Optional: add `context-core` to `skills.packs` if you want context-related scaffold skills/wrappers
+- Optional: add `context-core` to `skills.packs` if you want context-awareness skills/wrappers
 
 See:
 - `.ai/skills/features/context-awareness/`

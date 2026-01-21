@@ -21,6 +21,8 @@ In `init/project-blueprint.json`:
 
 When enabled, Stage C runs:
 
+Note (Windows): if `python3` is not available, use `python`.
+
 ```bash
 python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py init --root .
 ```

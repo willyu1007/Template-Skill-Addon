@@ -17,7 +17,7 @@
 
 - If the task is **LLM engineering** (provider integration, calling wrappers, profiles, prompts, cost/telemetry, credentials/config keys):
   - Open: `.ai/llm-config/AGENTS.md`
-  - Invoke workflow skill: `llm_engineering`
+  - Invoke workflow skill: `llm-engineering`
 - If the task is **skill authoring/maintenance**:
   - Open: `.ai/skills/standards/documentation-guidelines/SKILL.md`
   - Run:
@@ -44,5 +44,5 @@ AI/LLM MUST NOT:
 - Lint skills: `node .ai/scripts/lint-skills.mjs --strict`
 - Sync stubs: `node .ai/scripts/sync-skills.mjs --scope current --providers both --mode reset --yes`
 - Delete skills: `node .ai/scripts/sync-skills.mjs --delete-skills "<csv>" --yes` (preview with `--dry-run`)
-- LLM config key gate: `node .ai/skills/workflows/llm/llm_engineering/scripts/check-llm-config-keys.mjs`
-- LLM registry sanity: `node .ai/skills/workflows/llm/llm_engineering/scripts/validate-llm-registry.mjs`
+- LLM config key gate: `node .ai/skills/workflows/llm/llm-engineering/scripts/check-llm-config-keys.mjs`
+- LLM registry sanity: `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`

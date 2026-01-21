@@ -197,7 +197,7 @@ Important: **DB schema SSOT mode is mandatory**. Record it as `db.ssot` with one
 | `capabilities.backend.enabled: true` | `backend` |
 | `capabilities.frontend.enabled: true` | `frontend` |
 | Needs code standards | `standards` |
-| `features.contextAwareness: true` | `context-core` (optional; context-related scaffold skills) |
+| `features.contextAwareness: true` | `context-core` (optional; context-awareness skills/wrappers) |
 
 ---
 

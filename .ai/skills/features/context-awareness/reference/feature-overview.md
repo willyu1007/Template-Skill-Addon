@@ -28,8 +28,8 @@ This feature provides a **stable, verifiable context contract** so an LLM can wo
 
 ## Recommended enforcement
 
-- Add the policy snippet in `AGENTS_SNIPPET.md` to your repo-level `AGENTS.md`.
-- Add the CI step in `CI_SNIPPET.md` to enforce "script-only" changes.
+- Add the policy snippet in `agents-snippet.md` to your repo-level `AGENTS.md`.
+- Add the CI step in `ci-snippet.md` to enforce "script-only" changes.
 
 ## Verification
 

@@ -105,7 +105,7 @@ Confirm deletions **before** running:
 node .ai/scripts/sync-skills.mjs --dry-run --delete-skills "<csv>"
 ```
 
-After confirmation, re-run with `--yes` to delete. Optional removals (like `agent_builder`) should go through the same flow:
+After confirmation, re-run with `--yes` to delete. Optional removals (like `agent-builder`) should go through the same flow:
 
 ```bash
 node .ai/scripts/sync-skills.mjs --delete-skills "<csv>" --yes

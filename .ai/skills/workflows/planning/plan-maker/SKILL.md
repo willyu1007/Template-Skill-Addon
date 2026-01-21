@@ -10,7 +10,7 @@ Produce a single, goal-aligned macro-level roadmap as a Markdown document that c
 
 ## When to use
 Use the plan-maker skill when:
-- **Strong trigger**: The user mentions "roadmap" — MUST use the `plan-maker` skill
+- **Strong trigger**: The user explicitly asks for a saved “roadmap” document/artifact — MUST use the `plan-maker` skill unless the change is trivial (`< 30 min`)
 - The user asks for a plan/milestones/implementation plan before coding
 - The user asks to "align thinking first" or "clarify direction" before planning
 - The task is large/ambiguous and benefits from staged execution and verification
@@ -95,8 +95,8 @@ Avoid the skill when:
 7. **Evaluate dev-docs Decision Gate**:
    - Check if task meets any of these criteria:
      - Expected duration > 2 hours, or likely to span multiple sessions
-     - Scope touches >= 2 modules/directories, or requires >= 3 sequential steps with verification
-     - User explicitly needs handoff/context recovery artifacts
+     - The work will be paused/handed off, or the user explicitly needs context recovery artifacts
+     - The change is high-risk or cross-cutting (e.g., DB/schema migration, auth/security, CI/CD/infra, multi-service/API boundary changes)
    - If criteria are met:
      - Inform user: "This task qualifies for a full dev-docs bundle for context preservation."
      - Ask: "Would you like to create the complete documentation bundle now?"
@@ -120,7 +120,7 @@ Avoid the skill when:
 - MUST NOT modify application/source code, project configuration, or database state
 - MUST ask clarifying questions when the goal or constraints are ambiguous
 - MUST NOT invent project-specific facts (APIs, file paths, schemas) without evidence
-- **MUST use the `plan-maker` skill when user mentions "roadmap"** (strong trigger keyword)
+- **MUST use the `plan-maker` skill when the user explicitly asks for a saved “roadmap” document/artifact** (strong trigger)
 - If the user asks to implement immediately but the task is non-trivial, produce the roadmap first, then ask for confirmation to proceed with execution in a follow-up turn.
 - If the task meets the dev-docs Decision Gate, **MUST prompt user** whether to continue with `create-dev-docs-plan`
 - If user confirms dev-docs bundle creation, **MUST trigger `create-dev-docs-plan` skill**

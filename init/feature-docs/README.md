@@ -16,8 +16,8 @@ This template does **not** ship an `addons/` directory. Feature assets are integ
 |------------|------------------|----------------|---------------|
 | `context-awareness` | `features.contextAwareness` | `.ai/skills/features/context-awareness/scripts/contextctl.mjs` | [context-awareness.md](context-awareness.md) |
 | `database` | `features.database` (requires `db.ssot != none`) | `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs` (when `db.ssot=database`) | [database.md](database.md) |
-| `ui` | `features.ui` | `ui_specctl.py` | [ui.md](ui.md) |
-| `environment` | `features.environment` | `env_contractctl.py` | [environment.md](environment.md) |
+| `ui` | `features.ui` | `.ai/skills/features/ui/ui-system-bootstrap/scripts/ui_specctl.py` | [ui.md](ui.md) |
+| `environment` | `features.environment` | `.ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py` | [environment.md](environment.md) |
 | `packaging` | `features.packaging` | `.ai/skills/features/packaging/scripts/packctl.mjs` | [packaging.md](packaging.md) |
 | `deployment` | `features.deployment` | `.ai/skills/features/deployment/scripts/deployctl.mjs` | [deployment.md](deployment.md) |
 | `release` | `features.release` | `.ai/skills/features/release/scripts/releasectl.mjs` | [release.md](release.md) |
