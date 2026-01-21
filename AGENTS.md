@@ -28,16 +28,19 @@ Template repository. Users clone this to start new AI-friendly projects.
 
 ## Global Rules
 
-- Always edit `.ai/skills/` (SSOT), never edit `.codex/` or `.claude/` directly
 - Follow progressive disclosure: read only the file you are routed to
-- For complex tasks (multi-module, multi-session, >2 hours), create docs under `dev-docs/active/`
 - On context reset for ongoing work, read `dev-docs/active/<task-name>/00-overview.md` first
+
+## Coding Standards (RECOMMEND)
+
+- **ESM (.mjs)**: All scripts in this repository use ES Modules with `.mjs` extension. Use `import`/`export` syntax, not `require()`.
 
 ## Coding Workflow (MUST)
 
 - Before modifying code/config for a non-trivial task, apply the Decision Gate in `dev-docs/AGENTS.md` and create/update the dev-docs task bundle as required.
-- If the user asks for planning artifacts (plan/roadmap/milestones/implementation plan; 规划/方案/路线图/里程碑/实施计划) before coding, use `plan-maker` first, then ask for confirmation to proceed with implementation.
-- If the task needs context preservation (multi-session, handoff, 交接, 上下文恢复, 归档) or qualifies as complex, follow `dev-docs/AGENTS.md` and use dev-docs workflows (`create-dev-docs-plan`, `update-dev-docs-for-handoff`).
+- If the user asks for planning artifacts (plan/roadmap/milestones/implementation plan) before coding, use `plan-maker` first, then ask for confirmation to proceed with implementation.
+- If the task needs context preservation (multi-session, handoff) or qualifies as complex, follow `dev-docs/AGENTS.md` and use dev-docs workflows (`create-dev-docs-plan`, `update-dev-docs-for-handoff`).
+
 
 <!-- DB-SSOT:START -->
 ## Database SSOT and schema synchronization

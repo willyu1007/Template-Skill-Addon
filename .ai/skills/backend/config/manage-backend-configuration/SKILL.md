@@ -37,8 +37,8 @@ Use this skill when you are:
 3. Expose a stable `config` object to the rest of the codebase.
 4. Ensure failure is immediate when required config is missing/invalid.
 5. Add a small verification:
-   - "fails fast" when missing
-   - "loads" with a valid example
+   - “fails fast” when missing
+   - “loads” with a valid example
 
 ## Verification
 

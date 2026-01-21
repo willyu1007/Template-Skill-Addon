@@ -1,4 +1,4 @@
-# Example: Refactor "business logic in routes" into clean layers
+# Example: Refactor “business logic in routes” into clean layers
 
 ## Before
 - Routes contain permission checks, validation, business rules, and persistence.
@@ -12,7 +12,7 @@
 5. Add unit tests at the service layer and one integration test for the endpoint.
 
 ## After (acceptance criteria)
-- Routes are "wiring only".
+- Routes are “wiring only”.
 - Controller methods are small and predictable.
 - Service layer is unit-testable without HTTP objects.
 - Error responses use stable error codes and shapes.

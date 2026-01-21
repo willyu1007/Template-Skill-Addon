@@ -24,7 +24,7 @@ init/                         # Project bootstrap kit (Stage A/B/C)
 
 .ai/
   skills/                     # SSOT skills (edit here only)
-  scripts/                    # `sync-skills.cjs` (generates provider wrappers)
+  scripts/                    # `sync-skills.mjs` (generates provider wrappers)
 
 .codex/skills/                # Generated wrappers (DO NOT EDIT)
 .claude/skills/               # Generated wrappers (DO NOT EDIT)
@@ -39,7 +39,7 @@ dev-docs/                     # Complex task documentation
 - After changing `.ai/skills/`, regenerate wrappers:
 
 ```bash
-node .ai/scripts/sync-skills.cjs --scope current --providers both --mode reset --yes
+node .ai/scripts/sync-skills.mjs --scope current --providers both --mode reset --yes
 ```
 
 ## Pointers
@@ -55,8 +55,8 @@ node .ai/scripts/sync-skills.cjs --scope current --providers both --mode reset -
 This template does **not** ship an `addons/` directory. Optional features are materialized during init **Stage C** based on `init/project-blueprint.json`:
 
 - Feature toggles: `features.*` (see `init/feature-docs/README.md`)
-- Assets live under `.ai/skills/features/**/templates` and `.ai/scripts/*ctl.js`
-- Stage C `apply` copies templates (copy-if-missing by default) and runs `*ctl.js init`
+- Assets live under `.ai/skills/features/**/templates` and `.ai/scripts/*ctl.mjs`
+- Stage C `apply` copies templates (copy-if-missing by default) and runs `*ctl.mjs init`
 
 Example:
 

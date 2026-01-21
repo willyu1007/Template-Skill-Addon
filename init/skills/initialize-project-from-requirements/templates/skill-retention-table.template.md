@@ -20,7 +20,7 @@ If a retention decision is not ready, note "TBD" in the Description column.
 
 Notes:
 - If multiple skills share the same name, confirm the full path before deleting.
-- After the user confirms deletions, run `node .ai/scripts/sync-skills.cjs --dry-run --delete-skills "<csv>"`, then re-run with `--yes`.
+- After the user confirms deletions, run `node .ai/scripts/sync-skills.mjs --dry-run --delete-skills "<csv>"`, then re-run with `--yes`.
 
 ## Deletion List (after confirmation)
 

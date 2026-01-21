@@ -15,13 +15,13 @@ When enabled, this feature materializes:
 
 - `ops/packaging/**`
   - `ops/packaging/templates/Dockerfile.*`
-  - `ops/packaging/scripts/docker-build.js`
+  - `ops/packaging/scripts/docker-build.mjs`
   - `ops/packaging/workdocs/**`
 - `docs/packaging/registry.json` (packaging targets registry)
 
 Controller scripts (provided by the template SSOT):
 
-- `node .ai/skills/features/packaging/scripts/packctl.js` — packaging target registry management
+- `node .ai/skills/features/packaging/scripts/packctl.mjs` — packaging target registry management
 
 ## How to enable
 
@@ -34,7 +34,7 @@ In `init/project-blueprint.json`:
 Then run:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --providers both
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --providers both
 ```
 
 ### In an existing repo
@@ -45,8 +45,8 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 2. Initialize:
 
 ```bash
-node .ai/skills/features/packaging/scripts/packctl.js init
-node .ai/skills/features/packaging/scripts/packctl.js verify
+node .ai/skills/features/packaging/scripts/packctl.mjs init
+node .ai/skills/features/packaging/scripts/packctl.mjs verify
 ```
 
 ## Operating rules
@@ -58,7 +58,7 @@ node .ai/skills/features/packaging/scripts/packctl.js verify
 ## Verification
 
 ```bash
-node .ai/skills/features/packaging/scripts/packctl.js verify
+node .ai/skills/features/packaging/scripts/packctl.mjs verify
 ```
 
 ## Boundaries

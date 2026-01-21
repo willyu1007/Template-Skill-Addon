@@ -33,13 +33,13 @@ When enabled, Stage C:
 2) Runs the controller:
 
 ```bash
-node .ai/skills/features/release/scripts/releasectl.js init --repo-root .
+node .ai/skills/features/release/scripts/releasectl.mjs init --repo-root .
 ```
 
 3) Optional verification (when Stage C is run with `--verify-features`):
 
 ```bash
-node .ai/skills/features/release/scripts/releasectl.js verify --repo-root .
+node .ai/skills/features/release/scripts/releasectl.mjs verify --repo-root .
 ```
 
 ## Key outputs

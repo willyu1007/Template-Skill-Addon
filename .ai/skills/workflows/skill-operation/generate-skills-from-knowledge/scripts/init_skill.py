@@ -13,7 +13,7 @@ This script creates a skill directory with:
 - scripts/ directory placeholder
 - reference.md placeholder
 
-The generated skeleton passes `lint-skills.cjs --strict`.
+The generated skeleton passes `lint-skills.mjs --strict`.
 """
 
 import argparse
@@ -150,7 +150,7 @@ def create_skill_directory(skill_name: str, target_path: str) -> None:
     print("")
     print("Next steps:")
     print(f"  1. Edit {skill_md_path} to fill in placeholders")
-    print(f"  2. Run: node .ai/scripts/lint-skills.cjs --strict")
+    print(f"  2. Run: node .ai/scripts/lint-skills.mjs --strict")
 
 
 def main():

@@ -12,7 +12,7 @@ The land-skills-into-repo skill provides:
 - A repeatable workflow (manual + scripted).
 - A script (`./scripts/land_skills.py`) that performs a safe, auditable install/update with dry-run by default.
 
-**Note**: Provider stubs (for `.codex/skills/`, `.claude/skills/`, etc.) should be generated using `node .ai/scripts/sync-skills.cjs`, not the land_skills.py script.
+**Note**: Provider stubs (for `.codex/skills/`, `.claude/skills/`, etc.) should be generated using `node .ai/scripts/sync-skills.mjs`, not the land_skills.py script.
 
 ## When to use
 Use the land-skills-into-repo skill when:
@@ -22,7 +22,7 @@ Use the land-skills-into-repo skill when:
 Do **not** use the skill when:
 - You only need to author one new skill from scratch (use a skill-creator workflow instead).
 - You are not allowed to modify the target repository (run in `--plan` mode only).
-- You need to sync SSOT to provider roots (use `node .ai/scripts/sync-skills.cjs` instead).
+- You need to sync SSOT to provider roots (use `node .ai/scripts/sync-skills.mjs` instead).
 
 ## Inputs
 You MUST obtain:
@@ -34,7 +34,7 @@ You MUST obtain:
 
 You MAY additionally provide:
 - `ssot_dir`: Destination SSOT directory inside the repo (default: `.ai/skills`).
-- `config`: A JSON config file (see `./templates/landing-config.*`).
+- `config`: A JSON config file (see `./templates/landing-config.schema.json` and `./templates/landing-config.example.json`).
 
 ## Outputs
 The skill writes:
@@ -95,7 +95,7 @@ After landing skills into the SSOT, generate provider stubs:
 
 ```bash
 # Run from repo root.
-node .ai/scripts/sync-skills.cjs --scope current --providers both --mode reset --yes
+node .ai/scripts/sync-skills.mjs --scope current --providers both --mode reset --yes
 ```
 
 This generates lightweight wrapper stubs in `.codex/skills/` and `.claude/skills/` that point to the SSOT.

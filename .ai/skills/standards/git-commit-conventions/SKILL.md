@@ -232,7 +232,7 @@ Commit quality checklist:
 - Message follows conventional format
 - Type accurately describes the change
 - Subject is clear and imperative
-- Related issues are referenced
+- Linked issues are referenced
 - No sensitive data included
 
 ## Included assets

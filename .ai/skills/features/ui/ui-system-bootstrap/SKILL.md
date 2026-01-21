@@ -97,7 +97,7 @@ Record results in `04-post-verify.md`.
 - [ ] Themes are token-only (no contract branches)
 - [ ] All SSOT files exist and validate
 - [ ] LLM context file is refreshed
-- [ ] Central test suite passes: `node .ai/tests/run.cjs --suite ui`
+- [ ] Central test suite passes: `node .ai/tests/run.mjs --suite ui`
 
 ## Boundaries
 

@@ -5,5 +5,5 @@ curl -X GET "http://localhost:3000/api/protected"   -H "Accept: application/json
 ```
 
 Notes:
-- Replace `session_cookie` with your project's cookie name.
+- Replace `session_cookie` with your project’s cookie name.
 - Never paste real tokens into documentation.

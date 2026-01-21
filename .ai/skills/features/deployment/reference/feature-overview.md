@@ -20,7 +20,7 @@ This feature provides **multi-environment deployment** infrastructure supporting
 Services must be registered before deployment:
 
 ```bash
-node .ai/skills/features/deployment/scripts/deployctl.js add-service --id api --artifact api:v1.0.0
+node .ai/skills/features/deployment/scripts/deployctl.mjs add-service --id api --artifact api:v1.0.0
 ```
 
 ### Environment Configuration
@@ -36,7 +36,7 @@ Environments are configured in `ops/deploy/environments/`:
 AI generates deployment plans, but humans execute:
 
 ```bash
-node .ai/skills/features/deployment/scripts/deployctl.js plan --service api --env staging
+node .ai/skills/features/deployment/scripts/deployctl.mjs plan --service api --env staging
 ```
 
 ## Kubernetes Support
@@ -70,14 +70,14 @@ Humans execute and approve all deployments.
 
 ```bash
 # Initialize
-node .ai/skills/features/deployment/scripts/deployctl.js init --model k8s
+node .ai/skills/features/deployment/scripts/deployctl.mjs init --model k8s
 
 # Add service
-node .ai/skills/features/deployment/scripts/deployctl.js add-service --id api --artifact api:v1.0.0
+node .ai/skills/features/deployment/scripts/deployctl.mjs add-service --id api --artifact api:v1.0.0
 
 # Plan deployment
-node .ai/skills/features/deployment/scripts/deployctl.js plan --service api --env staging
+node .ai/skills/features/deployment/scripts/deployctl.mjs plan --service api --env staging
 
 # Check status
-node .ai/skills/features/deployment/scripts/deployctl.js status --env staging
+node .ai/skills/features/deployment/scripts/deployctl.mjs status --env staging
 ```

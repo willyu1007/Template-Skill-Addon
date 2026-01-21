@@ -9,7 +9,7 @@ description: Apply cross-cutting backend service patterns across routing, servic
 Provide a practical, provider-agnostic checklist and working patterns for building and refactoring backend HTTP services with a layered architecture.
 
 ## When to use
-Use this skill when you are:
+Use the apply-backend-service-guidelines skill when you are:
 - Adding or changing HTTP endpoints (routes, controllers)
 - Implementing business logic (services) or data access (repositories)
 - Introducing middleware (auth, validation, auditing, rate limits)
@@ -18,7 +18,7 @@ Use this skill when you are:
 - Writing or fixing backend tests (unit and integration)
 
 
-Avoid using this skill when:
+Avoid using the skill when:
 - you are making a narrow, single-concern change (for example, only adjusting one validation rule) and you do not need a cross-layer consistency check
 - you are doing one-off debugging with a known root cause and you only need a small targeted fix
 
@@ -37,7 +37,7 @@ The skill produces one or more of:
 - A minimal test plan (unit + integration) with verifiable acceptance criteria
 
 ## Architecture rules
-These rules prevent "everything everywhere" backends.
+These rules prevent “everything everywhere” backends.
 
 1. **Routes MUST only wire HTTP to handlers**
    - Register middleware and delegate to a controller.
@@ -96,7 +96,7 @@ These rules prevent "everything everywhere" backends.
 
 5. **Implement data access**
    - Use repositories for complex queries and persistence workflows.
-   - Add transactions where "all-or-nothing" semantics are required.
+   - Add transactions where “all-or-nothing” semantics are required.
 
 6. **Add observability**
    - Add structured logs around boundaries (start/end, key identifiers).

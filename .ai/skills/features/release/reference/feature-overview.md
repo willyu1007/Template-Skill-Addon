@@ -45,17 +45,17 @@ Never directly create git tags or modify version files.
 
 ```bash
 # Initialize
-node .ai/skills/features/release/scripts/releasectl.js init --strategy semantic
+node .ai/skills/features/release/scripts/releasectl.mjs init --strategy semantic
 
 # Check status
-node .ai/skills/features/release/scripts/releasectl.js status
+node .ai/skills/features/release/scripts/releasectl.mjs status
 
 # Prepare release
-node .ai/skills/features/release/scripts/releasectl.js prepare --version 1.2.0
+node .ai/skills/features/release/scripts/releasectl.mjs prepare --version 1.2.0
 
 # Generate changelog
-node .ai/skills/features/release/scripts/releasectl.js changelog
+node .ai/skills/features/release/scripts/releasectl.mjs changelog
 
 # Create tag (requires human approval)
-node .ai/skills/features/release/scripts/releasectl.js tag --version 1.2.0
+node .ai/skills/features/release/scripts/releasectl.mjs tag --version 1.2.0
 ```

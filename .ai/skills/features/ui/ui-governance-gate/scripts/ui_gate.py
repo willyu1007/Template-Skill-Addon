@@ -108,7 +108,9 @@ def load_json(path: Path) -> Dict[str, object]:
 
 def write_json(path: Path, obj: Dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(obj, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
 
 def find_repo_root(start: Path) -> Path:
@@ -117,7 +119,9 @@ def find_repo_root(start: Path) -> Path:
         # Prefer the nearest directory that contains the UI SSOT root.
         # This makes smoke tests and nested worktrees deterministic even when they
         # live inside a larger git repository.
-        if (p / "ui" / "tokens" / "base.json").exists() and (p / "ui" / "contract" / "contract.json").exists():
+        if (p / "ui" / "tokens" / "base.json").exists() and (
+            p / "ui" / "contract" / "contract.json"
+        ).exists():
             return p
         if (p / ".git").exists():
             return p
@@ -141,10 +145,24 @@ def load_governance_config(repo_root: Path) -> Dict[str, object]:
         "theme_policy": "token-only",
         "scan": {
             "include_roots": ["src", "app", "pages", "components"],
-            "exclude_roots": ["node_modules", "dist", "build", ".next", ".ai", ".codex", "coverage"],
+            "exclude_roots": [
+                "node_modules",
+                "dist",
+                "build",
+                ".next",
+                ".ai",
+                ".codex",
+                "coverage",
+            ],
         },
         "tailwind": {
-            "allowed_utility_whitelist": ["sr-only", "truncate", "break-words", "break-all", "whitespace-nowrap"],
+            "allowed_utility_whitelist": [
+                "sr-only",
+                "truncate",
+                "break-words",
+                "break-all",
+                "whitespace-nowrap",
+            ],
             "disallowed_prefixes": [
                 "bg-",
                 "text-",
@@ -214,7 +232,7 @@ def load_governance_config(repo_root: Path) -> Dict[str, object]:
             },
             "stylelint": {
                 "enabled": "auto",
-                "command": "npx stylelint \"src/**/*.{css,scss}\" --formatter json --output-file {out}",
+                "command": 'npx stylelint "src/**/*.{css,scss}" --formatter json --output-file {out}',
                 "report": "stylelint.json",
             },
             "playwright": {
@@ -228,7 +246,16 @@ def load_governance_config(repo_root: Path) -> Dict[str, object]:
 
 def validate_tokens(tokens: Dict[str, object]) -> List[str]:
     errs: List[str] = []
-    required_top = ["color", "typography", "space", "radius", "shadow", "border", "motion", "z"]
+    required_top = [
+        "color",
+        "typography",
+        "space",
+        "radius",
+        "shadow",
+        "border",
+        "motion",
+        "z",
+    ]
     for k in required_top:
         if k not in tokens:
             errs.append(f"Missing required token group: {k}")
@@ -237,7 +264,9 @@ def validate_tokens(tokens: Dict[str, object]) -> List[str]:
     return errs
 
 
-def validate_contract(contract: Dict[str, object]) -> Tuple[List[str], Set[str], Dict[str, Dict[str, Set[str]]], Set[str]]:
+def validate_contract(
+    contract: Dict[str, object],
+) -> Tuple[List[str], Set[str], Dict[str, Dict[str, Set[str]]], Set[str]]:
     errs: List[str] = []
     roles: Set[str] = set()
     role_attr_values: Dict[str, Dict[str, Set[str]]] = {}
@@ -269,7 +298,9 @@ def validate_contract(contract: Dict[str, object]) -> Tuple[List[str], Set[str],
 
         role_attr_values[role] = {}
         for attr_name, allowed in attrs.items():
-            if not isinstance(allowed, list) or not all(isinstance(v, str) for v in allowed):
+            if not isinstance(allowed, list) or not all(
+                isinstance(v, str) for v in allowed
+            ):
                 errs.append(f"role {role}.attrs.{attr_name} must be a list[str]")
                 continue
             role_attr_values[role][attr_name] = set(allowed)
@@ -277,7 +308,9 @@ def validate_contract(contract: Dict[str, object]) -> Tuple[List[str], Set[str],
     return errs, roles, role_attr_values, slot_vocab
 
 
-def iter_scan_files(repo_root: Path, include_roots: List[str], exclude_roots: List[str]) -> Iterable[Path]:
+def iter_scan_files(
+    repo_root: Path, include_roots: List[str], exclude_roots: List[str]
+) -> Iterable[Path]:
     include_paths = [repo_root / p for p in include_roots]
     exclude_abs: Set[Path] = {(repo_root / p).resolve() for p in exclude_roots}
 
@@ -355,7 +388,9 @@ def _parse_quoted_string(text: str, start: int) -> Tuple[Optional[str], int]:
     return None, i
 
 
-def _parse_template_literal(text: str, start: int) -> Tuple[Optional[List[str]], Optional[List[str]], int]:
+def _parse_template_literal(
+    text: str, start: int
+) -> Tuple[Optional[List[str]], Optional[List[str]], int]:
     """Parse a JS template literal starting at `start` (backtick at start).
 
     Returns (static_segments, nested_string_literals, end_index_exclusive).
@@ -488,7 +523,9 @@ def _extract_string_literals_js(expr: str) -> List[str]:
         if c == "`":
             segments, nested, end = _parse_template_literal(expr, i)
             if segments is not None:
-                out.extend([seg for seg in segments if isinstance(seg, str) and seg != ""])
+                out.extend(
+                    [seg for seg in segments if isinstance(seg, str) and seg != ""]
+                )
             if nested is not None:
                 out.extend([s for s in nested if isinstance(s, str) and s != ""])
             i = max(end, i + 1)
@@ -497,7 +534,9 @@ def _extract_string_literals_js(expr: str) -> List[str]:
     return out
 
 
-def _iter_jsx_attr_values(text: str, attr_name: str) -> Iterable[Tuple[int, str, str, List[str]]]:
+def _iter_jsx_attr_values(
+    text: str, attr_name: str
+) -> Iterable[Tuple[int, str, str, List[str]]]:
     """Yield occurrences of JSX attribute values.
 
     Returns tuples: (attr_start_index, kind, raw_value, extracted_literals)
@@ -648,7 +687,11 @@ def _parse_tag_attributes(tag_text: str) -> List[Tuple[str, str, str, List[str],
     # Skip tag name
     while i < len(tag_text) and tag_text[i].isspace():
         i += 1
-    while i < len(tag_text) and not tag_text[i].isspace() and tag_text[i] not in {">", "/"}:
+    while (
+        i < len(tag_text)
+        and not tag_text[i].isspace()
+        and tag_text[i] not in {">", "/"}
+    ):
         i += 1
 
     while i < len(tag_text):
@@ -658,7 +701,11 @@ def _parse_tag_attributes(tag_text: str) -> List[Tuple[str, str, str, List[str],
             break
 
         name_start = i
-        while i < len(tag_text) and not tag_text[i].isspace() and tag_text[i] not in {"=", ">", "/"}:
+        while (
+            i < len(tag_text)
+            and not tag_text[i].isspace()
+            and tag_text[i] not in {"=", ">", "/"}
+        ):
             i += 1
         name = tag_text[name_start:i]
 
@@ -694,13 +741,19 @@ def _parse_tag_attributes(tag_text: str) -> List[Tuple[str, str, str, List[str],
                 kind = "template"
                 lits = []
                 if segments is not None:
-                    lits.extend([s for s in segments if isinstance(s, str) and s.strip()])
+                    lits.extend(
+                        [s for s in segments if isinstance(s, str) and s.strip()]
+                    )
                 if nested is not None:
                     lits.extend([s for s in nested if isinstance(s, str) and s.strip()])
                 i = max(end, i + 1)
             else:
                 start_tok = i
-                while i < len(tag_text) and (not tag_text[i].isspace()) and tag_text[i] not in {">", "/"}:
+                while (
+                    i < len(tag_text)
+                    and (not tag_text[i].isspace())
+                    and tag_text[i] not in {">", "/"}
+                ):
                     i += 1
                 raw = tag_text[start_tok:i]
                 kind = "bare"
@@ -720,15 +773,39 @@ def scan_code_and_css(
 ) -> List[Issue]:
     issues: List[Issue] = []
 
-    tailwind_cfg = cfg.get("tailwind", {}) if isinstance(cfg.get("tailwind"), dict) else {}
-    disallowed_prefixes = [p for p in tailwind_cfg.get("disallowed_prefixes", []) if isinstance(p, str)]
-    disallowed_substrings = [s for s in tailwind_cfg.get("disallowed_substrings", []) if isinstance(s, str)]
-    allow_whitelist = set([s for s in tailwind_cfg.get("allowed_utility_whitelist", []) if isinstance(s, str)])
+    tailwind_cfg = (
+        cfg.get("tailwind", {}) if isinstance(cfg.get("tailwind"), dict) else {}
+    )
+    disallowed_prefixes = [
+        p for p in tailwind_cfg.get("disallowed_prefixes", []) if isinstance(p, str)
+    ]
+    disallowed_substrings = [
+        s for s in tailwind_cfg.get("disallowed_substrings", []) if isinstance(s, str)
+    ]
+    allow_whitelist = set(
+        [
+            s
+            for s in tailwind_cfg.get("allowed_utility_whitelist", [])
+            if isinstance(s, str)
+        ]
+    )
 
-    feature_css_cfg = cfg.get("feature_css_rules", {}) if isinstance(cfg.get("feature_css_rules"), dict) else {}
-    disallow_props = set([p for p in feature_css_cfg.get("disallow_properties", []) if isinstance(p, str)])
+    feature_css_cfg = (
+        cfg.get("feature_css_rules", {})
+        if isinstance(cfg.get("feature_css_rules"), dict)
+        else {}
+    )
+    disallow_props = set(
+        [
+            p
+            for p in feature_css_cfg.get("disallow_properties", [])
+            if isinstance(p, str)
+        ]
+    )
 
-    code_rules = cfg.get("code_rules", {}) if isinstance(cfg.get("code_rules"), dict) else {}
+    code_rules = (
+        cfg.get("code_rules", {}) if isinstance(cfg.get("code_rules"), dict) else {}
+    )
 
     for path in files:
         rel = _safe_relpath(repo_root, path)
@@ -736,17 +813,49 @@ def scan_code_and_css(
 
         if code_rules.get("disallow_inline_style", True):
             for m in INLINE_STYLE_RE.finditer(text):
-                issues.append(Issue("ERROR", "no-inline-style", rel, compute_line_number(text, m.start()), "Inline style attribute found."))
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        "no-inline-style",
+                        rel,
+                        compute_line_number(text, m.start()),
+                        "Inline style attribute found.",
+                    )
+                )
 
         if code_rules.get("disallow_hardcoded_color_literals", True):
             for m in HEX_COLOR_RE.finditer(text):
-                issues.append(Issue("ERROR", "no-hardcoded-colors", rel, compute_line_number(text, m.start()), f"Hard-coded color literal: {m.group(0)}"))
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        "no-hardcoded-colors",
+                        rel,
+                        compute_line_number(text, m.start()),
+                        f"Hard-coded color literal: {m.group(0)}",
+                    )
+                )
             for m in RGB_COLOR_RE.finditer(text):
-                issues.append(Issue("ERROR", "no-hardcoded-colors", rel, compute_line_number(text, m.start()), "rgb()/hsl() color literal found."))
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        "no-hardcoded-colors",
+                        rel,
+                        compute_line_number(text, m.start()),
+                        "rgb()/hsl() color literal found.",
+                    )
+                )
 
         if code_rules.get("disallow_raw_box_shadow", True):
             for m in BOX_SHADOW_RE.finditer(text):
-                issues.append(Issue("ERROR", "no-raw-box-shadow", rel, compute_line_number(text, m.start()), "Raw box-shadow found. Use tokens via contract."))
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        "no-raw-box-shadow",
+                        rel,
+                        compute_line_number(text, m.start()),
+                        "Raw box-shadow found. Use tokens via contract.",
+                    )
+                )
 
         # Tailwind B1 checks (robust): parse className attribute values and inspect string literals.
         # This closes common bypasses (clsx/template literals) while keeping the scanner dependency-light.
@@ -771,25 +880,51 @@ def scan_code_and_css(
                         if token in allow_whitelist:
                             continue
                         if any(sub in token for sub in disallowed_substrings):
-                            issues.append(Issue("ERROR", "tailwind-b1", rel, compute_line_number(text, attr_idx), f"Disallowed Tailwind token (substring): {token}"))
+                            issues.append(
+                                Issue(
+                                    "ERROR",
+                                    "tailwind-b1",
+                                    rel,
+                                    compute_line_number(text, attr_idx),
+                                    f"Disallowed Tailwind token (substring): {token}",
+                                )
+                            )
                             continue
                         if any(token.startswith(pref) for pref in disallowed_prefixes):
-                            issues.append(Issue("ERROR", "tailwind-b1", rel, compute_line_number(text, attr_idx), f"Disallowed Tailwind token (prefix): {token}"))
+                            issues.append(
+                                Issue(
+                                    "ERROR",
+                                    "tailwind-b1",
+                                    rel,
+                                    compute_line_number(text, attr_idx),
+                                    f"Disallowed Tailwind token (prefix): {token}",
+                                )
+                            )
 
         # Contract usage: validate data-ui roles + per-role attrs on the same JSX opening tag.
         if path.suffix in {".ts", ".tsx", ".js", ".jsx"}:
             # Validate tags that contain data-ui.
-            for ui_idx, ui_kind, ui_raw, ui_lits in _iter_jsx_attr_values(text, "data-ui"):
+            for ui_idx, ui_kind, ui_raw, ui_lits in _iter_jsx_attr_values(
+                text, "data-ui"
+            ):
                 tag = _extract_opening_tag(text, ui_idx)
                 if tag is None:
-                    issues.append(Issue("ERROR", "contract-tag-parse", rel, compute_line_number(text, ui_idx), "Unable to locate enclosing JSX tag for data-ui attribute."))
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            "contract-tag-parse",
+                            rel,
+                            compute_line_number(text, ui_idx),
+                            "Unable to locate enclosing JSX tag for data-ui attribute.",
+                        )
+                    )
                     continue
                 tag_start, tag_end, tag_text = tag
                 attrs = _parse_tag_attributes(tag_text)
 
                 # Find role value
                 role_val: Optional[str] = None
-                for (n, k, raw, lits, off) in attrs:
+                for n, k, raw, lits, off in attrs:
                     if n == "data-ui":
                         if k == "string" and raw:
                             role_val = raw
@@ -798,16 +933,32 @@ def scan_code_and_css(
                                 role_val = [s for s in lits if s is not None][0]
                         break
                 if not role_val:
-                    issues.append(Issue("ERROR", "contract-role", rel, compute_line_number(text, ui_idx), "data-ui must be a single string literal."))
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            "contract-role",
+                            rel,
+                            compute_line_number(text, ui_idx),
+                            "data-ui must be a single string literal.",
+                        )
+                    )
                     continue
                 if role_val not in roles:
-                    issues.append(Issue("ERROR", "contract-role", rel, compute_line_number(text, ui_idx), f"Unknown data-ui role: {role_val}"))
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            "contract-role",
+                            rel,
+                            compute_line_number(text, ui_idx),
+                            f"Unknown data-ui role: {role_val}",
+                        )
+                    )
                     continue
 
                 allowed_map = role_attr_values.get(role_val, {})
 
                 # Validate other data-* attributes on this tag
-                for (n, k, raw, lits, off) in attrs:
+                for n, k, raw, lits, off in attrs:
                     if not n.startswith("data-"):
                         continue
                     if n in {"data-ui", "data-slot"}:
@@ -816,13 +967,29 @@ def scan_code_and_css(
                     line = compute_line_number(text, tag_start + off)
 
                     if key not in allowed_map:
-                        issues.append(Issue("ERROR", "contract-attr", rel, line, f"Role {role_val} does not allow attribute {n}"))
+                        issues.append(
+                            Issue(
+                                "ERROR",
+                                "contract-attr",
+                                rel,
+                                line,
+                                f"Role {role_val} does not allow attribute {n}",
+                            )
+                        )
                         continue
 
                     allowed_vals = allowed_map.get(key, set())
                     if k == "string":
                         if raw not in allowed_vals:
-                            issues.append(Issue("ERROR", "contract-enum", rel, line, f"Role {role_val} attribute {n} invalid value: {raw}"))
+                            issues.append(
+                                Issue(
+                                    "ERROR",
+                                    "contract-enum",
+                                    rel,
+                                    line,
+                                    f"Role {role_val} attribute {n} invalid value: {raw}",
+                                )
+                            )
                         continue
 
                     if k in {"expr", "template"}:
@@ -840,25 +1007,75 @@ def scan_code_and_css(
                             continue
                         for v in [s for s in lits if isinstance(s, str) and s != ""]:
                             if v not in allowed_vals:
-                                issues.append(Issue("ERROR", "contract-enum", rel, line, f"Role {role_val} attribute {n} invalid value: {v}"))
+                                issues.append(
+                                    Issue(
+                                        "ERROR",
+                                        "contract-enum",
+                                        rel,
+                                        line,
+                                        f"Role {role_val} attribute {n} invalid value: {v}",
+                                    )
+                                )
                         continue
 
                     # boolean/bare/unparseable
-                    issues.append(Issue("ERROR", "contract-dynamic", rel, line, f"Attribute {n} must be a string literal or a conditional expression of string literals."))
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            "contract-dynamic",
+                            rel,
+                            line,
+                            f"Attribute {n} must be a string literal or a conditional expression of string literals.",
+                        )
+                    )
 
             # Global data-slot vocabulary check (warn-only)
-            for slot_idx, slot_kind, slot_raw, slot_lits in _iter_jsx_attr_values(text, "data-slot"):
+            for slot_idx, slot_kind, slot_raw, slot_lits in _iter_jsx_attr_values(
+                text, "data-slot"
+            ):
                 if slot_kind == "string":
                     if slot_raw not in slot_vocab:
-                        issues.append(Issue("WARN", "contract-slot", rel, compute_line_number(text, slot_idx), f"Unknown data-slot value: {slot_raw}"))
+                        issues.append(
+                            Issue(
+                                "WARN",
+                                "contract-slot",
+                                rel,
+                                compute_line_number(text, slot_idx),
+                                f"Unknown data-slot value: {slot_raw}",
+                            )
+                        )
                 elif slot_kind in {"expr", "template"}:
                     if not slot_lits:
-                        issues.append(Issue("WARN", "contract-slot", rel, compute_line_number(text, slot_idx), "data-slot is dynamic and not analyzable."))
+                        issues.append(
+                            Issue(
+                                "WARN",
+                                "contract-slot",
+                                rel,
+                                compute_line_number(text, slot_idx),
+                                "data-slot is dynamic and not analyzable.",
+                            )
+                        )
                     for v in [s for s in slot_lits if isinstance(s, str) and s.strip()]:
                         if v not in slot_vocab:
-                            issues.append(Issue("WARN", "contract-slot", rel, compute_line_number(text, slot_idx), f"Unknown data-slot value: {v}"))
+                            issues.append(
+                                Issue(
+                                    "WARN",
+                                    "contract-slot",
+                                    rel,
+                                    compute_line_number(text, slot_idx),
+                                    f"Unknown data-slot value: {v}",
+                                )
+                            )
                 else:
-                    issues.append(Issue("WARN", "contract-slot", rel, compute_line_number(text, slot_idx), "data-slot is not a string literal."))
+                    issues.append(
+                        Issue(
+                            "WARN",
+                            "contract-slot",
+                            rel,
+                            compute_line_number(text, slot_idx),
+                            "data-slot is not a string literal.",
+                        )
+                    )
 
         # Feature CSS: disallow visual properties (heuristic)
         if path.suffix in {".css", ".scss"}:
@@ -868,7 +1085,15 @@ def scan_code_and_css(
                     continue
                 prop = m.group(1).lower()
                 if prop in disallow_props:
-                    issues.append(Issue("ERROR", "feature-css-visual", rel, i, f"Disallowed CSS property in feature layer: {prop}"))
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            "feature-css-visual",
+                            rel,
+                            i,
+                            f"Disallowed CSS property in feature layer: {prop}",
+                        )
+                    )
 
     return issues
 
@@ -902,7 +1127,9 @@ def load_approvals(dir_path: Path) -> List[Dict[str, object]]:
     return out
 
 
-def latest_approval(approvals: List[Dict[str, object]], approval_type: str) -> Optional[Dict[str, object]]:
+def latest_approval(
+    approvals: List[Dict[str, object]], approval_type: str
+) -> Optional[Dict[str, object]]:
     matches = [a for a in approvals if str(a.get("approval_type")) == approval_type]
     return matches[-1] if matches else None
 
@@ -959,7 +1186,14 @@ def governance_exception_subset(cfg: Dict[str, object]) -> Dict[str, object]:
     Excludes tool orchestration config, so enabling lint/tests does NOT require exception approval.
     """
     subset: Dict[str, object] = {}
-    for k in ["tailwind_policy", "theme_policy", "scan", "tailwind", "code_rules", "feature_css_rules"]:
+    for k in [
+        "tailwind_policy",
+        "theme_policy",
+        "scan",
+        "tailwind",
+        "code_rules",
+        "feature_css_rules",
+    ]:
         if k in cfg:
             subset[k] = cfg[k]
 
@@ -974,7 +1208,9 @@ def governance_exception_subset(cfg: Dict[str, object]) -> Dict[str, object]:
 
 
 def compute_exception_fingerprint(cfg: Dict[str, object]) -> str:
-    return sha256_text(json.dumps(governance_exception_subset(cfg), sort_keys=True, ensure_ascii=False))
+    return sha256_text(
+        json.dumps(governance_exception_subset(cfg), sort_keys=True, ensure_ascii=False)
+    )
 
 
 def changed_files(old: Dict[str, str], new: Dict[str, str]) -> List[str]:
@@ -986,7 +1222,9 @@ def changed_files(old: Dict[str, str], new: Dict[str, str]) -> List[str]:
     return out
 
 
-def ensure_baseline_approvals(repo_root: Path, cfg: Dict[str, object]) -> Tuple[Optional[Path], Optional[Path]]:
+def ensure_baseline_approvals(
+    repo_root: Path, cfg: Dict[str, object]
+) -> Tuple[Optional[Path], Optional[Path]]:
     ap = approvals_cfg(cfg)
     if not ap.get("enabled", True):
         return None, None
@@ -1069,7 +1307,13 @@ def write_approval_request(evidence_dir: Path, request: Dict[str, object]) -> Pa
     return p
 
 
-def approval_approve(repo_root: Path, cfg: Dict[str, object], request_path: Path, approved_by: str, expires_at_utc: Optional[str]) -> Path:
+def approval_approve(
+    repo_root: Path,
+    cfg: Dict[str, object],
+    request_path: Path,
+    approved_by: str,
+    expires_at_utc: Optional[str],
+) -> Path:
     req = load_json(request_path)
     typ = str(req.get("approval_type"))
     if typ not in {"spec_change", "exception"}:
@@ -1080,7 +1324,9 @@ def approval_approve(repo_root: Path, cfg: Dict[str, object], request_path: Path
         cur_fp, _ = compute_spec_fingerprint(repo_root)
         expected = str(req.get("current_fingerprint"))
         if expected and cur_fp != expected:
-            raise ValueError("Spec fingerprint changed since request was created. Re-run the gate to generate a new request.")
+            raise ValueError(
+                "Spec fingerprint changed since request was created. Re-run the gate to generate a new request."
+            )
         obj: Dict[str, object] = {
             "approval_version": APPROVAL_VERSION,
             "approval_type": "spec_change",
@@ -1093,7 +1339,9 @@ def approval_approve(repo_root: Path, cfg: Dict[str, object], request_path: Path
         cur_fp = compute_exception_fingerprint(cfg)
         expected = str(req.get("current_fingerprint"))
         if expected and cur_fp != expected:
-            raise ValueError("Exception fingerprint changed since request was created. Re-run the gate to generate a new request.")
+            raise ValueError(
+                "Exception fingerprint changed since request was created. Re-run the gate to generate a new request."
+            )
         obj = {
             "approval_version": APPROVAL_VERSION,
             "approval_type": "exception",
@@ -1129,97 +1377,114 @@ def _has_any(repo_root: Path, rel_paths: List[str]) -> bool:
 
 
 def _tool_ready(tool_name: str, repo_root: Path) -> Tuple[bool, str]:
-    """Best-effort "is it configured" checks to avoid spurious failures in auto mode."""
-    pkg = repo_root / "package.json"
+    """Best-effort "is it configured" checks to avoid spurious failures in auto mode.
+
+    Checks for standalone config files only. ESM (.mjs) is preferred.
+    """
     if tool_name == "eslint":
-        if not pkg.exists():
-            return False, "no package.json"
         if _has_any(
             repo_root,
             [
+                # ESM flat config (preferred)
+                "eslint.config.mjs",
+                "eslint.config.js",
+                "eslint.config.cjs",
+                # Legacy eslintrc (deprecated in ESLint 9+)
                 ".eslintrc",
-                ".eslintrc.js",
-                ".eslintrc.cjs",
                 ".eslintrc.json",
                 ".eslintrc.yml",
                 ".eslintrc.yaml",
-                "eslint.config.js",
-                "eslint.config.mjs",
-                "eslint.config.cjs",
+                ".eslintrc.mjs",
+                ".eslintrc.cjs",
+                ".eslintrc.js",
             ],
         ):
             return True, ""
-        try:
-            obj = json.loads(pkg.read_text(encoding="utf-8"))
-            if isinstance(obj.get("eslintConfig"), dict):
-                return True, ""
-        except Exception:
-            pass
-        return False, "no eslint config"
+        return False, "no eslint config (use eslint.config.mjs)"
 
     if tool_name == "stylelint":
-        if not pkg.exists():
-            return False, "no package.json"
         if _has_any(
             repo_root,
             [
+                # ESM config (preferred)
+                "stylelint.config.mjs",
+                "stylelint.config.js",
+                "stylelint.config.cjs",
+                # Legacy stylelintrc
                 ".stylelintrc",
-                ".stylelintrc.js",
-                ".stylelintrc.cjs",
                 ".stylelintrc.json",
                 ".stylelintrc.yml",
                 ".stylelintrc.yaml",
-                "stylelint.config.js",
-                "stylelint.config.cjs",
-                "stylelint.config.mjs",
+                ".stylelintrc.mjs",
+                ".stylelintrc.cjs",
+                ".stylelintrc.js",
             ],
         ):
             return True, ""
-        try:
-            obj = json.loads(pkg.read_text(encoding="utf-8"))
-            if isinstance(obj.get("stylelint"), dict):
-                return True, ""
-        except Exception:
-            pass
-        return False, "no stylelint config"
+        return False, "no stylelint config (use stylelint.config.mjs)"
 
     if tool_name == "playwright":
-        if not pkg.exists():
-            return False, "no package.json"
         if _has_any(
             repo_root,
             [
+                # ESM config (preferred)
+                "playwright.config.mjs",
                 "playwright.config.ts",
                 "playwright.config.js",
-                "playwright.config.mjs",
                 "playwright.config.cjs",
             ],
         ):
             return True, ""
-        return False, "no playwright config"
+        return False, "no playwright config (use playwright.config.mjs)"
 
     return True, ""
 
 
-def run_tool(repo_root: Path, evidence_dir: Path, tool_name: str, tool_cfg: Dict[str, object], mode: str) -> ToolResult:
+def run_tool(
+    repo_root: Path,
+    evidence_dir: Path,
+    tool_name: str,
+    tool_cfg: Dict[str, object],
+    mode: str,
+) -> ToolResult:
     if mode == "minimal":
-        return ToolResult(tool_name, "SKIP", None, None, 0, None, None, None, "minimal mode")
+        return ToolResult(
+            tool_name, "SKIP", None, None, 0, None, None, None, "minimal mode"
+        )
 
     enabled = _enabled_mode(tool_cfg.get("enabled", "auto"))
     if enabled == "off":
-        return ToolResult(tool_name, "SKIP", None, None, 0, None, None, None, "disabled")
+        return ToolResult(
+            tool_name, "SKIP", None, None, 0, None, None, None, "disabled"
+        )
 
     cmd = tool_cfg.get("command") if isinstance(tool_cfg.get("command"), str) else None
-    report_name = tool_cfg.get("report") if isinstance(tool_cfg.get("report"), str) else None
+    report_name = (
+        tool_cfg.get("report") if isinstance(tool_cfg.get("report"), str) else None
+    )
 
     if enabled == "auto":
         ready, reason = _tool_ready(tool_name, repo_root)
         if not ready:
-            return ToolResult(tool_name, "SKIP", None, None, 0, None, None, None, f"auto-skip: {reason}")
-    artifacts = tool_cfg.get("artifacts") if isinstance(tool_cfg.get("artifacts"), list) else []
+            return ToolResult(
+                tool_name,
+                "SKIP",
+                None,
+                None,
+                0,
+                None,
+                None,
+                None,
+                f"auto-skip: {reason}",
+            )
+    artifacts = (
+        tool_cfg.get("artifacts") if isinstance(tool_cfg.get("artifacts"), list) else []
+    )
 
     if not cmd:
-        return ToolResult(tool_name, "SKIP", None, None, 0, None, None, None, "no command configured")
+        return ToolResult(
+            tool_name, "SKIP", None, None, 0, None, None, None, "no command configured"
+        )
 
     tool_dir = evidence_dir / "tools" / tool_name
     tool_dir.mkdir(parents=True, exist_ok=True)
@@ -1234,17 +1499,33 @@ def run_tool(repo_root: Path, evidence_dir: Path, tool_name: str, tool_cfg: Dict
 
     t0 = time.time()
     try:
-        proc = subprocess.run(cmd, cwd=str(repo_root), shell=True, capture_output=True, text=True)
+        proc = subprocess.run(
+            cmd, cwd=str(repo_root), shell=True, capture_output=True, text=True
+        )
         dur_ms = int((time.time() - t0) * 1000)
         stdout_p.write_text(proc.stdout or "", encoding="utf-8")
         stderr_p.write_text(proc.stderr or "", encoding="utf-8")
 
         stderr_l = (proc.stderr or "").lower()
         combined_l = (proc.stdout or "" + "\n" + proc.stderr or "").lower()
-        missing = proc.returncode == 127 or "not found" in stderr_l or "could not determine executable" in combined_l
+        missing = (
+            proc.returncode == 127
+            or "not found" in stderr_l
+            or "could not determine executable" in combined_l
+        )
 
         if proc.returncode != 0 and missing and enabled == "auto":
-            return ToolResult(tool_name, "SKIP", cmd, proc.returncode, dur_ms, _safe_relpath(evidence_dir, stdout_p), _safe_relpath(evidence_dir, stderr_p), report_rel, "auto-skip: tool unavailable")
+            return ToolResult(
+                tool_name,
+                "SKIP",
+                cmd,
+                proc.returncode,
+                dur_ms,
+                _safe_relpath(evidence_dir, stdout_p),
+                _safe_relpath(evidence_dir, stderr_p),
+                report_rel,
+                "auto-skip: tool unavailable",
+            )
 
         # Copy artifacts (best-effort)
         for art in artifacts:
@@ -1266,20 +1547,55 @@ def run_tool(repo_root: Path, evidence_dir: Path, tool_name: str, tool_cfg: Dict
                 pass
 
         status = "PASS" if proc.returncode == 0 else "FAIL"
-        return ToolResult(tool_name, status, cmd, proc.returncode, dur_ms, _safe_relpath(evidence_dir, stdout_p), _safe_relpath(evidence_dir, stderr_p), report_rel, None)
+        return ToolResult(
+            tool_name,
+            status,
+            cmd,
+            proc.returncode,
+            dur_ms,
+            _safe_relpath(evidence_dir, stdout_p),
+            _safe_relpath(evidence_dir, stderr_p),
+            report_rel,
+            None,
+        )
     except Exception as e:
         dur_ms = int((time.time() - t0) * 1000)
         stdout_p.write_text("", encoding="utf-8")
         stderr_p.write_text(str(e), encoding="utf-8")
         if enabled == "auto":
-            return ToolResult(tool_name, "SKIP", cmd, None, dur_ms, _safe_relpath(evidence_dir, stdout_p), _safe_relpath(evidence_dir, stderr_p), report_rel, "auto-skip: exception")
-        return ToolResult(tool_name, "FAIL", cmd, None, dur_ms, _safe_relpath(evidence_dir, stdout_p), _safe_relpath(evidence_dir, stderr_p), report_rel, "exception")
+            return ToolResult(
+                tool_name,
+                "SKIP",
+                cmd,
+                None,
+                dur_ms,
+                _safe_relpath(evidence_dir, stdout_p),
+                _safe_relpath(evidence_dir, stderr_p),
+                report_rel,
+                "auto-skip: exception",
+            )
+        return ToolResult(
+            tool_name,
+            "FAIL",
+            cmd,
+            None,
+            dur_ms,
+            _safe_relpath(evidence_dir, stdout_p),
+            _safe_relpath(evidence_dir, stderr_p),
+            report_rel,
+            "exception",
+        )
 
 
 # ----------------------- Reporting -----------------------
 
 
-def render_markdown_report(summary: Dict[str, object], issues: List[Issue], tools: List[ToolResult], approvals_info: Dict[str, object]) -> str:
+def render_markdown_report(
+    summary: Dict[str, object],
+    issues: List[Issue],
+    tools: List[ToolResult],
+    approvals_info: Dict[str, object],
+) -> str:
     lines: List[str] = []
     lines.append("# UI Governance Gate Report")
     lines.append("")
@@ -1314,7 +1630,9 @@ def render_markdown_report(summary: Dict[str, object], issues: List[Issue], tool
         lines.append("| Tool | Status | Exit | Duration (ms) | Notes |")
         lines.append("|---|---|---:|---:|---|")
         for tr in tools:
-            lines.append(f"| `{tr.name}` | **{tr.status}** | {tr.exit_code if tr.exit_code is not None else ''} | {tr.duration_ms} | {tr.notes or ''} |")
+            lines.append(
+                f"| `{tr.name}` | **{tr.status}** | {tr.exit_code if tr.exit_code is not None else ''} | {tr.duration_ms} | {tr.notes or ''} |"
+            )
         lines.append("")
 
     def section(title: str, items: List[Issue]) -> None:
@@ -1326,7 +1644,9 @@ def render_markdown_report(summary: Dict[str, object], issues: List[Issue], tool
         lines.append("| Severity | Rule | File | Line | Message |")
         lines.append("|---|---|---|---:|---|")
         for it in items[:200]:
-            lines.append(f"| {it.severity} | `{it.rule}` | `{it.path}` | {it.line or ''} | {it.message} |")
+            lines.append(
+                f"| {it.severity} | `{it.rule}` | `{it.path}` | {it.line or ''} | {it.message} |"
+            )
         if len(items) > 200:
             lines.append(f"\n(Truncated: showing first 200 of {len(items)} issues.)")
         lines.append("")
@@ -1337,7 +1657,9 @@ def render_markdown_report(summary: Dict[str, object], issues: List[Issue], tool
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="UI governance gate (baseline + optional tool orchestration).")
+    parser = argparse.ArgumentParser(
+        description="UI governance gate (baseline + optional tool orchestration)."
+    )
     parser.add_argument(
         "cmd",
         choices=["run", "audit", "approval-approve", "approval-status"],
@@ -1345,17 +1667,34 @@ def main() -> int:
     )
     parser.add_argument("--repo-root", default=".", help="Repository root (default: .)")
     parser.add_argument("--run-id", default=None, help="Run id for evidence folder")
-    parser.add_argument("--evidence-root", default=".ai/.tmp/ui", help="Evidence root directory")
-    parser.add_argument("--mode", choices=["minimal", "full"], default="full", help="minimal: baseline only; full: baseline + external tools")
+    parser.add_argument(
+        "--evidence-root", default=".ai/.tmp/ui", help="Evidence root directory"
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["minimal", "full"],
+        default="full",
+        help="minimal: baseline only; full: baseline + external tools",
+    )
     parser.add_argument(
         "--fail-on",
         choices=["errors", "warnings"],
         default="errors",
         help="Fail threshold. 'errors' fails only on errors; 'warnings' fails on any issue.",
     )
-    parser.add_argument("--request", default=None, help="Path to approval.request.json for approval-approve")
-    parser.add_argument("--approved-by", default=None, help="Approver name for approval-approve")
-    parser.add_argument("--expires-at-utc", default=None, help="Expiry ISO time for exception approvals (recommended)")
+    parser.add_argument(
+        "--request",
+        default=None,
+        help="Path to approval.request.json for approval-approve",
+    )
+    parser.add_argument(
+        "--approved-by", default=None, help="Approver name for approval-approve"
+    )
+    parser.add_argument(
+        "--expires-at-utc",
+        default=None,
+        help="Expiry ISO time for exception approvals (recommended)",
+    )
     args = parser.parse_args()
 
     repo_root = find_repo_root(Path(args.repo_root))
@@ -1369,24 +1708,35 @@ def main() -> int:
         exc = latest_approval(approvals, "exception")
         cur_spec_fp, _ = compute_spec_fingerprint(repo_root)
         cur_exc_fp = compute_exception_fingerprint(cfg)
-        print(json.dumps({
-            "approvals_dir": str(adir),
-            "latest_spec": spec,
-            "latest_exception": exc,
-            "current_spec_fingerprint": cur_spec_fp,
-            "current_exception_fingerprint": cur_exc_fp,
-        }, indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "approvals_dir": str(adir),
+                    "latest_spec": spec,
+                    "latest_exception": exc,
+                    "current_spec_fingerprint": cur_spec_fp,
+                    "current_exception_fingerprint": cur_exc_fp,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
         return 0
 
     if args.cmd == "approval-approve":
         if not args.request or not args.approved_by:
-            print("ERROR: approval-approve requires --request and --approved-by", file=os.sys.stderr)
+            print(
+                "ERROR: approval-approve requires --request and --approved-by",
+                file=os.sys.stderr,
+            )
             return 2
         p = Path(args.request)
         if not p.is_absolute():
             p = (Path.cwd() / p).resolve()
         try:
-            outp = approval_approve(repo_root, cfg, p, args.approved_by, args.expires_at_utc)
+            outp = approval_approve(
+                repo_root, cfg, p, args.approved_by, args.expires_at_utc
+            )
         except Exception as e:
             print(f"ERROR: {e}", file=os.sys.stderr)
             return 2
@@ -1417,28 +1767,62 @@ def main() -> int:
 
     # Load + validate tokens
     if not tokens_path.exists():
-        issues.append(Issue("ERROR", "missing-ui-spec", _safe_relpath(repo_root, tokens_path), None, "Missing ui/tokens/base.json. Run ui-system-bootstrap."))
+        issues.append(
+            Issue(
+                "ERROR",
+                "missing-ui-spec",
+                _safe_relpath(repo_root, tokens_path),
+                None,
+                "Missing ui/tokens/base.json. Run ui-system-bootstrap.",
+            )
+        )
         tokens = {}
     else:
         tokens = load_json(tokens_path)
         for e in validate_tokens(tokens):
-            issues.append(Issue("ERROR", "tokens-validate", _safe_relpath(repo_root, tokens_path), None, e))
+            issues.append(
+                Issue(
+                    "ERROR",
+                    "tokens-validate",
+                    _safe_relpath(repo_root, tokens_path),
+                    None,
+                    e,
+                )
+            )
 
     # Load + validate contract
     if not contract_path.exists():
-        issues.append(Issue("ERROR", "missing-ui-spec", _safe_relpath(repo_root, contract_path), None, "Missing ui/contract/contract.json. Run ui-system-bootstrap."))
+        issues.append(
+            Issue(
+                "ERROR",
+                "missing-ui-spec",
+                _safe_relpath(repo_root, contract_path),
+                None,
+                "Missing ui/contract/contract.json. Run ui-system-bootstrap.",
+            )
+        )
         contract = {}
         contract_errs, roles, role_attr_values, slot_vocab = [], set(), {}, set()
     else:
         contract = load_json(contract_path)
         contract_errs, roles, role_attr_values, slot_vocab = validate_contract(contract)
         for e in contract_errs:
-            issues.append(Issue("ERROR", "contract-validate", _safe_relpath(repo_root, contract_path), None, e))
+            issues.append(
+                Issue(
+                    "ERROR",
+                    "contract-validate",
+                    _safe_relpath(repo_root, contract_path),
+                    None,
+                    e,
+                )
+            )
 
     ui_spec_version = "unknown"
     if spec_version_path.exists():
         try:
-            ui_spec_version = str(load_json(spec_version_path).get("ui_spec_version") or "unknown")
+            ui_spec_version = str(
+                load_json(spec_version_path).get("ui_spec_version") or "unknown"
+            )
         except Exception:
             ui_spec_version = "unknown"
 
@@ -1460,8 +1844,14 @@ def main() -> int:
                 old_map: Dict[str, str] = {}
                 if latest and isinstance(latest.get("files"), list):
                     # we can't reconstruct per-file digests from old approval; list what exists now.
-                    old_map = {str(k): "" for k in latest.get("files") if isinstance(k, str)}
-                ch = changed_files(old_map, cur_map) if old_map else sorted(list(cur_map.keys()))
+                    old_map = {
+                        str(k): "" for k in latest.get("files") if isinstance(k, str)
+                    }
+                ch = (
+                    changed_files(old_map, cur_map)
+                    if old_map
+                    else sorted(list(cur_map.keys()))
+                )
                 notes = "UI spec (tokens/contract/patterns) changed since last approval. Approve spec_change to proceed."
                 req = build_approval_request(
                     approval_type="spec_change",
@@ -1473,8 +1863,18 @@ def main() -> int:
                 )
                 if args.cmd == "run":
                     req_path = write_approval_request(evidence_dir, req)
-                    approvals_info["approval_request"] = _safe_relpath(repo_root, req_path)
-                issues.append(Issue("ERROR", "spec-approval-required", "ui/", None, "UI spec changed without approval. See approval.request.json and run approval-approve."))
+                    approvals_info["approval_request"] = _safe_relpath(
+                        repo_root, req_path
+                    )
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        "spec-approval-required",
+                        "ui/",
+                        None,
+                        "UI spec changed without approval. See approval.request.json and run approval-approve.",
+                    )
+                )
                 approvals_info["spec_status"] = "MISMATCH"
             else:
                 approvals_info["spec_status"] = "OK"
@@ -1498,8 +1898,18 @@ def main() -> int:
                 )
                 if args.cmd == "run":
                     req_path = write_approval_request(evidence_dir, req)
-                    approvals_info["approval_request"] = _safe_relpath(repo_root, req_path)
-                issues.append(Issue("ERROR", "exception-approval-required", "ui/config/governance.json", None, "Governance policy changed without exception approval. See approval.request.json."))
+                    approvals_info["approval_request"] = _safe_relpath(
+                        repo_root, req_path
+                    )
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        "exception-approval-required",
+                        "ui/config/governance.json",
+                        None,
+                        "Governance policy changed without exception approval. See approval.request.json.",
+                    )
+                )
                 approvals_info["exception_status"] = "MISMATCH"
             else:
                 approvals_info["exception_status"] = "OK"
@@ -1513,7 +1923,9 @@ def main() -> int:
         exclude_roots = []
 
     files = list(iter_scan_files(repo_root, include_roots, exclude_roots))
-    issues.extend(scan_code_and_css(repo_root, files, cfg, roles, role_attr_values, slot_vocab))
+    issues.extend(
+        scan_code_and_css(repo_root, files, cfg, roles, role_attr_values, slot_vocab)
+    )
 
     # Tools orchestration (full mode only)
     if args.cmd in {"run", "audit"} and args.mode == "full":
@@ -1527,7 +1939,15 @@ def main() -> int:
             tr = run_tool(repo_root, tool_evidence_dir, name, tcfg, args.mode)
             tools.append(tr)
             if tr.status == "FAIL":
-                issues.append(Issue("ERROR", "tool-fail", f"tools/{name}", None, f"Tool {name} failed. See evidence logs."))
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        "tool-fail",
+                        f"tools/{name}",
+                        None,
+                        f"Tool {name} failed. See evidence logs.",
+                    )
+                )
 
     summary = {
         "timestamp_utc": utc_now_iso(),
@@ -1560,7 +1980,9 @@ def main() -> int:
         return 0 if not should_fail() else 2
 
     # run
-    (evidence_dir / "ui-gate-report.json").write_text(json.dumps(report_json, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (evidence_dir / "ui-gate-report.json").write_text(
+        json.dumps(report_json, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     (evidence_dir / "ui-gate-report.md").write_text(md, encoding="utf-8")
 
     return 0 if not should_fail() else 2

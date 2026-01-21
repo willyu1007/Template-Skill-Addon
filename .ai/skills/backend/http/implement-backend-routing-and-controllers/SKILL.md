@@ -11,7 +11,7 @@ Provide a repeatable way to define HTTP routes and implement controllers that va
 ## When to use
 Use this skill when you are:
 - Adding a new endpoint (GET/POST/PUT/PATCH/DELETE)
-- Refactoring endpoints with "fat routes"
+- Refactoring endpoints with “fat routes”
 - Standardizing controller error handling and response shapes
 - Introducing request validation at the HTTP boundary
 

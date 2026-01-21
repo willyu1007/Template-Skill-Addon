@@ -2,16 +2,16 @@
 
 ## Conclusions (read first)
 
-- Use `releasectl.js` for all release operations.
+- Use `releasectl.mjs` for all release operations.
 - AI proposes releases; humans approve and execute.
 - Follow the configured versioning strategy.
 
 ## Workflow
 
-1. **Prepare** release: `node .ai/skills/features/release/scripts/releasectl.js prepare --version <version>`
-2. **Generate** changelog: `node .ai/skills/features/release/scripts/releasectl.js changelog`
+1. **Prepare** release: `node .ai/skills/features/release/scripts/releasectl.mjs prepare --version <version>`
+2. **Generate** changelog: `node .ai/skills/features/release/scripts/releasectl.mjs changelog`
 3. **Request human** approval
-4. **Tag** release: `node .ai/skills/features/release/scripts/releasectl.js tag --version <version>`
+4. **Tag** release: `node .ai/skills/features/release/scripts/releasectl.mjs tag --version <version>`
 
 ## Version Strategies
 
@@ -31,16 +31,16 @@
 
 ```bash
 # Check status
-node .ai/skills/features/release/scripts/releasectl.js status
+node .ai/skills/features/release/scripts/releasectl.mjs status
 
 # Prepare release
-node .ai/skills/features/release/scripts/releasectl.js prepare --version 1.2.0
+node .ai/skills/features/release/scripts/releasectl.mjs prepare --version 1.2.0
 
 # Generate changelog
-node .ai/skills/features/release/scripts/releasectl.js changelog
+node .ai/skills/features/release/scripts/releasectl.mjs changelog
 
 # Create tag
-node .ai/skills/features/release/scripts/releasectl.js tag --version 1.2.0
+node .ai/skills/features/release/scripts/releasectl.mjs tag --version 1.2.0
 ```
 
 ## Forbidden Actions

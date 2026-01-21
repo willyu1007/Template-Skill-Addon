@@ -12,7 +12,7 @@ Run these commands from repo root.
 ## 0) Initialize state
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs start --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs start --repo-root .
 ```
 
 This creates:
@@ -27,7 +27,7 @@ This creates:
 Edit the templates in `init/stage-a-docs/`, then validate:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs check-docs \
   --repo-root . \
   --strict
 ```
@@ -35,7 +35,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 Optional: record must-ask checklist progress:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs mark-must-ask \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs mark-must-ask \
   --repo-root . \
   --key onePurpose \
   --asked \
@@ -46,7 +46,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 After the user explicitly approves Stage A:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage A --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage A --repo-root .
 ```
 
 ---
@@ -56,27 +56,27 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 Edit `init/project-blueprint.json`, then validate:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate \
   --repo-root .
 ```
 
 Optional: show recommended packs:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-packs \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-packs \
   --repo-root .
 ```
 
 Optional: record pack review:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs review-packs --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs review-packs --repo-root .
 ```
 
 After the user explicitly approves Stage B:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage B --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage B --repo-root .
 ```
 
 ---
@@ -84,7 +84,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 ## 3) Stage C: apply → approve
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply \
   --repo-root . \
   --providers both
 ```
@@ -92,7 +92,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 After the user explicitly approves Stage C:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage C --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage C --repo-root .
 ```
 
 ---
@@ -102,7 +102,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 **Option A: Remove init/ only**
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs cleanup-init \
   --repo-root . \
   --apply \
   --i-understand
@@ -111,7 +111,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 **Option B: Archive to docs/project/ + remove init/** (recommended)
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs cleanup-init \
   --repo-root . \
   --apply \
   --i-understand \

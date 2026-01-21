@@ -31,7 +31,7 @@
       "lastUpdated": "2026-01-16T23:27:36.431Z",
       "source": {
         "kind": "generated",
-        "notes": "Generated via: node .ai/scripts/dbssotctl.js sync-to-context (then contextctl touch). Do NOT hand-edit."
+        "notes": "Generated via: node .ai/scripts/dbssotctl.mjs sync-to-context (then contextctl touch). Do NOT hand-edit."
       }
     },
     {

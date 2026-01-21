@@ -9,7 +9,7 @@
 If `init/stage-a-docs/` does not exist yet, run:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs start --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs start --repo-root .
 ```
 
 ## Goal
@@ -30,7 +30,7 @@ Outcomes:
 Record the question as asked/answered:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs mark-must-ask \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs mark-must-ask \
   --repo-root . \
   --key terminologyAlignment \
   --asked \

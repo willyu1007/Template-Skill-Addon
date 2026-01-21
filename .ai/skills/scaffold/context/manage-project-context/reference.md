@@ -13,28 +13,28 @@
 - The artifact file is the authoritative contract.
 - Human collaborators and LLMs edit the file directly.
 - After edits, run:
-  - `node .ai/skills/features/context-awareness/scripts/contextctl.js touch`
-  - `node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict`
+  - `node .ai/skills/features/context-awareness/scripts/contextctl.mjs touch`
+  - `node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --strict`
 
 ### Generated mode (opt-in)
 
 - The artifact file is generated from code/tools.
 - Register the artifact with `mode=generated` and a `source.command`.
 - Run generators with:
-  - `node .ai/skills/features/context-awareness/scripts/contextctl.js update --allow-shell`
+  - `node .ai/skills/features/context-awareness/scripts/contextctl.mjs update --allow-shell`
 - This feature does not assume any specific generator tooling; the command is project-defined.
 
 ## Recommended CI gates
 
 Minimum:
 
-- `node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict`
-- `node .ai/scripts/projectctl.js verify`
+- `node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --strict`
+- `node .ai/scripts/projectctl.mjs verify`
 
 Optional (if you use generated mode):
 
-- `node .ai/skills/features/context-awareness/scripts/contextctl.js update --allow-shell`
-- `node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict`
+- `node .ai/skills/features/context-awareness/scripts/contextctl.mjs update --allow-shell`
+- `node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --strict`
 
 ## Common artifact types
 

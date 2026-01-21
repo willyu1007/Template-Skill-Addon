@@ -24,7 +24,7 @@ When enabled, this feature materializes:
 
 Controller script (provided by the template SSOT):
 
-- `node .ai/skills/features/observability/scripts/obsctl.js` — manage and verify observability contracts
+- `node .ai/skills/features/observability/scripts/obsctl.mjs` — manage and verify observability contracts
 
 ## Dependency
 
@@ -43,7 +43,7 @@ In `init/project-blueprint.json`:
 Then run:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --providers both
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --providers both
 ```
 
 ### In an existing repo
@@ -55,14 +55,14 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 3. Initialize:
 
 ```bash
-node .ai/skills/features/observability/scripts/obsctl.js init
-node .ai/skills/features/observability/scripts/obsctl.js verify
+node .ai/skills/features/observability/scripts/obsctl.mjs init
+node .ai/skills/features/observability/scripts/obsctl.mjs verify
 ```
 
 ## Verification
 
 ```bash
-node .ai/skills/features/observability/scripts/obsctl.js verify
+node .ai/skills/features/observability/scripts/obsctl.mjs verify
 ```
 
 ## Boundaries

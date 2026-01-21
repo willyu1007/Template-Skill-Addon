@@ -14,7 +14,7 @@ Stage B produces and validates a **project blueprint** that will drive Stage C s
 - Verify current status:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs status --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs status --repo-root .
 ```
 
 Reference templates:
@@ -38,14 +38,14 @@ Reference templates:
 From repo root:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate \
   --repo-root .
 ```
 
 Optional: show recommended packs and whether they are installed:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-packs \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-packs \
   --repo-root .
 ```
 
@@ -54,7 +54,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 After reviewing `skills.packs`, record the review in `init/.init-state.json`:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs review-packs --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs review-packs --repo-root .
 ```
 
 ---
@@ -119,20 +119,20 @@ Feature flags are configured in the blueprint under `features`.
 1) Validate the blueprint:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root .
 ```
 
 2) Ask the pipeline for recommended features:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-features --repo-root .
 ```
 
 Optional: safe-add missing recommended features into `features.*`:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features --repo-root . --write
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-features --repo-root . --write
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root .
 ```
 
 ### Dependencies (common)
@@ -149,7 +149,7 @@ See `init/README.md` and `init/feature-docs/README.md` for the full feature list
 After the user explicitly approves the blueprint, record approval and advance:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage B --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage B --repo-root .
 ```
 
 ---

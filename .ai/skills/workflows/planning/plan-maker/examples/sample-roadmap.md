@@ -21,6 +21,26 @@
 - Data/storage impact: minimal (flag evaluation only)
 - Backward compatibility: old checkout remains default until ramped
 
+## Project structure change preview (may be empty)
+This section is a non-binding, early hypothesis to align expected project-structure impact.
+
+### Existing areas likely to change (may be empty)
+- Modify:
+  - `frontend/checkout/` — gate routing + UI behind the flag
+  - `backend/checkout/` — gate server-side entry points behind the flag
+- Delete:
+  - (none)
+- Move/Rename:
+  - (none)
+
+### New additions (landing points) (may be empty)
+- New module(s) (preferred):
+  - `shared/feature-flags/` — shared flag evaluation helpers
+- New interface(s)/API(s) (when relevant):
+  - `FeatureFlagClient` — `shared/feature-flags/` — unify flag evaluation call sites
+- New file(s) (optional):
+  - `shared/feature-flags/checkout-flags.ts` — checkout-related flag keys and helpers
+
 ## Milestones
 1. **Milestone 1**: Flag scaffolding exists
    - Deliverable: flag created + client wiring + default OFF behavior
@@ -109,4 +129,3 @@ dev-docs/active/<task>/
 - [ ] Confirm flag system and rollout capability
 - [ ] Confirm success metrics and dashboards
 - [ ] Confirm rollout schedule and owners
-

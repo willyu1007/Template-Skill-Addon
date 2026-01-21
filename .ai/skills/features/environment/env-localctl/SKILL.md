@@ -143,7 +143,7 @@ python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.
 - [ ] `.env.local` generated and gitignored
 - [ ] No secret values written to evidence
 - [ ] `docs/context/env/effective-<env>.json` generated (redacted)
-- [ ] Central test suite passes: `node .ai/tests/run.cjs --suite environment`
+- [ ] Central test suite passes: `node .ai/tests/run.mjs --suite environment`
 
 ## Boundaries
 

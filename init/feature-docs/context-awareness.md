@@ -43,22 +43,22 @@ When enabled, Stage C:
 2) Initializes project state (best-effort):
 
 ```bash
-node .ai/scripts/projectctl.js init --repo-root .
-node .ai/scripts/projectctl.js set features.contextAwareness true --repo-root .
-node .ai/scripts/projectctl.js set context.enabled true --repo-root .
-node .ai/scripts/projectctl.js set-context-mode <contract|snapshot> --repo-root .
+node .ai/scripts/projectctl.mjs init --repo-root .
+node .ai/scripts/projectctl.mjs set features.contextAwareness true --repo-root .
+node .ai/scripts/projectctl.mjs set context.enabled true --repo-root .
+node .ai/scripts/projectctl.mjs set-context-mode <contract|snapshot> --repo-root .
 ```
 
 3) Initializes context artifacts (idempotent):
 
 ```bash
-node .ai/skills/features/context-awareness/scripts/contextctl.js init --repo-root .
+node .ai/skills/features/context-awareness/scripts/contextctl.mjs init --repo-root .
 ```
 
 4) Optional verification (when Stage C is run with `--verify-features`):
 
 ```bash
-node .ai/skills/features/context-awareness/scripts/contextctl.js verify --repo-root .
+node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --repo-root .
 ```
 
 ## Key outputs

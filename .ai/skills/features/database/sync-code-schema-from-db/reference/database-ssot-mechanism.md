@@ -38,11 +38,11 @@
 
 4. Import the Prisma schema into the repo mirror:
 
-- `node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js import-prisma`
+- `node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs import-prisma`
 
 5. Refresh LLM context contract:
 
-- `node .ai/scripts/dbssotctl.js sync-to-context`
+- `node .ai/scripts/dbssotctl.mjs sync-to-context`
 
 ## 3) Three-layer object model (same as repo-prisma mode)
 

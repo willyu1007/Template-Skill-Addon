@@ -226,8 +226,8 @@ Recommend features based on `capabilities` in the blueprint. See **Module D** in
 Verification commands (run from repo root):
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features --repo-root .
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-features --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root .
 ```
 
 ### Example prompt
@@ -249,7 +249,7 @@ Do you want to enable these features?
 
 ### 5.1 Languages with built-in templates
 
-For languages with built-in templates (TypeScript, Go, C/C++, etc.), `scaffold-configs.cjs` will generate configuration files automatically.
+For languages with built-in templates (TypeScript, Go, C/C++, etc.), `scaffold-configs.mjs` will generate configuration files automatically.
 
 ### 5.2 Languages without templates (LLM-generated)
 

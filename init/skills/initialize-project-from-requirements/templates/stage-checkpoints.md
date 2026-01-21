@@ -18,7 +18,7 @@ This init kit enforces a strict checkpoint policy:
 The **technical mechanism** to advance stages is:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage <A|B|C> --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage <A|B|C> --repo-root .
 ```
 
 ---
@@ -36,14 +36,14 @@ All of the following must be true:
    - `risk-open-questions.md`
 2. Docs pass validation:
    ```bash
-   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs --repo-root . --strict
+   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs check-docs --repo-root . --strict
    ```
 3. The user reviews the docs and explicitly approves Stage A.
 
 Optional (recommended): record the Stage A must-ask checklist to keep the state board accurate:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs mark-must-ask \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs mark-must-ask \
   --repo-root . \
   --key onePurpose \
   --asked \
@@ -58,7 +58,7 @@ See `init/skills/initialize-project-from-requirements/reference.md` for the full
 Record approval and advance to Stage B:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage A --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage A --repo-root .
 ```
 
 ---
@@ -70,14 +70,14 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 1. `init/project-blueprint.json` exists
 2. Blueprint passes validation:
    ```bash
-   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
+   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root .
    ```
 3. The user reviews the blueprint and explicitly approves Stage B.
 
 Optional (recommended): record that packs were reviewed:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs review-packs --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs review-packs --repo-root .
 ```
 
 ### Action
@@ -85,7 +85,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 Record approval and advance to Stage C:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage B --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage B --repo-root .
 ```
 
 ---
@@ -96,7 +96,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 
 1. Stage C `apply` has been executed successfully:
    ```bash
-   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --repo-root . --providers both
+   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --repo-root . --providers both
    ```
 2. The user reviews the resulting changes (scaffold/configs/packs/wrappers/`README.md`) and explicitly approves.
 
@@ -105,7 +105,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 Record approval and mark init complete:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage C --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage C --repo-root .
 ```
 
 ### Post-init options
@@ -135,7 +135,7 @@ After Stage C approval, explicitly ask whether to record key project facts in `A
 Optional: remove the bootstrap kit (only after completion and user confirmation):
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init --repo-root . --apply --i-understand --archive
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs cleanup-init --repo-root . --apply --i-understand --archive
 ```
 
 ---
@@ -148,11 +148,11 @@ If a session is interrupted:
    - `init/.init-state.json`
 2. Use `status` to see the current stage:
    ```bash
-   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs status --repo-root .
+   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs status --repo-root .
    ```
 3. Use `advance` to see the next checkpoint action:
    ```bash
-   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs advance --repo-root .
+   node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs advance --repo-root .
    ```
 
 Note:

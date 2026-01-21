@@ -212,8 +212,8 @@ Write feature decisions to:
 Verification (run from repo root):
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features --repo-root .
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-features --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root .
 ```
 
 ## E. Technology Stack Selection
@@ -391,13 +391,13 @@ For other languages, the LLM should:
 - After the interview, run Stage A validation:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs --repo-root . --strict
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs check-docs --repo-root . --strict
 ```
 
 - After generating blueprint, run Stage B validation:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root .
 ```
 
 - For languages without templates, LLM should generate config files before running `apply`.

@@ -20,6 +20,30 @@
 - Data/storage impact: <...>
 - Backward compatibility: <...>
 
+## Project structure change preview (may be empty)
+This section is a **non-binding, early hypothesis** to help humans confirm expected project-structure impact.
+
+Rules:
+- Prefer **directory-level** paths by default; use file-level paths only when you have clear evidence.
+- Do not guess project-specific paths or interfaces; if you have not inspected the repo, keep `(none)` or use `<TBD>`.
+- If unknown, keep `(none)` or use `<TBD>` and add/keep a **Discovery** step to confirm.
+
+### Existing areas likely to change (may be empty)
+- Modify:
+  - (none)
+- Delete:
+  - (none)
+- Move/Rename:
+  - (none)
+
+### New additions (landing points) (may be empty)
+- New module(s) (preferred):
+  - (none)
+- New interface(s)/API(s) (when relevant):
+  - (none)
+- New file(s) (optional):
+  - (none)
+
 ## Milestones
 1. **Milestone 1**: <name>
    - Deliverable: <what exists when done>
@@ -98,4 +122,3 @@ Suggested mapping:
 - [ ] Confirm milestone ordering and DoD
 - [ ] Confirm verification/acceptance criteria
 - [ ] Confirm rollout/rollback strategy
-

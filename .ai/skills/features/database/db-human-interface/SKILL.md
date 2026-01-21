@@ -78,7 +78,7 @@ Note: for safety, view/scope-specific files are suffixed (e.g. `__concept`, `__g
 
 Use the CLI tool:
 
-- `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.cjs <command> ...`
+- `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs <command> ...`
 
 Supported commands:
 
@@ -129,10 +129,10 @@ If a user asks about a concept (e.g. “permissions”) and it maps to a cluster
 ### 1) Human request → generate a modify doc
 
 - Run (single table):
-  - `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.cjs modify <Table>`
+  - `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs modify <Table>`
 
 - Run (concept cluster / multi-table draft):
-  - `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.cjs modify "<term>" --scope concept`
+  - `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs modify "<term>" --scope concept`
 
 The generated modify file (printed on stdout) contains:
 
@@ -159,7 +159,7 @@ High-risk ops (rename/drop/type changes/non-null backfills) should be represente
 ### 3) Generate plan (+ runbook if DB SSOT)
 
 - Run:
-  - `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.cjs plan <object>`
+  - `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs plan <object>`
 
 This writes (base name derived from the modify doc filename; printed on stdout):
 
@@ -189,10 +189,10 @@ Before any SSOT change or DB execution:
 
 ## Verification
 
-- [ ] `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.cjs status` prints an SSOT mode and input sources
-- [ ] `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.cjs query <object>` writes a doc under `.ai/.tmp/database/structure_query/`
-- [ ] `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.cjs modify <object>` writes a doc under `.ai/.tmp/database/structure_modify/`
-- [ ] `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.cjs plan <object>` writes `<base>.plan.md` (and `<base>.runbook.md` when `db.ssot=database`)
+- [ ] `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs status` prints an SSOT mode and input sources
+- [ ] `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs query <object>` writes a doc under `.ai/.tmp/database/structure_query/`
+- [ ] `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs modify <object>` writes a doc under `.ai/.tmp/database/structure_modify/`
+- [ ] `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs plan <object>` writes `<base>.plan.md` (and `<base>.runbook.md` when `db.ssot=database`)
 - [ ] No secrets are written to repo files or evidence artifacts
 
 ## Boundaries

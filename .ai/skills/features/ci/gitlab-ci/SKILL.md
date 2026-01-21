@@ -51,8 +51,8 @@ description: GitLab CI skill: integrate automated tests (web/api/mobile/perf) wi
 ## Verification
 
 - If you changed **skills**:
-  - `node .ai/scripts/lint-skills.cjs --strict`
-  - `node .ai/skills/features/ci/gitlab-ci/scripts/validate-skill.cjs`
+  - `node .ai/scripts/lint-skills.mjs --strict`
+  - `node .ai/skills/features/ci/gitlab-ci/scripts/validate-skill.mjs`
 
 - If you changed **.gitlab-ci.yml**:
   - Trigger a pipeline and confirm:

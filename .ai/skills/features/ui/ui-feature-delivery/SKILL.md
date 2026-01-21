@@ -97,7 +97,7 @@ Approval is mandatory when:
 - [ ] Tailwind is layout-only
 - [ ] Gate passes (or violations are documented + approved)
 - [ ] Evidence captured
-- [ ] Central test suite passes: `node .ai/tests/run.cjs --suite ui`
+- [ ] Central test suite passes: `node .ai/tests/run.mjs --suite ui`
 
 ## Boundaries
 

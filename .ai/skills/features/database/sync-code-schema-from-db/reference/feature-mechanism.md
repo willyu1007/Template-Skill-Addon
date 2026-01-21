@@ -18,8 +18,8 @@ New files/directories (created if missing):
   - `db/config/` (environment metadata; no secrets)
   - `db/samples/` (sample/seed data)
   - `db/workdocs/` (DB change proposals, rollout plans)
-- `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js` (mirror controller)
-- `.ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js` (optional migration tracking)
+- `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs` (mirror controller)
+- `.ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.mjs` (optional migration tracking)
 
 ## Install
 
@@ -41,7 +41,7 @@ Enable in your blueprint:
 Then run Stage C apply:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --blueprint init/project-blueprint.json
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --blueprint init/project-blueprint.json
 ```
 
 ### Option B: Install manually
@@ -54,7 +54,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 2. Initialize the mirror skeleton (idempotent):
 
    ```bash
-   node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js init
+   node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs init
    ```
 
 
@@ -64,16 +64,16 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 
 ```bash
 # Initialize db mirror structure
-node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js init
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs init
 
 # Import prisma/schema.prisma into the mirror
-node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js import-prisma
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs import-prisma
 
 # List tables in the mirror
-node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js list-tables
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs list-tables
 
 # Verify mirror file is parseable
-node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js verify --strict
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs verify --strict
 ```
 
 ### Context awareness bridge (recommended)
@@ -81,7 +81,7 @@ node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js veri
 If the context-awareness feature is enabled, sync the mirror into `docs/context/`:
 
 ```bash
-node .ai/scripts/dbssotctl.js sync-to-context
+node .ai/scripts/dbssotctl.mjs sync-to-context
 ```
 
 The command updates `docs/context/db/schema.json` and (best effort) runs `contextctl touch`.
@@ -92,11 +92,11 @@ This feature may be used to track DB changes executed by humans:
 
 ```bash
 # Create an empty SQL file for humans to fill/apply
-node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js generate-migration --name add-user-roles
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs generate-migration --name add-user-roles
 
 # Track applied migrations per environment (manual bookkeeping)
-node .ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js list
-node .ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js mark-applied --migration 20260101120000_add_user_roles.sql --env staging
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.mjs list
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.mjs mark-applied --migration 20260101120000_add_user_roles.sql --env staging
 ```
 
 ## AI/LLM guidelines
@@ -120,5 +120,5 @@ AI MUST NOT:
 Delete these paths:
 
 - `db/`
-- `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js`
-- `.ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.js`
+- `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs`
+- `.ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.mjs`

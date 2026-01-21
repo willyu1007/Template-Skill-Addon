@@ -13,7 +13,7 @@ Use this skill when you are:
 - Starting a new backend service or module
 - Refactoring an existing codebase toward clearer boundaries
 - Reviewing architecture for maintainability and testability
-- Defining team-wide conventions for "where code goes"
+- Defining team-wide conventions for “where code goes”
 
 ## Inputs
 - Primary service responsibilities and domain boundaries

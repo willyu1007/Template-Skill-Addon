@@ -16,7 +16,7 @@ Key principles:
 Run from repo root:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs <command> [options]
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs <command> [options]
 ```
 
 ---
@@ -28,7 +28,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 Run `start` to begin initialization. The command automatically creates all templates:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs start --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs start --repo-root .
 ```
 
 The command creates:
@@ -41,24 +41,24 @@ The command creates:
 
 1) Edit the Stage A doc templates, then validate:
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs --repo-root . --strict
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs check-docs --repo-root . --strict
 ```
 
 2) After user approval:
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage A --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage A --repo-root .
 ```
 
 ### Stage B (blueprint)
 
 1) Edit `init/project-blueprint.json`, then validate:
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root .
 ```
 
 2) After user approval:
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage B --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage B --repo-root .
 ```
 
 ### Stage C (apply)
@@ -66,12 +66,12 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 Apply scaffold/configs/skill packs/wrapper sync:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --repo-root . --providers both
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --repo-root . --providers both
 ```
 
 After user approval:
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage C --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage C --repo-root .
 ```
 
 ---
@@ -86,8 +86,8 @@ If Stage C `apply` fails with an `EPERM` error while writing `.codex/skills/` or
 
 If the blueprint enables context awareness (`features.contextAwareness: true`), Stage C `apply` will:
 - copy templates from `.ai/skills/features/context-awareness/templates/` into the repo (copy-if-missing; non-destructive)
-- run `.ai/skills/features/context-awareness/scripts/contextctl.js init`
-- run `.ai/scripts/projectctl.js init` and `set-context-mode` (if projectctl exists)
+- run `.ai/skills/features/context-awareness/scripts/contextctl.mjs init`
+- run `.ai/scripts/projectctl.mjs init` and `set-context-mode` (if projectctl exists)
 
 `context.*` is configuration only and does not trigger enabling by itself.
 
@@ -102,13 +102,13 @@ After Stage C completes, ensure `init/skill-retention-table.template.md` exists 
 Confirm deletions **before** running:
 
 ```bash
-node .ai/scripts/sync-skills.cjs --dry-run --delete-skills "<csv>"
+node .ai/scripts/sync-skills.mjs --dry-run --delete-skills "<csv>"
 ```
 
 After confirmation, re-run with `--yes` to delete. Optional removals (like `agent_builder`) should go through the same flow:
 
 ```bash
-node .ai/scripts/sync-skills.cjs --delete-skills "<csv>" --yes
+node .ai/scripts/sync-skills.mjs --delete-skills "<csv>" --yes
 ```
 
 ---
@@ -183,14 +183,14 @@ Only after completion and user confirmation:
 **Option A: Remove `init/` only (all init files deleted)**
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs cleanup-init \
   --repo-root . --apply --i-understand
 ```
 
 **Option B: Archive all to `docs/project/` + remove `init/`** (recommended if maintaining docs)
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs cleanup-init \
   --repo-root . --apply --i-understand --archive
 ```
 

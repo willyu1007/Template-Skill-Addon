@@ -5,7 +5,7 @@
 - Next step: (Optional) archive this bundle to `dev-docs/archive/ci-feature/` once merged.
 
 ## Goal
-Make CI an init Stage C feature (`features.ci`) with `ci.provider` SSOT, migrate CI skills into `.ai/skills/features/ci/` (remove `test-`), and relocate strongly-owned feature controllers (`*ctl.js`) into their feature directories with all references updated.
+Make CI an init Stage C feature (`features.ci`) with `ci.provider` SSOT, migrate CI skills into `.ai/skills/features/ci/` (remove `test-`), and relocate strongly-owned feature controllers (`*ctl.mjs`) into their feature directories with all references updated.
 
 ## Non-goals
 - Implement real project tests or app code (only provide CI contracts/templates/conventions/tools).
@@ -14,7 +14,7 @@ Make CI an init Stage C feature (`features.ci`) with `ci.provider` SSOT, migrate
 
 ## Context
 - Today, CI-related skills live under `.ai/skills/testing/` and CI is documented as “not a blueprint feature”.
-- Several feature controllers live under `.ai/scripts/*ctl.js` (e.g. `contextctl.js`, `packctl.js`, `deployctl.js`), and init Stage C expects them there.
+- Several feature controllers live under `.ai/scripts/*ctl.mjs` (e.g. `contextctl.mjs`, `packctl.mjs`, `deployctl.mjs`), and init Stage C expects them there.
 - Goal is to make CI feature-local and on-demand during initialization, and to colocate feature-owned controllers with their feature for retention and clarity.
 
 ## Acceptance criteria (high level)

@@ -15,7 +15,7 @@ New files/directories (created if missing):
 - `release/config.json` (release configuration)
 - `release/changelog-template.md` (changelog template)
 - `release/workdocs/` (release planning)
-- `.ai/skills/features/release/scripts/releasectl.js` (release management)
+- `.ai/skills/features/release/scripts/releasectl.mjs` (release management)
 - `.releaserc.json.template` (semantic-release config template)
 - `.ai/skills/features/release/` (feature documentation)
 
@@ -41,7 +41,7 @@ Enable in your blueprint:
 Then run Stage C apply:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --blueprint init/project-blueprint.json
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --blueprint init/project-blueprint.json
 ```
 
 ### Option B: Manual install
@@ -51,7 +51,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 2. Initialize release scaffolding:
 
 ```bash
-node .ai/skills/features/release/scripts/releasectl.js init --strategy semantic
+node .ai/skills/features/release/scripts/releasectl.mjs init --strategy semantic
 ```
 
 ## Usage
@@ -60,30 +60,30 @@ node .ai/skills/features/release/scripts/releasectl.js init --strategy semantic
 
 ```bash
 # Initialize with semantic versioning
-node .ai/skills/features/release/scripts/releasectl.js init --strategy semantic
+node .ai/skills/features/release/scripts/releasectl.mjs init --strategy semantic
 
 # Initialize with manual versioning
-node .ai/skills/features/release/scripts/releasectl.js init --strategy manual
+node .ai/skills/features/release/scripts/releasectl.mjs init --strategy manual
 ```
 
 ### Prepare Release
 
 ```bash
 # Prepare a new release
-node .ai/skills/features/release/scripts/releasectl.js prepare --version 1.2.0
+node .ai/skills/features/release/scripts/releasectl.mjs prepare --version 1.2.0
 
 # Generate changelog
-node .ai/skills/features/release/scripts/releasectl.js changelog --from v1.0.0 --to HEAD
+node .ai/skills/features/release/scripts/releasectl.mjs changelog --from v1.0.0 --to HEAD
 ```
 
 ### Tag Release
 
 ```bash
 # Create release tag
-node .ai/skills/features/release/scripts/releasectl.js tag --version 1.2.0
+node .ai/skills/features/release/scripts/releasectl.mjs tag --version 1.2.0
 
 # Show release status
-node .ai/skills/features/release/scripts/releasectl.js status
+node .ai/skills/features/release/scripts/releasectl.mjs status
 ```
 
 ## Versioning Strategies
@@ -98,10 +98,10 @@ node .ai/skills/features/release/scripts/releasectl.js status
 
 ```bash
 # Check release status
-node .ai/skills/features/release/scripts/releasectl.js status
+node .ai/skills/features/release/scripts/releasectl.mjs status
 
 # Verify configuration
-node .ai/skills/features/release/scripts/releasectl.js verify
+node .ai/skills/features/release/scripts/releasectl.mjs verify
 ```
 
 ## Rollback / Uninstall
@@ -109,6 +109,6 @@ node .ai/skills/features/release/scripts/releasectl.js verify
 Delete these paths:
 
 - `release/`
-- `.ai/skills/features/release/scripts/releasectl.js`
+- `.ai/skills/features/release/scripts/releasectl.mjs`
 - `.releaserc.json` (if generated)
 - `.ai/skills/features/release/`

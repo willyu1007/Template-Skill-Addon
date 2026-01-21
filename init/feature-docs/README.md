@@ -6,23 +6,23 @@ This template does **not** ship an `addons/` directory. Feature assets are integ
 
 - Templates: usually `.ai/skills/features/<feature-id>/templates/` (some features source templates from nested skills; for database: `.ai/skills/features/database/sync-code-schema-from-db/templates/`)
 - Control scripts:
-  - Repo-level Node controllers: `.ai/scripts/*ctl.js` (and other repo controllers like `sync-skills.cjs`)
-  - Feature-local tools: `.ai/skills/features/**/scripts/*` (Node `.js`/`.cjs` and/or Python `.py`)
-- Feature flags/state: `.ai/project/state.json` (via `.ai/scripts/projectctl.js`)
+  - Repo-level Node controllers: `.ai/scripts/*ctl.mjs` (and other repo controllers like `sync-skills.mjs`)
+  - Feature-local tools: `.ai/skills/features/**/scripts/*` (Node `.mjs` and/or Python `.py`)
+- Feature flags/state: `.ai/project/state.json` (via `.ai/scripts/projectctl.mjs`)
 
 ## Available features
 
 | Feature ID | Blueprint toggle | Control script | Documentation |
 |------------|------------------|----------------|---------------|
-| `context-awareness` | `features.contextAwareness` | `.ai/skills/features/context-awareness/scripts/contextctl.js` | [context-awareness.md](context-awareness.md) |
-| `database` | `features.database` (requires `db.ssot != none`) | `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js` (when `db.ssot=database`) | [database.md](database.md) |
+| `context-awareness` | `features.contextAwareness` | `.ai/skills/features/context-awareness/scripts/contextctl.mjs` | [context-awareness.md](context-awareness.md) |
+| `database` | `features.database` (requires `db.ssot != none`) | `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs` (when `db.ssot=database`) | [database.md](database.md) |
 | `ui` | `features.ui` | `ui_specctl.py` | [ui.md](ui.md) |
 | `environment` | `features.environment` | `env_contractctl.py` | [environment.md](environment.md) |
-| `packaging` | `features.packaging` | `.ai/skills/features/packaging/scripts/packctl.js` | [packaging.md](packaging.md) |
-| `deployment` | `features.deployment` | `.ai/skills/features/deployment/scripts/deployctl.js` | [deployment.md](deployment.md) |
-| `release` | `features.release` | `.ai/skills/features/release/scripts/releasectl.js` | [release.md](release.md) |
-| `ci` | `features.ci` (requires `ci.provider`) | `.ai/skills/features/ci/scripts/cictl.js` | [ci.md](ci.md) |
-| `observability` | `features.observability` (requires `features.contextAwareness=true`) | `.ai/skills/features/observability/scripts/obsctl.js` | [observability.md](observability.md) |
+| `packaging` | `features.packaging` | `.ai/skills/features/packaging/scripts/packctl.mjs` | [packaging.md](packaging.md) |
+| `deployment` | `features.deployment` | `.ai/skills/features/deployment/scripts/deployctl.mjs` | [deployment.md](deployment.md) |
+| `release` | `features.release` | `.ai/skills/features/release/scripts/releasectl.mjs` | [release.md](release.md) |
+| `ci` | `features.ci` (requires `ci.provider`) | `.ai/skills/features/ci/scripts/cictl.mjs` | [ci.md](ci.md) |
+| `observability` | `features.observability` (requires `features.contextAwareness=true`) | `.ai/skills/features/observability/scripts/obsctl.mjs` | [observability.md](observability.md) |
 
 ## How to decide (Stage B)
 
@@ -31,7 +31,7 @@ This template does **not** ship an `addons/` directory. Feature assets are integ
 - Use the pipeline to compute recommendations:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-features --repo-root .
 ```
 
 Common dependency checks (enforced by `validate`):
@@ -62,7 +62,7 @@ In `init/project-blueprint.json`:
 Then run Stage C apply:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --repo-root . --providers both
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --repo-root . --providers both
 ```
 
 ## Materialization semantics (Stage C)

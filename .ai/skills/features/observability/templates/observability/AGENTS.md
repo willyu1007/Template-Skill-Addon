@@ -3,7 +3,7 @@
 ## Conclusions (read first)
 
 - Observability contracts are defined in `docs/context/observability/`.
-- Use `obsctl.js` to manage metrics, logs, and traces definitions.
+- Use `obsctl.mjs` to manage metrics, logs, and traces definitions.
 - AI proposes instrumentation; humans implement.
 
 ## Contract Files

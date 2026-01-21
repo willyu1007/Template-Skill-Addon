@@ -6,7 +6,7 @@ For a data-driven screen:
   - visible indicator within 200ms
   - layout stable where possible (skeletons)
 - Empty:
-  - clear explanation of "no results"
+  - clear explanation of “no results”
   - suggests next action (change filters, create item)
 - Error:
   - user-safe message

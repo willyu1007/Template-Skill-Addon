@@ -30,30 +30,30 @@ Do NOT use this skill if:
 
 - Updated `.ai/skills/_meta/sync-manifest.json` (effective selection)
 - Updated `.ai/skills/_meta/skillsctl-state.json` (base + enabled packs)
-- Regenerated wrappers under provider skill roots (via `sync-skills.cjs`)
+- Regenerated wrappers under provider skill roots (via `sync-skills.mjs`)
 
 ## Steps
 
 1. List available packs:
-   - `node .ai/skills/_meta/skillpacksctl.js list-packs`
+   - `node .ai/skills/_meta/skillpacksctl.mjs list-packs`
 
 2. Enable a pack and sync wrappers:
-   - `node .ai/skills/_meta/skillpacksctl.js enable-pack <packId> --providers both`
+   - `node .ai/skills/_meta/skillpacksctl.mjs enable-pack <packId> --providers both`
 
 3. Disable a pack and sync wrappers:
-   - `node .ai/skills/_meta/skillpacksctl.js disable-pack <packId> --providers both`
+   - `node .ai/skills/_meta/skillpacksctl.mjs disable-pack <packId> --providers both`
 
 4. Inspect current selection:
-   - `node .ai/skills/_meta/skillpacksctl.js status`
+   - `node .ai/skills/_meta/skillpacksctl.mjs status`
 
 5. Re-sync wrappers (without changing packs):
-   - `node .ai/skills/_meta/skillpacksctl.js sync --providers both`
+   - `node .ai/skills/_meta/skillpacksctl.mjs sync --providers both`
 
 ## Verification
 
 ```bash
-node .ai/skills/_meta/skillpacksctl.js status
-node .ai/skills/_meta/skillpacksctl.js list-packs
+node .ai/skills/_meta/skillpacksctl.mjs status
+node .ai/skills/_meta/skillpacksctl.mjs list-packs
 ```
 
 ## Boundaries

@@ -16,7 +16,7 @@
 - D3 (Q3): 新增 `ci.provider`（`github|gitlab`）作为更直接的 SSOT；`ci.platform` 仅作为可选兼容/提示字段
 - D4 (Q4): 默认 pnpm（`corepack enable` + `pnpm install --frozen-lockfile`），并在模板中提供清晰“替换点”（npm/yarn）
 - D5: Stage C 仅落地 `ci.yml`；delivery 相关工作流/链路由用户显式启用（不在 `features.ci` 默认安装）
-- D6: 不保留 `.ai/scripts/*ctl.js` 的 wrapper；强归属的 `*ctl.js` 移动到对应的 `features/<feature>/scripts/`，并同步所有引用路径
+- D6: 不保留 `.ai/scripts/*ctl.mjs` 的 wrapper；强归属的 `*ctl.mjs` 移动到对应的 `features/<feature>/scripts/`，并同步所有引用路径
 
 ### Remaining open questions
 - Q5: delivery 的“显式启用”方式采用哪种（至少选一种即可）？
@@ -28,13 +28,13 @@
 - Affected areas/modules:
   - skills：`.ai/skills/testing/test-ci-github-actions/`、`.ai/skills/testing/test-ci-gitlab-ci/` → `.ai/skills/features/ci/**`
   - controllers（强归属迁移）：`cictl/contextctl/obsctl/packctl/deployctl/releasectl` 从 `.ai/scripts/` 移动到对应 `features/<feature>/scripts/`（同步更新所有引用路径）
-  - init：`init/feature-docs/ci.md`、`init/feature-docs/README.md`、`init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs`、`init/skills/initialize-project-from-requirements/templates/project-blueprint.schema.json`、`init/skills/initialize-project-from-requirements/templates/project-blueprint.min.example.json`
+  - init：`init/feature-docs/ci.md`、`init/feature-docs/README.md`、`init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs`、`init/skills/initialize-project-from-requirements/templates/project-blueprint.schema.json`、`init/skills/initialize-project-from-requirements/templates/project-blueprint.min.example.json`
 - External interfaces/APIs:
-  - CLI：`node .ai/skills/features/ci/scripts/cictl.js <init|verify|status>`（CI feature controller；不保留 `.ai/scripts` wrapper）
+  - CLI：`node .ai/skills/features/ci/scripts/cictl.mjs <init|verify|status>`（CI feature controller；不保留 `.ai/scripts` wrapper）
   - Blueprint：新增 `features.ci` 与 `ci.provider`；并与现有 `ci.*` 保持兼容
 - Data/storage impact: 无（仅模板/文档/脚本）
 - Backward compatibility:
-  - 需要处理对旧 skill 名称与模板路径的引用（例如 `.ai/scripts/cictl.js` 当前指向 `.ai/skills/testing/test-ci-*`）
+  - 需要处理对旧 skill 名称与模板路径的引用（例如 `.ai/scripts/cictl.mjs` 当前指向 `.ai/skills/testing/test-ci-*`）
 
 ## Milestones
 1. **Milestone 1**: 需求与命名/开关对齐
@@ -42,13 +42,13 @@
    - Acceptance criteria: open questions 全部有答案或写入明确假设 + 风险
 2. **Milestone 2**: CI skills 迁移 + 重命名完成
    - Deliverable: 新目录 `.ai/skills/features/ci/` 下的两个 skills（去除 `test-`），以及所有引用更新
-   - Acceptance criteria: `node .ai/scripts/lint-skills.cjs --strict` 通过；CI 模板/文档引用无旧路径残留
-3. **Milestone 3**: 强归属 controllers 迁移完成（去 `.ai/scripts/*ctl.js`）
+   - Acceptance criteria: `node .ai/scripts/lint-skills.mjs --strict` 通过；CI 模板/文档引用无旧路径残留
+3. **Milestone 3**: 强归属 controllers 迁移完成（去 `.ai/scripts/*ctl.mjs`）
    - Deliverable: `cictl/packctl/deployctl/releasectl/obsctl/contextctl` 等移动到对应 feature 的 `scripts/` 下，并更新所有引用路径
    - Acceptance criteria: init Stage C `apply` 能在新路径下正常运行各 feature controller；相关 feature-docs/skills 文档命令全部更新
 4. **Milestone 4**: CI 成为 Stage C 可选 feature
    - Deliverable: blueprint schema + example 更新；`init-pipeline apply` 可基于 `features.ci` 安装 CI（含可选 verify）
-   - Acceptance criteria: `node init/.../init-pipeline.cjs validate` 接受包含 `features.ci` 的 blueprint；Stage C dry-run 输出包含 CI 安装动作
+   - Acceptance criteria: `node init/.../init-pipeline.mjs validate` 接受包含 `features.ci` 的 blueprint；Stage C dry-run 输出包含 CI 安装动作
 5. **Milestone 5**: CI “可用策略与规范”升级落地
    - Deliverable: CI 模板（GitHub/GitLab）升级、约定文档、最小验证策略（本地/CI）与失败排障指引
    - Acceptance criteria: `cictl init --provider <...>` 可生成可运行的工作流；`cictl verify` 能给出可执行的修复建议
@@ -62,10 +62,10 @@
 ### Phase 0 — Discovery
 - Objective: 确认迁移影响面与“CI feature”应承担的职责边界
 - Deliverables:
-  - 现状清单：CI skills、模板路径（当前由 `.ai/scripts/cictl.js` 引用）、init 文档/脚本中与 CI 相关的触点
+  - 现状清单：CI skills、模板路径（当前由 `.ai/scripts/cictl.mjs` 引用）、init 文档/脚本中与 CI 相关的触点
   - 决策点：命名、blueprint 字段、Stage C 行为（自动/手动落地）
 - Verification:
-  - 运行 `rg`/人工检查确认没有遗漏的引用（重点：`.ai/scripts/cictl.js`、init pipeline、feature-docs）
+  - 运行 `rg`/人工检查确认没有遗漏的引用（重点：`.ai/scripts/cictl.mjs`、init pipeline、feature-docs）
 - Rollback:
   - N/A（无代码变更）
 
@@ -76,29 +76,29 @@
     - `.ai/skills/features/ci/github-actions-ci/...`
     - `.ai/skills/features/ci/gitlab-ci/...`
   - 更新 skill front-matter 的 `name:` 与文档标题/引用
-  - 修复所有引用（包括 `.ai/scripts/cictl.js` 模板路径）
+  - 修复所有引用（包括 `.ai/scripts/cictl.mjs` 模板路径）
 - Verification:
-  - `node .ai/scripts/lint-skills.cjs --strict`
-  - 分别运行两个 skill 的 `scripts/validate-skill.cjs`（迁移后路径）
+  - `node .ai/scripts/lint-skills.mjs --strict`
+  - 分别运行两个 skill 的 `scripts/validate-skill.mjs`（迁移后路径）
 - Rollback:
   - git revert（或保留旧目录为薄“转发 skill”，但需权衡维护成本）
 
-### Phase 1.5 — 强归属 controllers 迁移（去 `.ai/scripts/*ctl.js`）
+### Phase 1.5 — 强归属 controllers 迁移（去 `.ai/scripts/*ctl.mjs`）
 - Objective: 将 feature 强归属的 controllers 移动到对应 feature 目录，并同步所有引用路径
 - Deliverables:
-  - CI：`.ai/scripts/cictl.js` → `.ai/skills/features/ci/scripts/cictl.js`
-  - Context awareness：`.ai/scripts/contextctl.js` → `.ai/skills/features/context-awareness/scripts/contextctl.js`
-  - Observability：`.ai/scripts/obsctl.js` → `.ai/skills/features/observability/scripts/obsctl.js`
-  - Packaging：`.ai/scripts/packctl.js` → `.ai/skills/features/packaging/scripts/packctl.js`
-  - Deployment：`.ai/scripts/deployctl.js` → `.ai/skills/features/deployment/scripts/deployctl.js`
-  - Release：`.ai/scripts/releasectl.js` → `.ai/skills/features/release/scripts/releasectl.js`
+  - CI：`.ai/scripts/cictl.mjs` → `.ai/skills/features/ci/scripts/cictl.mjs`
+  - Context awareness：`.ai/scripts/contextctl.mjs` → `.ai/skills/features/context-awareness/scripts/contextctl.mjs`
+  - Observability：`.ai/scripts/obsctl.mjs` → `.ai/skills/features/observability/scripts/obsctl.mjs`
+  - Packaging：`.ai/scripts/packctl.mjs` → `.ai/skills/features/packaging/scripts/packctl.mjs`
+  - Deployment：`.ai/scripts/deployctl.mjs` → `.ai/skills/features/deployment/scripts/deployctl.mjs`
+  - Release：`.ai/scripts/releasectl.mjs` → `.ai/skills/features/release/scripts/releasectl.mjs`
   - 更新所有引用路径：
     - init pipeline（Stage C controller 路径）
     - init feature docs（命令示例）
     - skills 文档与模板注释（例如 workflow YAML 中的 `cictl` 提示）
 - Verification:
-  - `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --repo-root . --providers both`（dry-run + apply 视情况）
-  - `node .ai/scripts/lint-skills.cjs --strict`
+  - `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --repo-root . --providers both`（dry-run + apply 视情况）
+  - `node .ai/scripts/lint-skills.mjs --strict`
 - Rollback:
   - revert 文件移动与路径改动
 
@@ -108,15 +108,15 @@
   - blueprint schema：`init/skills/initialize-project-from-requirements/templates/project-blueprint.schema.json` 增加 `features.ci`
   - blueprint schema：增加 `ci.provider`（`github|gitlab`），并与现有 `ci.platform` 共存（兼容）
   - blueprint example：`init/skills/initialize-project-from-requirements/templates/project-blueprint.min.example.json` 增加 `features.ci`（以及必要的 `ci.provider` 示例）
-  - init pipeline：`init/skills/.../scripts/init-pipeline.cjs`
+  - init pipeline：`init/skills/.../scripts/init-pipeline.mjs`
     - 增加 `isCiEnabled()`、`ensureCiFeature()`（自定义安装逻辑，按 `ci.provider` 决定 provider；可选 fallback 到 `ci.platform`）
     - Stage C `apply` 中在合适位置调用 CI feature 安装（支持 `--verify-features`）
   - feature docs：
     - `init/feature-docs/ci.md` 从“非 feature”改为“feature 文档”（新增 toggle、DoD、verify）
     - `init/feature-docs/README.md` 将 `ci` 加入 Available features 表格，并移除 “Related tooling” 中的 CI 例外描述
 - Verification:
-  - `node init/.../init-pipeline.cjs validate --repo-root . --blueprint <...>`（含 `features.ci`）
-  - `node init/.../init-pipeline.cjs apply --repo-root . --providers both`（dry-run / apply 按需）
+  - `node init/.../init-pipeline.mjs validate --repo-root . --blueprint <...>`（含 `features.ci`）
+  - `node init/.../init-pipeline.mjs apply --repo-root . --providers both`（dry-run / apply 按需）
 - Rollback:
   - 恢复 schema/pipeline/doc 的增量修改；CI skills 仍可独立使用 `cictl` 手动安装
 
@@ -133,8 +133,8 @@
   - `cictl` 增强（与迁移同步）：
     - `verify` 增强：检查 provider 文件存在、提示必要 secrets/变量、提示缺失的 package scripts（如果可判断）
 - Verification:
-  - `node .ai/skills/features/ci/scripts/cictl.js init --provider <github|gitlab> --repo-root .`（或 dry-run）能生成预期文件
-  - `node .ai/skills/features/ci/scripts/cictl.js verify --repo-root .` 输出可执行的建议（warnings/errors 分类）
+  - `node .ai/skills/features/ci/scripts/cictl.mjs init --provider <github|gitlab> --repo-root .`（或 dry-run）能生成预期文件
+  - `node .ai/skills/features/ci/scripts/cictl.mjs verify --repo-root .` 输出可执行的建议（warnings/errors 分类）
 - Rollback:
   - 保留旧模板为备选（或在 git 历史中可回退）；`cictl` 改动保持向后兼容
 
@@ -144,21 +144,21 @@
   - 更新任何引用旧 skill 名称的文档/脚本/索引
   - 如需要：在旧路径保留短期“迁移提示”或自动转发（带 deprecation）
 - Verification:
-  - `node .ai/scripts/sync-skills.cjs --scope current --providers both --mode reset --yes`
-  - `node .ai/scripts/lint-skills.cjs --strict`
+  - `node .ai/scripts/sync-skills.mjs --scope current --providers both --mode reset --yes`
+  - `node .ai/scripts/lint-skills.mjs --strict`
   - Stage C `apply`（非破坏性）在 CI feature 开关开/关两种情况下都能工作
 - Rollback:
-  - revert 迁移提交；或先恢复 `.ai/scripts/cictl.js` 兼容旧路径以降低风险
+  - revert 迁移提交；或先恢复 `.ai/scripts/cictl.mjs` 兼容旧路径以降低风险
 
 ## Verification and acceptance criteria
 - Build/typecheck:
   - `node -c` 不适用；以脚本运行与 lint 为主
 - Automated tests / checks:
-  - `node .ai/scripts/lint-skills.cjs --strict`
-  - `node .ai/scripts/sync-skills.cjs --scope current --providers both --mode reset --yes`
-  - `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .`
+  - `node .ai/scripts/lint-skills.mjs --strict`
+  - `node .ai/scripts/sync-skills.mjs --scope current --providers both --mode reset --yes`
+  - `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root .`
 - Manual checks:
-  - `node .ai/skills/features/ci/scripts/cictl.js init --provider github --repo-root .`（或 gitlab）
+  - `node .ai/skills/features/ci/scripts/cictl.mjs init --provider github --repo-root .`（或 gitlab）
   - 检查 `.github/workflows/ci.yml` 或 `.gitlab-ci.yml` 是否按预期生成（copy-if-missing）
 - Acceptance criteria:
   - CI skills 位于 `.ai/skills/features/ci/` 且名称去除 `test-`

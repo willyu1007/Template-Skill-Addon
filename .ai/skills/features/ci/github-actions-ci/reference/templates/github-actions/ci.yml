@@ -2,7 +2,7 @@
 # - Uses canonical pnpm scripts for each suite
 # - Uploads suite artifacts even on failure
 #
-# - Optional: run `node .ai/skills/features/ci/scripts/cictl.js init` to create `ci/config.json` metadata
+# - Optional: run `node .ai/skills/features/ci/scripts/cictl.mjs init` to create `ci/config.json` metadata
 #
 # NOTE: Adjust Node version, secrets, and which jobs are PR-gated for your repo.
 
@@ -103,7 +103,7 @@ jobs:
             -e API_TOKEN="${API_TOKEN}" \
             -v "${PWD}:/work" -w /work \
             grafana/k6:latest \
-            run tests/perf/k6/scripts/smoke.js --summary-export artifacts/k6/summary.json
+            run tests/perf/k6/scripts/smoke.mjs --summary-export artifacts/k6/summary.json
         env:
           BASE_URL: ${{ secrets.API_BASE_URL }}
           API_TOKEN: ${{ secrets.API_TOKEN }}

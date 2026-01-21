@@ -10,10 +10,10 @@ Generate a structured, repeatable “task documentation bundle” so implementat
 
 ## When to use
 Use the `create-dev-docs-plan` skill when:
-- Starting a non-trivial task or project (not a one-off quick fix)
+- Starting a non-trivial task or project (not a one-off minor change)
 - Work spans multiple modules/services
 - You need a shared plan for multiple contributors (collaboration/handoff)
-- You want a consistent handoff artifact for later context recovery (handoff/archive)
+- You want a consistent handoff artifact for later context recovery
 
 ## Quick decision gate (MUST)
 Use the `create-dev-docs-plan` skill when **any** is true:

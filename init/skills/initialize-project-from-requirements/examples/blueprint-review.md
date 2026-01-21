@@ -20,7 +20,7 @@ Before applying Stage C, review `init/project-blueprint.json`.
 ## Validate
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate \
   --repo-root .
 ```
 
@@ -29,14 +29,14 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 ## Reconcile packs (recommended)
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-packs \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-packs \
   --repo-root .
 ```
 
 If you want the pipeline to **safe-add** missing recommended packs into the blueprint (it will not remove anything), run:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-packs \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-packs \
   --repo-root . \
   --write
 ```
@@ -48,5 +48,5 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 After reviewing `skills.packs`, record the review in the init state:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs review-packs --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs review-packs --repo-root .
 ```

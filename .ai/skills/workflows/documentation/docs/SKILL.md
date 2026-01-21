@@ -28,7 +28,7 @@ Use this skill when you need to:
 
 ## Shared non-negotiables
 1) **Progressive disclosure**
-   - Keep top-level docs short; move deep detail into `reference/`, `examples/`, and `templates/`.
+   - Keep top-level docs short; move deep detail into supporting files under `dev-docs/` or the selected workflow skill’s supporting folders (reference, examples, templates) when present.
 
 2) **No secrets**
    - Do not include credentials, tokens, or internal-only URLs.

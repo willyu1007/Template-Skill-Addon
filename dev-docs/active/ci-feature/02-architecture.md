@@ -2,8 +2,8 @@
 
 ## Context & current state
 - CI skills currently live under `.ai/skills/testing/` and are named `test-ci-*`.
-- CI helper controller `cictl.js` lives under `.ai/skills/features/ci/scripts/` and copies templates from `.ai/skills/features/ci/*`.
-- Several blueprint features historically relied on `.ai/scripts/*ctl.js` paths (context-awareness, packaging, deployment, release, observability); controllers are now feature-local under `.ai/skills/features/<feature>/scripts/`.
+- CI helper controller `cictl.mjs` lives under `.ai/skills/features/ci/scripts/` and copies templates from `.ai/skills/features/ci/*`.
+- Several blueprint features historically relied on `.ai/scripts/*ctl.mjs` paths (context-awareness, packaging, deployment, release, observability); controllers are now feature-local under `.ai/skills/features/<feature>/scripts/`.
 
 ## Proposed design
 
@@ -14,16 +14,16 @@
     - `.ai/skills/features/ci/github-actions-ci/`
     - `.ai/skills/features/ci/gitlab-ci/`
   - Feature controller:
-    - `.ai/skills/features/ci/scripts/cictl.js`
+    - `.ai/skills/features/ci/scripts/cictl.mjs`
 - **Feature-owned controllers relocation (no wrappers)**
-  - context-awareness: `.ai/skills/features/context-awareness/scripts/contextctl.js`
-  - observability: `.ai/skills/features/observability/scripts/obsctl.js`
-  - packaging: `.ai/skills/features/packaging/scripts/packctl.js`
-  - deployment: `.ai/skills/features/deployment/scripts/deployctl.js`
-  - release: `.ai/skills/features/release/scripts/releasectl.js`
+  - context-awareness: `.ai/skills/features/context-awareness/scripts/contextctl.mjs`
+  - observability: `.ai/skills/features/observability/scripts/obsctl.mjs`
+  - packaging: `.ai/skills/features/packaging/scripts/packctl.mjs`
+  - deployment: `.ai/skills/features/deployment/scripts/deployctl.mjs`
+  - release: `.ai/skills/features/release/scripts/releasectl.mjs`
 - **Cross-cutting controllers remain in `.ai/scripts/`**
-  - `.ai/scripts/projectctl.js` (project state + feature flags)
-  - `.ai/scripts/dbssotctl.js` (DB schema context generator; depends on `.ai/scripts/lib/*`)
+  - `.ai/scripts/projectctl.mjs` (project state + feature flags)
+  - `.ai/scripts/dbssotctl.mjs` (DB schema context generator; depends on `.ai/scripts/lib/*`)
   - sync/lint tools
 
 ### Interfaces & contracts
@@ -40,7 +40,7 @@
     - GitLab CI: inserts a managed block into `.gitlab-ci.yml` (idempotent)
 
 ### Boundaries & dependency rules
-- No `.ai/scripts/*ctl.js` wrappers: feature controllers are invoked via their feature-local paths.
+- No `.ai/scripts/*ctl.mjs` wrappers: feature controllers are invoked via their feature-local paths.
 - Init Stage C must reference the new controller paths explicitly.
 - CI templates must be safe-by-default (no secrets in repo; minimal permissions).
 

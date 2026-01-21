@@ -33,7 +33,7 @@ Provider skills (for workflow customization and troubleshooting):
 
 Controller script (feature-local):
 
-- `node .ai/skills/features/ci/scripts/cictl.js`
+- `node .ai/skills/features/ci/scripts/cictl.mjs`
 
 ## How to enable
 
@@ -47,7 +47,7 @@ In `init/project-blueprint.json`:
 Then run:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --providers both
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --providers both
 ```
 
 ### In an existing repo
@@ -55,8 +55,8 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 Run:
 
 ```bash
-node .ai/skills/features/ci/scripts/cictl.js init --provider github --repo-root .
-node .ai/skills/features/ci/scripts/cictl.js init --provider gitlab --repo-root .
+node .ai/skills/features/ci/scripts/cictl.mjs init --provider github --repo-root .
+node .ai/skills/features/ci/scripts/cictl.mjs init --provider gitlab --repo-root .
 ```
 
 ## Delivery explicit enable (opt-in)
@@ -64,8 +64,8 @@ node .ai/skills/features/ci/scripts/cictl.js init --provider gitlab --repo-root 
 Delivery is enabled explicitly (method A) via:
 
 ```bash
-node .ai/skills/features/ci/scripts/cictl.js add-delivery --provider github --repo-root .
-node .ai/skills/features/ci/scripts/cictl.js add-delivery --provider gitlab --repo-root .
+node .ai/skills/features/ci/scripts/cictl.mjs add-delivery --provider github --repo-root .
+node .ai/skills/features/ci/scripts/cictl.mjs add-delivery --provider gitlab --repo-root .
 ```
 
 ## Boundaries
@@ -77,13 +77,13 @@ node .ai/skills/features/ci/scripts/cictl.js add-delivery --provider gitlab --re
 ## Verification
 
 ```bash
-node .ai/skills/features/ci/scripts/cictl.js --help
+node .ai/skills/features/ci/scripts/cictl.mjs --help
 
 # Dry-run install (no writes)
-node .ai/skills/features/ci/scripts/cictl.js init --provider github --repo-root . --dry-run
-node .ai/skills/features/ci/scripts/cictl.js init --provider gitlab --repo-root . --dry-run
+node .ai/skills/features/ci/scripts/cictl.mjs init --provider github --repo-root . --dry-run
+node .ai/skills/features/ci/scripts/cictl.mjs init --provider gitlab --repo-root . --dry-run
 
 # Dry-run delivery opt-in (no writes)
-node .ai/skills/features/ci/scripts/cictl.js add-delivery --provider github --repo-root . --dry-run
-node .ai/skills/features/ci/scripts/cictl.js add-delivery --provider gitlab --repo-root . --dry-run
+node .ai/skills/features/ci/scripts/cictl.mjs add-delivery --provider github --repo-root . --dry-run
+node .ai/skills/features/ci/scripts/cictl.mjs add-delivery --provider gitlab --repo-root . --dry-run
 ```

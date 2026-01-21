@@ -18,13 +18,13 @@ When enabled, this feature materializes:
 - `ops/deploy/**`
   - `ops/deploy/environments/*.yaml`
   - `ops/deploy/k8s/manifests/deployment.template.yaml`
-  - `ops/deploy/scripts/healthcheck.js`
+  - `ops/deploy/scripts/healthcheck.mjs`
   - `ops/deploy/workdocs/**` (runbooks, rollback procedure)
 
 Controller scripts (provided by the template SSOT):
 
-- `node .ai/skills/features/deployment/scripts/deployctl.js` — deployment configuration management
-- `node .ai/skills/features/deployment/scripts/rollback.js` — rollback entry point (human-run)
+- `node .ai/skills/features/deployment/scripts/deployctl.mjs` — deployment configuration management
+- `node .ai/skills/features/deployment/scripts/rollback.mjs` — rollback entry point (human-run)
 
 ## How to enable
 
@@ -37,7 +37,7 @@ In `init/project-blueprint.json`:
 Then run:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --providers both
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --providers both
 ```
 
 ### In an existing repo
@@ -48,8 +48,8 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 2. Initialize:
 
 ```bash
-node .ai/skills/features/deployment/scripts/deployctl.js init
-node .ai/skills/features/deployment/scripts/deployctl.js verify
+node .ai/skills/features/deployment/scripts/deployctl.mjs init
+node .ai/skills/features/deployment/scripts/deployctl.mjs verify
 ```
 
 ## Operating rules
@@ -61,7 +61,7 @@ node .ai/skills/features/deployment/scripts/deployctl.js verify
 ## Verification
 
 ```bash
-node .ai/skills/features/deployment/scripts/deployctl.js verify
+node .ai/skills/features/deployment/scripts/deployctl.mjs verify
 ```
 
 ## Boundaries

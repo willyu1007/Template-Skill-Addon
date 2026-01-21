@@ -53,8 +53,8 @@ description: GitHub Actions CI skill: integrate automated tests (web/api/mobile/
 ## Verification
 
 - If you changed **skills**:
-  - `node .ai/scripts/lint-skills.cjs --strict`
-  - `node .ai/skills/features/ci/github-actions-ci/scripts/validate-skill.cjs`
+  - `node .ai/scripts/lint-skills.mjs --strict`
+  - `node .ai/skills/features/ci/github-actions-ci/scripts/validate-skill.mjs`
 
 - If you changed **workflow YAML**:
   - Run a PR test run (or use `workflow_dispatch`) and confirm:

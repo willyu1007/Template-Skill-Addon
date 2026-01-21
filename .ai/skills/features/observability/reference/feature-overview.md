@@ -37,19 +37,19 @@ When working with observability, AI should:
 
 ```bash
 # Initialize
-node .ai/skills/features/observability/scripts/obsctl.js init
+node .ai/skills/features/observability/scripts/obsctl.mjs init
 
 # Add metric
-node .ai/skills/features/observability/scripts/obsctl.js add-metric --name api_latency --type histogram --unit seconds
+node .ai/skills/features/observability/scripts/obsctl.mjs add-metric --name api_latency --type histogram --unit seconds
 
 # Add log field
-node .ai/skills/features/observability/scripts/obsctl.js add-log-field --name correlation_id --type string
+node .ai/skills/features/observability/scripts/obsctl.mjs add-log-field --name correlation_id --type string
 
 # Generate instrumentation hints
-node .ai/skills/features/observability/scripts/obsctl.js generate-instrumentation --lang typescript
+node .ai/skills/features/observability/scripts/obsctl.mjs generate-instrumentation --lang typescript
 
 # Verify
-node .ai/skills/features/observability/scripts/obsctl.js verify
+node .ai/skills/features/observability/scripts/obsctl.mjs verify
 ```
 
 ## Metric Naming Conventions

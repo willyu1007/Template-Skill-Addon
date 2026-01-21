@@ -13,9 +13,9 @@ It is the SSOT; other references should link here.
   - declared in `init/project-blueprint.json` (`skills.packs`) during initialization
   - archived to `docs/project/project-blueprint.json` by `cleanup-init --archive`
   - materialized into `.ai/skills/_meta/sync-manifest.json` (flat schema)
-  - synced into provider wrappers by `node .ai/scripts/sync-skills.cjs`
+  - synced into provider wrappers by `node .ai/scripts/sync-skills.mjs`
 - Stage transitions require explicit approval (`approve`), not manual state edits.
-- When `.ai/skills/_meta/skillpacksctl.js` is available, pack enabling is performed through it; otherwise Stage C falls back to editing the sync manifest.
+- When `.ai/skills/_meta/skillpacksctl.mjs` is available, pack enabling is performed through it; otherwise Stage C falls back to editing the sync manifest.
 - Optional **features** are materialized in Stage C from templates stored under `.ai/skills/features/...`.
 
 ---
@@ -30,7 +30,7 @@ Checks:
 Command:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs --repo-root . --docs-root init/stage-a-docs --strict
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs check-docs --repo-root . --docs-root init/stage-a-docs --strict
 ```
 
 ---
@@ -52,7 +52,7 @@ Keys:
 Command:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs mark-must-ask \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs mark-must-ask \
   --repo-root . \
   --key onePurpose \
   --asked \
@@ -72,7 +72,7 @@ Checks:
 Command:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root . --blueprint init/project-blueprint.json
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root . --blueprint init/project-blueprint.json
 ```
 
 ---
@@ -82,7 +82,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 Use after reviewing `skills.packs` so the state board reflects the review.
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs review-packs --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs review-packs --repo-root .
 ```
 
 ---
@@ -94,10 +94,10 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 1. validate blueprint
 2. optional docs check (when `--require-stage-a`)
 3. scaffold directories/files (idempotent; mostly "write-if-missing")
-4. generate configs via `scripts/scaffold-configs.cjs` (SSOT)
-5. materialize optional **features** from templates under `.ai/skills/features/.../templates/` and run their control scripts (`...ctl.js init`)
+4. generate configs via `scripts/scaffold-configs.mjs` (SSOT)
+5. materialize optional **features** from templates under `.ai/skills/features/.../templates/` and run their control scripts (`...ctl.mjs init`)
 6. enable packs (skillpacksctl when present; else sync manifest)
-7. sync wrappers via `.ai/scripts/sync-skills.cjs`
+7. sync wrappers via `.ai/scripts/sync-skills.mjs`
 
 Notes:
 - With `--verify-features`, feature verify failures are **fail-fast** by default.
@@ -114,7 +114,7 @@ Enable via blueprint:
 `context.*` is configuration only and does not trigger enabling by itself.
 
 Implications:
-- Stage C materializes `docs/context/**` and environment templates, then runs `.ai/skills/features/context-awareness/scripts/contextctl.js init`
+- Stage C materializes `docs/context/**` and environment templates, then runs `.ai/skills/features/context-awareness/scripts/contextctl.mjs init`
 - Optional: add `context-core` to `skills.packs` if you want context-related scaffold skills/wrappers
 
 See:

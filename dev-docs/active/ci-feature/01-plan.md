@@ -3,7 +3,7 @@
 ## Milestones
 1. Lock decisions (done): names, Stage C behavior, `ci.provider`, pnpm default, delivery explicit enable (A), no wrappers for feature controllers.
 2. Migrate CI skills into `.ai/skills/features/ci/` and update references.
-3. Relocate feature-owned controllers (`*ctl.js`) into their feature directories; update all script/doc/init references.
+3. Relocate feature-owned controllers (`*ctl.mjs`) into their feature directories; update all script/doc/init references.
 4. Add CI as Stage C feature (`features.ci`) using `ci.provider`; update schema, init pipeline, and feature docs.
 5. Upgrade CI conventions/templates + add delivery explicit enable command.
 6. Verification + docs cleanup.
@@ -17,18 +17,18 @@
      - `.ai/skills/testing/test-ci-gitlab-ci` → `.ai/skills/features/ci/gitlab-ci`
    - Update skill front-matter names and internal verification paths.
 3. Move feature controllers (no wrappers):
-   - `.ai/scripts/cictl.js` → `.ai/skills/features/ci/scripts/cictl.js`
-   - `.ai/scripts/contextctl.js` → `.ai/skills/features/context-awareness/scripts/contextctl.js`
-   - `.ai/scripts/obsctl.js` → `.ai/skills/features/observability/scripts/obsctl.js`
-   - `.ai/scripts/packctl.js` → `.ai/skills/features/packaging/scripts/packctl.js`
-   - `.ai/scripts/deployctl.js` → `.ai/skills/features/deployment/scripts/deployctl.js`
-   - `.ai/scripts/releasectl.js` → `.ai/skills/features/release/scripts/releasectl.js`
-   - Keep cross-cutting controllers in `.ai/scripts/` (e.g., `projectctl.js`, `dbssotctl.js`, `sync-skills.cjs`, `lint-skills.cjs`).
+   - `.ai/scripts/cictl.mjs` → `.ai/skills/features/ci/scripts/cictl.mjs`
+   - `.ai/scripts/contextctl.mjs` → `.ai/skills/features/context-awareness/scripts/contextctl.mjs`
+   - `.ai/scripts/obsctl.mjs` → `.ai/skills/features/observability/scripts/obsctl.mjs`
+   - `.ai/scripts/packctl.mjs` → `.ai/skills/features/packaging/scripts/packctl.mjs`
+   - `.ai/scripts/deployctl.mjs` → `.ai/skills/features/deployment/scripts/deployctl.mjs`
+   - `.ai/scripts/releasectl.mjs` → `.ai/skills/features/release/scripts/releasectl.mjs`
+   - Keep cross-cutting controllers in `.ai/scripts/` (e.g., `projectctl.mjs`, `dbssotctl.mjs`, `sync-skills.mjs`, `lint-skills.mjs`).
 4. Update all references:
-   - Init Stage C controller paths in `init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs`
+   - Init Stage C controller paths in `init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs`
    - Feature docs under `init/feature-docs/*.md`
    - Feature SKILLs under `.ai/skills/features/*/SKILL.md`
-   - Any scripts that print guidance (e.g., `.ai/skills/features/deployment/scripts/rollback.js` referencing deployctl)
+   - Any scripts that print guidance (e.g., `.ai/skills/features/deployment/scripts/rollback.mjs` referencing deployctl)
    - CI templates comments referencing `cictl`
 5. CI feature integration:
    - Update blueprint schema: add `features.ci` and `ci.provider`
@@ -39,14 +39,14 @@
    - Update init feature docs:
      - `init/feature-docs/ci.md` becomes a real feature doc
      - `init/feature-docs/README.md` adds `ci` to the features table and updates control script paths for moved controllers
-6. CI “usable” upgrade:
+6. CI "usable" upgrade:
    - Update CI templates to be runnable defaults (pnpm), safe permissions, artifact policy, and clear failure signals
    - Add delivery explicit enable (method A): `cictl add-delivery` (GitHub: copy a workflow file; GitLab: insert a managed block)
 7. Verification:
-   - `node .ai/scripts/lint-skills.cjs --strict`
-   - `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .`
-   - `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --repo-root . --providers both` (dry-run where appropriate)
-   - `node .ai/scripts/sync-skills.cjs --scope current --providers both --mode reset --yes`
+   - `node .ai/scripts/lint-skills.mjs --strict`
+   - `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root .`
+   - `node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --repo-root . --providers both` (dry-run where appropriate)
+   - `node .ai/scripts/sync-skills.mjs --scope current --providers both --mode reset --yes`
 
 ## Risks & mitigations
 - Risk: Moving controllers breaks init Stage C or docs.

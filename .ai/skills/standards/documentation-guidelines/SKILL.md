@@ -126,9 +126,6 @@ Self-review checklist:
 - Is verification included?
 - Can any redundant background be removed or replaced by a link + 1-line summary?
 
-Optional automated lint (repo tool):
-- `node .ai/scripts/lint-docs.cjs --path <dir> --strict`
-
 ## Boundaries
 
 - Do NOT create documentation that exceeds 500 lines without progressive disclosure

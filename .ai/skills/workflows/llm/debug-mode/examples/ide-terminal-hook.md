@@ -18,7 +18,7 @@ Use this example when the bug is reproducible from an IDE-integrated terminal an
    - call `get_terminal_output(terminal_key, lines=N)` progressively (`200 → 500 → 1000 → 2000`)
 3) Extract evidence deterministically (do not paste raw tail):
    - follow `reference/terminal_evidence_collection.md`
-   - optional: use `scripts/collect_evidence.cjs` for deterministic extraction (stdin JSON → stdout JSON)
+   - optional: use `scripts/collect_evidence.mjs` for deterministic extraction (stdin JSON → stdout JSON)
 4) If auto-collection fails:
    - follow progressive fallback (ask for terminal selection hints first, then minimal run_id-marked excerpts).
 

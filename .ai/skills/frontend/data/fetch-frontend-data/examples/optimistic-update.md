@@ -1,7 +1,7 @@
 # Example: Optimistic update (conceptual)
 
 ## Scenario
-A user toggles a "favorite" state.
+A user toggles a “favorite” state.
 
 ## Pattern
 1. Update the cache immediately (optimistic).

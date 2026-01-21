@@ -143,15 +143,15 @@ Escalate in small steps:
 - If you need to explain why a fallback was triggered, do so in 1 line without dumping metadata.
 
 ## Optional helper script (deterministic)
-Optional: `scripts/collect_evidence.cjs` is a deterministic extractor (stdin JSON -> stdout JSON). The script does not call MCP tools and is safe to remove; the workflow still works using the rules above.
+Optional: `scripts/collect_evidence.mjs` is a deterministic extractor (stdin JSON -> stdout JSON). The script does not call MCP tools and is safe to remove; the workflow still works using the rules above.
 
-### Script contract (`scripts/collect_evidence.cjs`)
+### Script contract (`scripts/collect_evidence.mjs`)
 The script contract is intended for repo template reuse and to avoid “guessing” fields.
 
 **Run**
-- From repo root: `node .ai/skills/workflows/llm/debug-mode/scripts/collect_evidence.cjs < input.json`
-- If cwd is `.ai/skills/workflows/llm/debug-mode`: `node scripts/collect_evidence.cjs < input.json`
-- Run tests: `node --test .ai/skills/workflows/llm/debug-mode/scripts/collect_evidence.test.cjs`
+- From repo root: `node .ai/skills/workflows/llm/debug-mode/scripts/collect_evidence.mjs < input.json`
+- If cwd is `.ai/skills/workflows/llm/debug-mode`: `node scripts/collect_evidence.mjs < input.json`
+- Run tests: `node --test .ai/skills/workflows/llm/debug-mode/scripts/collect_evidence.test.mjs`
 
 **Input JSON**
 - Required:

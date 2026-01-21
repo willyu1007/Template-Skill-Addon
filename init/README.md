@@ -21,7 +21,7 @@ It is designed for **robustness and auditability**:
 
 ### 0) Initialize state
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs start --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs start --repo-root .
 ```
 
 The command creates:
@@ -41,38 +41,38 @@ See: `init/stages/00-preflight-terminology.md`.
 ### 1) Stage A: validate docs -> approve
 ```bash
 # Edit templates in init/stage-a-docs/, then validate:
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs check-docs \
   --repo-root . \
   --strict
 
 # After the user explicitly approves Stage A:
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage A --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage A --repo-root .
 ```
 
 ### 2) Stage B: validate blueprint -> approve
 ```bash
 # Edit init/project-blueprint.json, then validate:
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate \
   --repo-root .
 
 # Optional: report recommended packs/features
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-packs \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-packs \
   --repo-root .
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-features \
   --repo-root .
 
 # After the user explicitly approves Stage B:
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage B --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage B --repo-root .
 ```
 
 ### 3) Stage C: apply scaffold/configs/packs/features/wrappers -> approve
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply \
   --repo-root . \
   --providers both
 
 # After the user explicitly approves Stage C:
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage C --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage C --repo-root .
 ```
 
 ### 4) Optional: cleanup after init
@@ -80,7 +80,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 **Option A: Remove `init/` only** (Stage A docs and blueprint will be deleted)
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs cleanup-init \
   --repo-root . \
   --apply \
   --i-understand
@@ -89,7 +89,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 **Option B: Archive to `docs/project/` + remove `init/`** (recommended for retaining docs)
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs cleanup-init \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs cleanup-init \
   --repo-root . \
   --apply \
   --i-understand \
@@ -121,22 +121,22 @@ This template does **not** ship an `addons/` directory. Feature assets are integ
 
 - Feature skills + templates: `.ai/skills/features/...`
 - Feature controllers: `.ai/skills/features/**/scripts/*` (Node/Python)
-- Cross-cutting controllers: `.ai/scripts/*` (e.g., `projectctl.js`, `dbssotctl.js`)
+- Cross-cutting controllers: `.ai/scripts/*` (e.g., `projectctl.mjs`, `dbssotctl.mjs`)
 - Project state (feature flags): `.ai/project/state.json`
 
-Stage C `apply` materializes a feature by copying templates into the repo (when the feature has templates) and running the corresponding control scripts (typically under `.ai/skills/features/**/scripts/`, plus cross-cutting `.ai/scripts/projectctl.js` for feature state).
+Stage C `apply` materializes a feature by copying templates into the repo (when the feature has templates) and running the corresponding control scripts (typically under `.ai/skills/features/**/scripts/`, plus cross-cutting `.ai/scripts/projectctl.mjs` for feature state).
 
 | Feature | Blueprint toggle | Materializes | Control script(s) |
 |---------|------------------|--------------|----------------|
-| Context awareness | `features.contextAwareness` | `docs/context/**`, `config/environments/**` | `node .ai/skills/features/context-awareness/scripts/contextctl.js` |
-| Database | `features.database` (requires `db.ssot != none`) | `db/**` (when `db.ssot=database`), `prisma/**` (when `db.ssot=repo-prisma`) | `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.js` (when `db.ssot=database`); `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.cjs` (human interface) |
+| Context awareness | `features.contextAwareness` | `docs/context/**`, `config/environments/**` | `node .ai/skills/features/context-awareness/scripts/contextctl.mjs` |
+| Database | `features.database` (requires `db.ssot != none`) | `db/**` (when `db.ssot=database`), `prisma/**` (when `db.ssot=repo-prisma`) | `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs` (when `db.ssot=database`); `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs` (human interface) |
 | UI | `features.ui` | `ui/**`, `docs/context/ui/**` | `python3 .ai/skills/features/ui/ui-system-bootstrap/scripts/ui_specctl.py` |
 | Environment | `features.environment` | `env/**` (+ generated non-secret docs when `--verify-features`) | `python3 .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py` |
-| Packaging | `features.packaging` | `ops/packaging/**`, `docs/packaging/**` | `node .ai/skills/features/packaging/scripts/packctl.js` |
-| Deployment | `features.deployment` | `ops/deploy/**` | `node .ai/skills/features/deployment/scripts/deployctl.js` |
-| CI | `features.ci` (requires `ci.provider`) | `.github/workflows/ci.yml` (GitHub) or `.gitlab-ci.yml` (GitLab), `ci/**` | `node .ai/skills/features/ci/scripts/cictl.js` |
-| Observability | `features.observability` (requires context awareness) | `docs/context/observability/**`, `observability/**` | `node .ai/skills/features/observability/scripts/obsctl.js` |
-| Release | `features.release` | `release/**`, `.releaserc.json.template` | `node .ai/skills/features/release/scripts/releasectl.js` |
+| Packaging | `features.packaging` | `ops/packaging/**`, `docs/packaging/**` | `node .ai/skills/features/packaging/scripts/packctl.mjs` |
+| Deployment | `features.deployment` | `ops/deploy/**` | `node .ai/skills/features/deployment/scripts/deployctl.mjs` |
+| CI | `features.ci` (requires `ci.provider`) | `.github/workflows/ci.yml` (GitHub) or `.gitlab-ci.yml` (GitLab), `ci/**` | `node .ai/skills/features/ci/scripts/cictl.mjs` |
+| Observability | `features.observability` (requires context awareness) | `docs/context/observability/**`, `observability/**` | `node .ai/skills/features/observability/scripts/obsctl.mjs` |
+| Release | `features.release` | `release/**`, `.releaserc.json.template` | `node .ai/skills/features/release/scripts/releasectl.mjs` |
 
 For feature-specific details, see:
 
@@ -158,19 +158,19 @@ For feature-specific details, see:
 2) Ask the pipeline for recommendations:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features --repo-root .
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-packs --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-features --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-packs --repo-root .
 ```
 
 3) Decide which features to keep, then set `features.*` explicitly (or safe-add via `--write`):
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs suggest-features --repo-root . --write
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs validate --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-features --repo-root . --write
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root .
 ```
 
 ## Apply flags (Stage C)
 
 - `--force-features`: overwrite existing feature files when materializing templates
-- `--verify-features`: run `*ctl.js verify` after `init` (fail-fast by default)
+- `--verify-features`: run `*ctl.mjs verify` after `init` (fail-fast by default)
 - `--non-blocking-features`: continue despite feature init/verify errors (not recommended)

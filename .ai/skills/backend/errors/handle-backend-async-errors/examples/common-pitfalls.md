@@ -6,7 +6,7 @@
 
 ## Swallowing errors
 - Catching and not rethrowing can produce false success responses.
-- Only swallow errors when the workflow explicitly tolerates swallowing and the behavior is documented.
+- Only swallow errors when the workflow explicitly tolerates the failure and the behavior is documented.
 
 ## Returning before awaiting
 - Ensure you `await` persistence and side-effectful operations when the API contract requires them.

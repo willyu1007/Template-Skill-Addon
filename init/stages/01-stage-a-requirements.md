@@ -38,14 +38,14 @@ Templates:
 From repo root:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs check-docs \
   --repo-root .
 ```
 
 Strict gate (treat warnings as errors):
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs check-docs \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs check-docs \
   --repo-root . \
   --strict
 ```
@@ -55,7 +55,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 Use `mark-must-ask` to keep the must-ask checklist updated in `init/.init-state.json`:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs mark-must-ask \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs mark-must-ask \
   --repo-root . \
   --key terminologyAlignment \
   --asked \
@@ -64,7 +64,7 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs 
 ```
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs mark-must-ask \
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs mark-must-ask \
   --repo-root . \
   --key onePurpose \
   --asked \
@@ -79,5 +79,5 @@ See `init/skills/initialize-project-from-requirements/reference.md` for the full
 After the user explicitly approves the Stage A documents:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs approve --stage A --repo-root .
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage A --repo-root .
 ```

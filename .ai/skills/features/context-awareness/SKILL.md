@@ -27,9 +27,9 @@ When enabled (typically during init), the feature **materializes** these paths i
 
 And it assumes these controller scripts exist (they are part of the template SSOT under `.ai/`):
 
-- `node .ai/skills/features/context-awareness/scripts/contextctl.js` — context registry + artifacts + env registry
-- `node .ai/scripts/projectctl.js` — project state (`.ai/project/state.json`)
-- `node .ai/skills/_meta/skillpacksctl.js` — skill pack switching + wrapper sync
+- `node .ai/skills/features/context-awareness/scripts/contextctl.mjs` — context registry + artifacts + env registry
+- `node .ai/scripts/projectctl.mjs` — project state (`.ai/project/state.json`)
+- `node .ai/skills/_meta/skillpacksctl.mjs` — skill pack switching + wrapper sync
 
 ## Canonical entry points for LLMs
 
@@ -54,7 +54,7 @@ In `init/project-blueprint.json`:
 Then run init Stage C apply:
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.cjs apply --providers both
+node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --providers both
 ```
 
 Init will:
@@ -73,10 +73,10 @@ If you must enable after init, you can:
 2. Run:
 
 ```bash
-node .ai/scripts/projectctl.js init
-node .ai/scripts/projectctl.js set context.enabled true
-node .ai/skills/features/context-awareness/scripts/contextctl.js init
-node .ai/skills/features/context-awareness/scripts/contextctl.js touch
+node .ai/scripts/projectctl.mjs init
+node .ai/scripts/projectctl.mjs set context.enabled true
+node .ai/skills/features/context-awareness/scripts/contextctl.mjs init
+node .ai/skills/features/context-awareness/scripts/contextctl.mjs touch
 ```
 
 ## Operating rules
@@ -86,22 +86,22 @@ node .ai/skills/features/context-awareness/scripts/contextctl.js touch
 After editing any file under `docs/context/**`:
 
 ```bash
-node .ai/skills/features/context-awareness/scripts/contextctl.js touch
+node .ai/skills/features/context-awareness/scripts/contextctl.mjs touch
 ```
 
 ### Managing environments
 
 ```bash
-node .ai/skills/features/context-awareness/scripts/contextctl.js list-envs
-node .ai/skills/features/context-awareness/scripts/contextctl.js add-env --id qa --description "QA environment"
-node .ai/skills/features/context-awareness/scripts/contextctl.js verify-config
+node .ai/skills/features/context-awareness/scripts/contextctl.mjs list-envs
+node .ai/skills/features/context-awareness/scripts/contextctl.mjs add-env --id qa --description "QA environment"
+node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify-config
 ```
 
 ## Verification
 
 ```bash
-node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict
-node .ai/scripts/projectctl.js verify
+node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --strict
+node .ai/scripts/projectctl.mjs verify
 ```
 
 ## Related skills

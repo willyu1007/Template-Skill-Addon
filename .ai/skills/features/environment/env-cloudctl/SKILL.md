@@ -169,7 +169,7 @@ python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.
 - [ ] Explicit approval gate respected
 - [ ] Verify passes after apply
 - [ ] No secret values in evidence
-- [ ] Central test suite passes: `node .ai/tests/run.cjs --suite environment`
+- [ ] Central test suite passes: `node .ai/tests/run.mjs --suite environment`
 
 ## Boundaries
 

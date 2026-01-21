@@ -52,14 +52,14 @@ When working with packaging, AI should:
 
 ```bash
 # Initialize
-node .ai/skills/features/packaging/scripts/packctl.js init
+node .ai/skills/features/packaging/scripts/packctl.mjs init
 
 # Add service
-node .ai/skills/features/packaging/scripts/packctl.js add-service --id api --module apps/backend
+node .ai/skills/features/packaging/scripts/packctl.mjs add-service --id api --module apps/backend
 
 # List targets
-node .ai/skills/features/packaging/scripts/packctl.js list
+node .ai/skills/features/packaging/scripts/packctl.mjs list
 
 # Verify
-node .ai/skills/features/packaging/scripts/packctl.js verify
+node .ai/skills/features/packaging/scripts/packctl.mjs verify
 ```

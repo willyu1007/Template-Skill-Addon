@@ -44,7 +44,7 @@ Do not use the skill when:
 
 - [ ] {{Concrete verification command or check}}
 - [ ] {{Expected outcome or pass criteria}}
-- [ ] Run: `node .ai/scripts/lint-skills.cjs --strict`
+- [ ] Run: `node .ai/scripts/lint-skills.mjs --strict`
 
 ## Boundaries
 

@@ -115,7 +115,7 @@ python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py run --mode 
 - [ ] Any SSOT change is approved before apply
 - [ ] `ui_specctl.py validate` passes after codegen
 - [ ] Governance gate passes (or violations are documented + approved)
-- [ ] Central test suite passes: `node .ai/tests/run.cjs --suite ui`
+- [ ] Central test suite passes: `node .ai/tests/run.mjs --suite ui`
 
 ## Boundaries
 

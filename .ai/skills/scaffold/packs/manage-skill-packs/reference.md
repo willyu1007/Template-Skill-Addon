@@ -18,6 +18,6 @@ Without state, disabling a pack is ambiguous (you cannot know which prefixes/ski
 ## Verification
 
 - Print the effective selection:
-  - `node .ai/skills/_meta/skillpacksctl.js status`
+  - `node .ai/skills/_meta/skillpacksctl.mjs status`
 - Re-generate wrappers:
-  - `node .ai/skills/_meta/skillpacksctl.js sync --providers both`
+  - `node .ai/skills/_meta/skillpacksctl.mjs sync --providers both`

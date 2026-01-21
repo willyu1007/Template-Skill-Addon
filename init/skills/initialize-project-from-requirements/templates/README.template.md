@@ -71,7 +71,7 @@ This project uses the AI-Friendly Repository pattern:
 Regenerate wrappers after skill changes:
 
 ```bash
-node .ai/scripts/sync-skills.cjs --scope current --providers both --mode reset --yes
+node .ai/scripts/sync-skills.mjs --scope current --providers both --mode reset --yes
 ```
 
 ## Contributing

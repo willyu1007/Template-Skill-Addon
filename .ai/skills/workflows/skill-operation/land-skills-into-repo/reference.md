@@ -32,7 +32,7 @@ python3 scripts/land_skills.py --repo-root . --source /path/to/bundle.zip --appl
 #### 2) Sync SSOT to provider stubs (recommended)
 ```bash
 # Run from repo root.
-node .ai/scripts/sync-skills.cjs --scope current --providers both --mode reset --yes
+node .ai/scripts/sync-skills.mjs --scope current --providers both --mode reset --yes
 ```
 
 #### 3) Verify only

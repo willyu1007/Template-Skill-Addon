@@ -106,7 +106,7 @@ python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py approval-ap
 - [ ] Gate report created in `.ai/.tmp/ui/<run-id>/`
 - [ ] No errors remain (warnings acceptable but should be tracked)
 - [ ] If exceptions exist, they are documented and time-bounded
-- [ ] Central test suite passes: `node .ai/tests/run.cjs --suite ui`
+- [ ] Central test suite passes: `node .ai/tests/run.mjs --suite ui`
 
 ## Boundaries
 

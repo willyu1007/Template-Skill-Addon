@@ -10,9 +10,9 @@ Produce a single, goal-aligned macro-level roadmap as a Markdown document that c
 
 ## When to use
 Use the plan-maker skill when:
-- **Strong trigger**: The user explicitly asks for a roadmap — MUST use the `plan-maker` skill
-- The user asks for a plan, milestones, or an implementation plan before coding
-- The user asks to align on requirements/approach before planning
+- **Strong trigger**: The user mentions "roadmap" — MUST use the `plan-maker` skill
+- The user asks for a plan/milestones/implementation plan before coding
+- The user asks to "align thinking first" or "clarify direction" before planning
 - The task is large/ambiguous and benefits from staged execution and verification
 - You need a roadmap artifact saved under `dev-docs/active/` for collaboration and handoff
 
@@ -28,7 +28,7 @@ Avoid the skill when:
   - **Interactive collection**: Collect requirements through Q&A dialogue with the user
   - **Both**: Read existing document AND supplement with interactive Q&A
 - Requirements alignment mode (optional):
-  - If user requests to align on requirements/approach first, generate a requirements document at `dev-docs/active/<task>/requirement.md` before creating the roadmap
+  - If user requests "align thinking first" or "clarify direction", generate requirements document to `dev-docs/active/<task>/requirement.md` before creating roadmap
   - See `./templates/requirement.md` for the requirements document template
 
 ## Outputs
@@ -42,7 +42,7 @@ Avoid the skill when:
 ### Phase 0 — Requirements alignment (optional, triggered by user request)
 
 0. **Check for requirements alignment request**:
-   - If user asks to align on requirements/approach first, or provides an existing requirements document:
+   - If user asks to "align thinking first" or "clarify direction", or provides an existing requirements document:
      - Proceed to step 0a
    - Otherwise, skip to step 1
 
@@ -77,7 +77,12 @@ Avoid the skill when:
    - If already confirmed in Phase 0, skip step 3.
 4. Draft the roadmap using `./templates/roadmap.md`.
    - Keep the roadmap macro-level: phases, milestones, deliverables, verification, risks, rollback.
-   - Only include specific file paths/APIs when you have evidence; otherwise add a discovery step.
+   - Always include the **Project structure change preview (may be empty)** section from the template:
+     - Use it as a **non-binding alignment aid** (humans confirm expected impact early; execution may differ).
+     - Prefer **directory-level** paths by default; use file-level paths only when you have clear evidence.
+     - Do not guess project-specific paths or interfaces; if you have not inspected the repo, keep `(none)` or use `<TBD>`.
+     - If unknown, keep `(none)` or use `<TBD>` and add/keep a **Discovery** step to confirm.
+   - Only include specific file paths/APIs elsewhere when you have evidence; otherwise add a discovery step.
    - Include an "Optional detailed documentation layout (convention)" section that declares the expected file layout under `dev-docs/active/<task>/` without creating those files.
 5. Save the roadmap to `dev-docs/active/<task>/roadmap.md`.
 6. Return a short handoff message to the user:
@@ -105,6 +110,7 @@ Avoid the skill when:
 - [ ] (If alignment mode) Requirements document saved to `dev-docs/active/<task>/requirement.md`
 - [ ] (If alignment mode) User confirmed requirements understanding before roadmap creation
 - [ ] Roadmap includes milestones/phases and per-step deliverables
+- [ ] Roadmap includes "Project structure change preview" section (may be empty)
 - [ ] Roadmap defines verification/acceptance criteria and a rollback strategy
 - [ ] Roadmap is saved to `dev-docs/active/<task>/roadmap.md`
 - [ ] dev-docs Decision Gate evaluated; user prompted for full bundle if criteria met
@@ -114,7 +120,7 @@ Avoid the skill when:
 - MUST NOT modify application/source code, project configuration, or database state
 - MUST ask clarifying questions when the goal or constraints are ambiguous
 - MUST NOT invent project-specific facts (APIs, file paths, schemas) without evidence
-- **MUST use the `plan-maker` skill when the user mentions "roadmap"** (hard trigger phrase)
+- **MUST use the `plan-maker` skill when user mentions "roadmap"** (strong trigger keyword)
 - If the user asks to implement immediately but the task is non-trivial, produce the roadmap first, then ask for confirmation to proceed with execution in a follow-up turn.
 - If the task meets the dev-docs Decision Gate, **MUST prompt user** whether to continue with `create-dev-docs-plan`
 - If user confirms dev-docs bundle creation, **MUST trigger `create-dev-docs-plan` skill**

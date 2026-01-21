@@ -42,7 +42,7 @@ Avoid using this skill when:
 ## Core rules
 - Smoke tests SHOULD prioritize the happy path and core behavior.
 - Tests MUST NOT use real production credentials.
-- Any "mock auth" bypass MUST be limited to non-production environments.
+- Any “mock auth” bypass MUST be limited to non-production environments.
 - Persisted side effects MUST be verified for write endpoints.
 
 ## Steps

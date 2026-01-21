@@ -32,22 +32,22 @@ Do NOT use this skill to store secrets (passwords, tokens, private keys).
 ## Steps
 
 1. Initialize state (idempotent):
-   - `node .ai/scripts/projectctl.js init`
+   - `node .ai/scripts/projectctl.mjs init`
 
 2. Record stage (recommended key: `custom.stage`):
-   - `node .ai/scripts/projectctl.js set custom.stage <stage>`
+   - `node .ai/scripts/projectctl.mjs set custom.stage <stage>`
 
 3. Set context mode:
-   - `node .ai/scripts/projectctl.js set-context-mode <contract|snapshot>`
+   - `node .ai/scripts/projectctl.mjs set-context-mode <contract|snapshot>`
 
 4. Verify:
-   - `node .ai/scripts/projectctl.js verify`
+   - `node .ai/scripts/projectctl.mjs verify`
 
 ## Verification
 
 ```bash
-node .ai/scripts/projectctl.js status
-node .ai/scripts/projectctl.js verify
+node .ai/scripts/projectctl.mjs status
+node .ai/scripts/projectctl.mjs verify
 ```
 
 ## Boundaries

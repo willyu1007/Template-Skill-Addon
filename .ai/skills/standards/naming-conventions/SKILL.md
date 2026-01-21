@@ -14,19 +14,12 @@ Define naming conventions for directories, files, and identifiers with these goa
 
 ## When to use
 
-Use the `naming-conventions` skill when:
+Use the naming-conventions skill when:
 - Creating new directories or files
 - Naming skills, workflows, or commands
 - Reviewing code for naming consistency
 - Setting up CI checks for naming standards
-- **Scripts generating files**: scripts that create new files/directories MUST read `naming-conventions` first
-
-### For Scripts
-
-If your script generates files or directories, import or reference the `naming-conventions` skill to ensure consistent naming:
-- Skill path: `.ai/skills/standards/naming-conventions/SKILL.md`
-- Apply kebab-case rules to all generated paths
-- Validate output names against the conventions before writing
+- **Scripts generating files** (see Script Integration below)
 
 ## Inputs
 
@@ -42,9 +35,30 @@ If your script generates files or directories, import or reference the `naming-c
 ## Steps
 1. Identify what you are naming (file, directory, module, component, hook, API surface, configuration key, or data entity).
 2. Choose the most relevant convention section below and follow the MUST rules first.
-3. Propose 2-3 candidates and select the one that matches existing local conventions and avoids ambiguous abbreviations.
+3. Propose 2–3 candidates and select the one that matches existing local conventions and avoids ambiguous abbreviations.
 4. Apply the chosen name consistently across declarations and references (imports, exports, docs, and tests).
 5. Verify that the resulting names are searchable, unambiguous, and do not collide with existing names.
+
+## Script Integration (MUST)
+
+Scripts that generate files MUST follow the naming conventions defined in the naming-conventions skill.
+
+**Requirements:**
+- Declare a reference to the naming-conventions skill in script header comments
+- Generated file/directory names MUST use kebab-case
+- Validate output names against convention rules before writing
+
+**Reference comment example:**
+```javascript
+/**
+ * @reference .ai/skills/standards/naming-conventions/SKILL.md
+ */
+```
+
+**Implementation guidance:**
+- Import or read the naming-conventions skill path when generating output paths
+- Scripts under `.ai/scripts/` should programmatically validate generated names
+- When scaffolding projects, apply kebab-case to all generated directories/files
 
 ## Global Rules (MUST)
 
@@ -63,8 +77,6 @@ If your script generates files or directories, import or reference the `naming-c
   - `.ai/skills/` (skills and workflows live here)
   - `.ai/scripts/` (maintenance scripts)
   - `.ai/rules/` (if using rules)
-  - `.ai/llm-config/` (LLM configuration and registries)
-  - `.ai/.tmp/` (temporary files, gitignored - see "Temporary Files" section)
 
 ### Skill Entry Stubs
 
@@ -74,13 +86,32 @@ If your script generates files or directories, import or reference the `naming-c
 
 Notes:
 - Stubs contain only `SKILL.md` pointers back to `.ai/skills/`
-- Do not edit stub directories directly; regenerate with `.ai/scripts/sync-skills.cjs`
+- Do not edit stub directories directly; regenerate with `.ai/scripts/sync-skills.mjs`
 
 ### Other Top-Level Directories (Recommended)
 
 - `docs/project/`: project-specific documentation (requirements, blueprints)
 - `scripts/`: script entrypoints (cross-platform can share the same base name with different suffixes)
 - `init/`: bootstrap materials (if present)
+
+### Temporary Directory (MUST)
+
+Use `.ai/.tmp/` for temporary environments, caches, and generated intermediate files.
+
+**Rules:**
+- All temporary files MUST be placed under `.ai/.tmp/`
+- Do NOT create `temp/`, `tmp/`, `temporary/`, or similar directories elsewhere
+- `.ai/.tmp/` SHOULD be added to `.gitignore`
+- Script-generated artifacts, build caches, and intermediate outputs go here
+
+**Usage examples:**
+- `.ai/.tmp/cache/` - cached data for scripts
+- `.ai/.tmp/build/` - intermediate build outputs
+- `.ai/.tmp/sandbox/` - temporary test environments
+
+**Cleanup:**
+- Scripts are responsible for cleaning up their own temporary files
+- Stale files in `.ai/.tmp/` may be deleted without notice
 
 ## Skill Naming (MUST)
 
@@ -112,44 +143,33 @@ Examples:
 - Name by intent/process: `refactor-planner`, `release-checklist`
 - Path: `.ai/skills/.../<workflow-name>/SKILL.md`
 
-## Temporary Files and Environments (MUST)
+## Template Placeholder Conventions (MUST)
 
-When scripts or workflows need to create temporary files or staging environments:
+Use consistent placeholder formats in template files:
 
-### Designated Temporary Directory
+| Format | Usage | Example |
+|--------|-------|---------|
+| `<placeholder>` | User-editable content (manual fill) | `<Task Title>`, `<One-sentence goal>` |
+| `{{variable}}` | Script-replaced variables (auto-generated) | `{{agent_id}}`, `{{timestamp}}` |
+| `$ENV_VAR` | Environment variable reference | `$DATABASE_URL`, `$API_KEY` |
 
-- **Path**: `.ai/.tmp/`
-- **Purpose**: temporary/intermediate files, staging environments, build artifacts
-- **Lifecycle**: contents may be deleted at any time; do not store persistent data here
+**Rules:**
+- `<placeholder>`: Angle brackets indicate the user must replace this content manually
+- `{{variable}}`: Double curly braces indicate scripts will substitute this value automatically
+- Do NOT mix formats in the same context (e.g., don't use `<var>` for script substitution)
+- Template files SHOULD include comments explaining which placeholders are user-filled vs auto-replaced
 
-### Usage Guidelines
+**Examples:**
 
-Use `.ai/.tmp/` for:
-- Temporary test environments or sandboxes
-- Intermediate build or generation outputs
-- Staging files before final placement
-- Script-generated scratch data
+```markdown
+# User-filled template (roadmap.md)
+## Goal
+- <One-sentence goal statement>
 
-### Naming within `.ai/.tmp/`
-
-- Use descriptive subdirectories: `.ai/.tmp/<script-name>/`, `.ai/.tmp/<task-name>/`
-- Include timestamps for disambiguation if needed: `.ai/.tmp/build-2024-01-15/`
-- Clean up after task completion when possible
-
-### .gitignore Requirement
-
-Ensure `.ai/.tmp/` is listed in `.gitignore`:
-
+# Script-generated template (verification-report.md)
+- Agent ID: {{agent_id}}
+- Generated: {{timestamp}}
 ```
-# Temporary files
-.ai/.tmp/
-```
-
-### Boundaries
-
-- Do NOT use project root for temporary files
-- Do NOT create ad-hoc `temp/`, `tmp/`, or `scratch/` directories elsewhere
-- Do NOT commit contents of `.ai/.tmp/` to version control
 
 ## Versioning and Changes (SHOULD)
 

@@ -23,11 +23,11 @@ Use this skill when you are:
 ## Outputs
 - A directory layout proposal and migration plan
 - Naming conventions for files and exports
-- A "public API" pattern for features
+- A “public API” pattern for features
 
 ## Rules
 - Features SHOULD be self-contained and expose a small public surface.
-- Shared components SHOULD be truly reusable; avoid dumping ground "common" folders.
+- Shared components SHOULD be truly reusable; avoid dumping ground “common” folders.
 - Imports SHOULD prefer feature public exports over deep internal paths.
 
 ## Steps

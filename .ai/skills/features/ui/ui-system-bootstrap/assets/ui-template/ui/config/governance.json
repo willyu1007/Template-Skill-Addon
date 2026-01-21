@@ -40,7 +40,7 @@
   "tools": {
     "eslint": {
       "enabled": "auto",
-      "command": "npx eslint . --ext .ts,.tsx,.js,.jsx --format json --output-file {out}",
+      "command": "npx eslint . --ext .ts,.tsx,.mjs,.js,.jsx --format json --output-file {out}",
       "report": "eslint.json"
     },
     "stylelint": {

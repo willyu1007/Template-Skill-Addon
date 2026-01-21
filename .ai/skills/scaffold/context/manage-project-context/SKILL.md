@@ -41,23 +41,23 @@ Do NOT use this skill if:
 ## Steps
 
 1. Initialize the context layer (idempotent):
-   - `node .ai/skills/features/context-awareness/scripts/contextctl.js init`
+   - `node .ai/skills/features/context-awareness/scripts/contextctl.mjs init`
 
 2. If adding a new artifact, create the file under `docs/context/**`, then register it:
-   - `node .ai/skills/features/context-awareness/scripts/contextctl.js add-artifact --id <id> --type <type> --path <docs/context/...>`
+   - `node .ai/skills/features/context-awareness/scripts/contextctl.mjs add-artifact --id <id> --type <type> --path <docs/context/...>`
 
 3. Edit the artifact file (for example `docs/context/api/openapi.yaml`).
 
 4. Update registry checksums after edits:
-   - `node .ai/skills/features/context-awareness/scripts/contextctl.js touch`
+   - `node .ai/skills/features/context-awareness/scripts/contextctl.mjs touch`
 
 5. Verify consistency (CI-ready):
-   - `node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict`
+   - `node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --strict`
 
 ## Verification
 
 ```bash
-node .ai/skills/features/context-awareness/scripts/contextctl.js verify --strict
+node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --strict
 ```
 
 ## Boundaries

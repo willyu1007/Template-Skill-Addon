@@ -2,7 +2,7 @@
 # - Uses canonical pnpm scripts for each suite
 # - Uploads suite artifacts even on failure
 #
-# - Optional: run `node .ai/skills/features/ci/scripts/cictl.js init` to create `ci/config.json` metadata
+# - Optional: run `node .ai/skills/features/ci/scripts/cictl.mjs init` to create `ci/config.json` metadata
 #
 # NOTE: Adjust Node version, variables, and which jobs are MR-gated for your repo.
 
@@ -82,7 +82,7 @@ perf-k6-smoke:
   before_script:
     - mkdir -p artifacts/k6
   script:
-    - k6 run tests/perf/k6/scripts/smoke.js --summary-export artifacts/k6/summary.json
+    - k6 run tests/perf/k6/scripts/smoke.mjs --summary-export artifacts/k6/summary.json
   variables:
     BASE_URL: ${API_BASE_URL}
     API_TOKEN: ${API_TOKEN}
