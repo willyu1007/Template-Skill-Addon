@@ -43,7 +43,11 @@ Template repository. Users clone the repository to start new AI-friendly project
   - If the task is trivial (<30 min), provide an in-chat plan (do NOT write under `dev-docs/`).
   - If the task needs context preservation (multi-session, handoff) or qualifies as complex, follow `dev-docs/AGENTS.md` and use dev-docs workflows.
 
+## Workspace Safety (MUST)
 
+- NEVER create/copy/clone this repository into any subdirectory of itself (no nested repo copies).
+- Create throwaway test repos **outside** the repo root (OS temp or a sibling directory) and delete them after verification.
+- Keep temporary workspaces shallow: if a path is getting deeply nested or has exceeded **12 path segments** total;, stop and clean up instead of continuing.
 
 <!-- DB-SSOT:START -->
 ## Database SSOT and schema synchronization
