@@ -30,48 +30,32 @@ New files/directories (created if missing):
 
 ## Install
 
-### Option A: Via init pipeline (recommended)
-
-Enable in your blueprint:
-
-```json
-{
-  "features": {
-    "contextAwareness": true
-  },
-  "context": {
-    "enabled": true,
-    "mode": "contract",
-    "environments": ["dev", "staging", "prod"]
-  }
-}
-```
-
-Then run:
-
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply \
-  --blueprint init/project-blueprint.json
-```
-
-### Option B: Materialize templates manually
-
-If you are not using the init pipeline, you can materialize the feature templates directly:
+To install (without relying on any bootstrap pipeline):
 
 1. Copy the feature templates into the repository root (merge, copy-if-missing):
    - Source: `.ai/skills/features/context-awareness/templates/`
    - Destination: repo root
 2. Initialize (idempotent):
-	   ```bash
-	   node .ai/scripts/projectctl.mjs init
-	   node .ai/scripts/projectctl.mjs set-context-mode contract
-	   node .ai/scripts/projectctl.mjs set context.enabled true
-	   node .ai/skills/features/context-awareness/scripts/contextctl.mjs init
-	   ```
-3. (Optional) Enable the `context-core` pack and sync wrappers:
-   ```bash
-   node .ai/skills/_meta/skillpacksctl.mjs enable-pack context-core --providers both
-   ```
+
+```bash
+node .ai/scripts/projectctl.mjs init
+node .ai/scripts/projectctl.mjs set features.contextAwareness true
+node .ai/scripts/projectctl.mjs set context.enabled true
+node .ai/scripts/projectctl.mjs set-context-mode contract
+node .ai/skills/features/context-awareness/scripts/contextctl.mjs init
+```
+
+3. After editing any context artifacts, refresh checksums:
+
+```bash
+node .ai/skills/features/context-awareness/scripts/contextctl.mjs touch
+```
+
+4. (Optional) Enable the `context-core` pack and sync wrappers:
+
+```bash
+node .ai/skills/_meta/skillpacksctl.mjs enable-pack context-core --providers both
+```
 
 
 ## Environment Configuration

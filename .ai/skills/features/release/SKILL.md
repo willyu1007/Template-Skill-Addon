@@ -22,20 +22,6 @@ Controller script (provided by the template SSOT):
 
 ## How to enable
 
-### During init (recommended)
-
-In `init/project-blueprint.json`:
-
-- Set `features.release = true`
-
-Then run:
-
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --providers both
-```
-
-### In an existing repo
-
 1. Copy templates from:
    - `.ai/skills/features/release/templates/`
    into the repo root.
@@ -44,6 +30,13 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs 
 ```bash
 node .ai/skills/features/release/scripts/releasectl.mjs init
 node .ai/skills/features/release/scripts/releasectl.mjs verify
+```
+
+Optional (recommended for LLM routing): record the flag in project state:
+
+```bash
+node .ai/scripts/projectctl.mjs init
+node .ai/scripts/projectctl.mjs set features.release true
 ```
 
 ## Operating rules

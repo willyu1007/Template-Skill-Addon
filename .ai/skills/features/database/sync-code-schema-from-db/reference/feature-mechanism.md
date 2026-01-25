@@ -23,28 +23,7 @@ New files/directories (created if missing):
 
 ## Install
 
-### Option A: Via init pipeline (recommended)
-
-Enable in your blueprint:
-
-```json
-{
-  "db": {
-    "ssot": "database"
-  },
-  "features": {
-    "database": true
-  }
-}
-```
-
-Then run Stage C apply:
-
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --blueprint init/project-blueprint.json
-```
-
-### Option B: Install manually
+### Install manually
 
 1. Copy templates from:
 
@@ -56,6 +35,13 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs 
    ```bash
    node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs init
    ```
+
+Optional (recommended for LLM routing): record the flag in project state:
+
+```bash
+node .ai/scripts/projectctl.mjs init
+node .ai/scripts/projectctl.mjs set features.database true
+```
 
 
 ## Usage

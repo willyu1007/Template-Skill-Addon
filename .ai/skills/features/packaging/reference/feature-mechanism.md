@@ -24,31 +24,7 @@ New files/directories (created if missing):
 
 ## Install
 
-### Option A: Via init pipeline (recommended)
-
-Enable in your blueprint:
-
-```json
-{
-  "features": {
-    "packaging": true
-  },
-  "packaging": {
-    "enabled": true,
-    "containerize": true,
-    "targets": ["services", "jobs"],
-    "registry": "ghcr.io/${GITHUB_REPOSITORY}"
-  }
-}
-```
-
-Then run:
-
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --blueprint init/project-blueprint.json
-```
-
-### Option B: Install manually
+### Install manually
 
 1. Materialize templates into the repository root:
    - From: `.ai/skills/features/packaging/templates/`
@@ -58,6 +34,13 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs 
    ```bash
    node .ai/skills/features/packaging/scripts/packctl.mjs init
    ```
+
+Optional (recommended for LLM routing): record the flag in project state:
+
+```bash
+node .ai/scripts/projectctl.mjs init
+node .ai/scripts/projectctl.mjs set features.packaging true
+```
 
 ## Usage
 

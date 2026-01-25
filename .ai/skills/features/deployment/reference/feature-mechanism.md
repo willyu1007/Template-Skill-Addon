@@ -25,28 +25,7 @@ New files/directories (created if missing):
 
 ## Install
 
-### Option A: Via init pipeline (recommended)
-
-Enable in your blueprint:
-
-```json
-{
-  "features": {
-    "deployment": true
-  },
-  "deployment": {
-    "enabled": true
-  }
-}
-```
-
-Then run Stage C apply:
-
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply   --blueprint init/project-blueprint.json
-```
-
-### Option B: Manual
+### Manual
 
 1. Copy templates from `.ai/skills/features/deployment/templates/` into the repo root (merge / copy-if-missing).
 2. Initialize:
@@ -59,6 +38,13 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs 
    ```bash
    node .ai/skills/features/deployment/scripts/deployctl.mjs verify
    ```
+
+Optional (recommended for LLM routing): record the flag in project state:
+
+```bash
+node .ai/scripts/projectctl.mjs init
+node .ai/scripts/projectctl.mjs set features.deployment true
+```
 
 
 ## Usage

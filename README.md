@@ -19,8 +19,8 @@ This repository is a starter template for building **LLM-first** codebases with:
 init/                         # Project bootstrap kit (Stage A/B/C)
   README.md
   AGENTS.md
-  stages/
-  skills/                     # Init-related workflow skill + scripts/templates
+  _tools/                     # Shipped init tools/docs (skills, stages, feature docs)
+  _work/                      # Runtime artifacts (created during init)
 
 .ai/
   skills/                     # SSOT skills (edit here only)
@@ -52,9 +52,9 @@ node .ai/scripts/sync-skills.mjs --scope current --providers both --mode reset -
 
 ## Optional features (no-addon template)
 
-This template does **not** ship an `addons/` directory. Optional features are materialized during init **Stage C** based on `init/project-blueprint.json`:
+This template does **not** ship an `addons/` directory. Optional features are materialized during init **Stage C** based on `init/_work/project-blueprint.json`:
 
-- Feature toggles: `features.*` (see `init/feature-docs/README.md`)
+- Feature toggles: `features.*` (see `init/_tools/feature-docs/README.md`)
 - Assets live under `.ai/skills/features/**/templates` and `.ai/scripts/*ctl.mjs`
 - Stage C `apply` copies templates (copy-if-missing by default) and runs `*ctl.mjs init`
 

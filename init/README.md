@@ -1,188 +1,154 @@
 # Init kit (robust 3-stage pipeline)
 
-> Human-facing documentation. If you are an LLM/AI assistant, skip the file to save tokens and follow `init/AGENTS.md` instead.
+> Human-facing documentation. If you are an LLM/AI assistant, skip this file and follow `init/AGENTS.md` instead.
 
 The `init/` package provides a 3-stage, checkpointed workflow to bootstrap a repository from requirements:
 
-- **Stage A**: Requirements docs (working location: `init/stage-a-docs/`)
-- **Stage B**: Blueprint (working location: `init/project-blueprint.json`)
+- **Stage A**: Requirements docs → `init/_work/stage-a-docs/`
+- **Stage B**: Blueprint → `init/_work/project-blueprint.json`
 - **Stage C**: Scaffold + configs + skill packs + features + wrapper sync
 
-It is designed for **robustness and auditability**:
-- Each stage has a **validation step** (written into `init/.init-state.json`)
-- Stage transitions require **explicit user approval** (`approve` command)
-- Optional features are materialized **only when enabled in the blueprint** (`features.*`)
+---
 
-> **Working directory vs. final location**: During initialization, all working files are stored in `init/`. After completion, use `cleanup-init --archive` to move Stage A docs + blueprint + init state to `docs/project/overview/` for long-term retention (keep SSOT files in `docs/project/` clean).
+## Flow overview
+
+```mermaid
+flowchart TD
+    subgraph PreInit [Pre-Init]
+        Start([start --lang zh/en])
+        StartHere[init/START-HERE.md]
+        InitBoard[init/INIT-BOARD.md]
+    end
+
+    subgraph StageA [Stage A: Requirements]
+        A1[Fill Stage A docs]
+        A2[check-docs --strict]
+        A3[approve --stage A]
+    end
+
+    subgraph StageB [Stage B: Blueprint]
+        B1[Fill blueprint JSON]
+        B2[validate]
+        B3[suggest-packs / suggest-features]
+        B4[approve --stage B]
+    end
+
+    subgraph StageC [Stage C: Apply]
+        C1[apply --providers both]
+        C2[skill-retention]
+        C3[update-root-docs]
+        C4[approve --stage C]
+    end
+
+    subgraph PostInit [Post-Init]
+        Cleanup[cleanup-init --archive]
+        Archive[docs/project/overview/]
+    end
+
+    Start --> StartHere
+    Start --> InitBoard
+    StartHere --> A1
+    A1 --> A2
+    A2 -->|pass| A3
+    A2 -->|fail| A1
+    A3 --> B1
+    B1 --> B2
+    B2 -->|pass| B3
+    B2 -->|fail| B1
+    B3 --> B4
+    B4 --> C1
+    C1 --> C2
+    C2 --> C3
+    C3 --> C4
+    C4 --> Cleanup
+    Cleanup --> Archive
+```
 
 ---
 
-## Quick start (run from repo root)
+## Entry points
 
-### 0) Initialize state
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs start --repo-root .
-```
-
-The command creates:
-- `init/stage-a-docs/` - Stage A document templates
-- `init/project-blueprint.json` - Blueprint template
-- `init/.init-state.json` - State tracking file
-
-### Check progress / next checkpoint
-
-```bash
-# Current progress (prints guidance when not started yet)
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs status --repo-root .
-
-# Next checkpoint actions (requires init state; exits non-zero if `start` was not run)
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs advance --repo-root .
-```
-
-### Preflight (recommended): terminology alignment
-
-Before drafting Stage A docs, ask whether the user wants to align/confirm terminology now.
-
-- If YES (sync): use `init/stage-a-docs/domain-glossary.md` as the terminology SSOT and align terms across Stage A docs.
-- If NO (skip): record the decision in `init/stage-a-docs/domain-glossary.md` and continue.
-
-See: `init/stages/00-preflight-terminology.md`.
-
-### 1) Stage A: validate docs -> approve
-```bash
-# Edit templates in init/stage-a-docs/, then validate:
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs check-docs \
-  --repo-root . \
-  --strict
-
-# After the user explicitly approves Stage A:
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage A --repo-root .
-```
-
-### 2) Stage B: validate blueprint -> approve
-```bash
-# Edit init/project-blueprint.json, then validate:
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate \
-  --repo-root .
-
-# Optional: report recommended packs/features
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-packs \
-  --repo-root .
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-features \
-  --repo-root .
-
-# After the user explicitly approves Stage B:
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage B --repo-root .
-```
-
-### 3) Stage C: apply scaffold/configs/packs/features/wrappers -> approve
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply \
-  --repo-root . \
-  --providers both
-
-# After the user explicitly approves Stage C:
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage C --repo-root .
-```
-
-### 4) Optional: cleanup after init
-
-**Option A: Remove `init/` only** (Stage A docs and blueprint will be deleted)
-
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs cleanup-init \
-  --repo-root . \
-  --apply \
-  --i-understand
-```
-
-**Option B: Archive to `docs/project/overview/` + remove `init/`** (recommended for retaining docs)
-
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs cleanup-init \
-  --repo-root . \
-  --apply \
-  --i-understand \
-  --archive
-```
-
-The command archives Stage A docs + blueprint + init state to `docs/project/overview/`, then removes `init/`.
+| File | Purpose | Edit? |
+|------|---------|-------|
+| `init/START-HERE.md` | Human/LLM entry + running log | Yes (LLM-maintained) |
+| `init/INIT-BOARD.md` | Auto-generated status board | No |
+| `init/_work/AGENTS.md` | Workdir rules + SSOT guidance | Reference |
 
 ---
 
-## Blueprint anatomy
+## Quick start
 
-The blueprint schema is:
+```bash
+# 1. Initialize (choose zh or en)
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs start --repo-root . --lang <zh|en>
 
-- `init/skills/initialize-project-from-requirements/templates/project-blueprint.schema.json`
+# 2. Check progress
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs status --repo-root .
 
-Key sections:
+# 3. See next actions
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs advance --repo-root .
+```
 
-- `project.*`: name, description, and domain basics
-- `db.ssot`: database schema single-source-of-truth
-  - `none` | `repo-prisma` | `database`
-- `context.*`: context configuration (does not enable the feature by itself)
-- `capabilities.*`: informs scaffold and pack selection
-- `features.*`: optional features to materialize during Stage C
+After `start`, open `init/START-HERE.md` (your entry) and `init/INIT-BOARD.md` (auto status).
+
+---
+
+## Stage flow summary
+
+| Stage | Action | Validate | Approve |
+|-------|--------|----------|---------|
+| A | Fill Stage A docs | `check-docs --strict` | `approve --stage A` |
+| B | Fill blueprint | `validate` | `approve --stage B` |
+| C | Run apply | `apply --providers both` | `approve --stage C` |
+
+For detailed stage instructions, see `init/_tools/skills/initialize-project-from-requirements/SKILL.md`.
+
+---
+
+## Key principles
+
+- **Do not skip stages**: complete A → B → C in order
+- **Explicit approval**: every stage transition requires user confirmation
+- **Validation gates**: each stage has a validation step before approval
+
+---
+
+## Blueprint overview
+
+Schema: `init/_tools/skills/initialize-project-from-requirements/templates/project-blueprint.schema.json`
+
+| Section | Purpose |
+|---------|---------|
+| `project.*` | Name, description |
+| `repo.*` | Language, package manager, layout |
+| `capabilities.*` | Frontend, backend, database, API |
+| `db.ssot` | Database SSOT mode: `none` / `repo-prisma` / `database` |
+| `features.*` | Optional features to enable in Stage C |
+
+---
 
 ## Optional features
 
-This template does **not** ship an `addons/` directory. Feature assets are integrated under `.ai/`:
+For feature details and configuration, see:
+- `init/_tools/feature-docs/README.md` (feature overview)
+- `init/_tools/feature-docs/*.md` (per-feature docs)
 
-- Feature skills + templates: `.ai/skills/features/...`
-- Feature controllers: `.ai/skills/features/**/scripts/*` (Node/Python)
-- Cross-cutting controllers: `.ai/scripts/*` (e.g., `projectctl.mjs`, `dbssotctl.mjs`)
-- Project state (feature flags): `.ai/project/state.json`
+---
 
-Stage C `apply` materializes a feature by copying templates into the repo (when the feature has templates) and running the corresponding control scripts (typically under `.ai/skills/features/**/scripts/`, plus cross-cutting `.ai/scripts/projectctl.mjs` for feature state).
-
-Note (Windows): `python3` may not exist on PATH. Use `python` instead. (Stage C `apply` will try `python3` then `python`.)
-
-| Feature | Blueprint toggle | Materializes | Control script(s) |
-|---------|------------------|--------------|----------------|
-| Context awareness | `features.contextAwareness` | `docs/context/**`, `config/environments/**` | `node .ai/skills/features/context-awareness/scripts/contextctl.mjs` |
-| Database | `features.database` (requires `db.ssot != none`) | `db/**` (when `db.ssot=database`), `prisma/**` (when `db.ssot=repo-prisma`) | `.ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs` (when `db.ssot=database`); `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs` (human interface) |
-| UI | `features.ui` | `ui/**`, `docs/context/ui/**` | `python3 .ai/skills/features/ui/ui-system-bootstrap/scripts/ui_specctl.py` |
-| Environment | `features.environment` | `env/**` (+ generated non-secret docs when `--verify-features`) | `python3 .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py` |
-| Packaging | `features.packaging` | `ops/packaging/**`, `docs/packaging/**` | `node .ai/skills/features/packaging/scripts/packctl.mjs` |
-| Deployment | `features.deployment` | `ops/deploy/**` | `node .ai/skills/features/deployment/scripts/deployctl.mjs` |
-| CI | `features.ci` (requires `ci.provider`) | `.github/workflows/ci.yml` (GitHub) or `.gitlab-ci.yml` (GitLab), `ci/**` | `node .ai/skills/features/ci/scripts/cictl.mjs` |
-| Observability | `features.observability` (requires context awareness) | `docs/context/observability/**`, `observability/**` | `node .ai/skills/features/observability/scripts/obsctl.mjs` |
-| Release | `features.release` | `release/**`, `.releaserc.json.template` | `node .ai/skills/features/release/scripts/releasectl.mjs` |
-
-For feature-specific details, see:
-
-- `init/feature-docs/README.md`
-- `.ai/skills/features/<feature-id>/**/SKILL.md`
-
-## Feature selection workflow (Stage B -> Stage C)
-
-### Key rules
-
-- You MUST set `features.<id>: true` to install a feature during Stage C.
-- `context.*`, `db.*`, `packaging.*`, `deploy.*`, `release.*`, and `observability.*` are configuration only; they do not install features by themselves.
-- Stage C is non-destructive: setting `features.<id>: false` later will NOT uninstall previously created files.
-
-### Recommended steps
-
-1) Fill `capabilities.*`, `db.*` (especially `db.ssot`), and any feature configuration sections.
-
-2) Ask the pipeline for recommendations:
+## Post-init options
 
 ```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-features --repo-root .
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-packs --repo-root .
+# Remove init/ (no archive)
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs cleanup-init --repo-root . --apply --i-understand
+
+# Archive to docs/project/overview/ + remove init/
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs cleanup-init --repo-root . --apply --i-understand --archive
 ```
 
-3) Decide which features to keep, then set `features.*` explicitly (or safe-add via `--write`):
+---
 
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-features --repo-root . --write
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root .
-```
+## More information
 
-## Apply flags (Stage C)
-
-- `--force-features`: overwrite existing feature files when materializing templates
-- `--verify-features`: run `*ctl.mjs verify` after `init` (fail-fast by default)
-- `--non-blocking-features`: continue despite feature init/verify errors (not recommended)
+- LLM guidance: `init/AGENTS.md`
+- Command reference: `init/_tools/skills/initialize-project-from-requirements/SKILL.md`
+- Detailed reference: `init/_tools/skills/initialize-project-from-requirements/reference.md`

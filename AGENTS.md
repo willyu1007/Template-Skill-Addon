@@ -11,7 +11,7 @@ Template repository. Users clone the repository to start new AI-friendly project
 | Directory | Purpose | Entry Point |
 |-----------|---------|-------------|
 | `init/` | Project initialization | `init/AGENTS.md` |
-| `init/feature-docs/` | Optional feature documentation | `init/feature-docs/README.md` |
+| `init/_tools/feature-docs/` | Optional feature documentation | `init/_tools/feature-docs/README.md` |
 | `.ai/` | Skills, scripts, LLM governance | `.ai/AGENTS.md` |
 | `dev-docs/` | Complex task documentation | `dev-docs/AGENTS.md` |
 | `.codex/` | Codex skill stubs (generated) | - |

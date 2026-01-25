@@ -21,30 +21,7 @@ New files/directories (created if missing):
 
 ## Install
 
-### Option A: Via init pipeline (recommended)
-
-Enable in your blueprint:
-
-```json
-{
-  "features": {
-    "release": true
-  },
-  "release": {
-    "enabled": true,
-    "strategy": "semantic",
-    "changelog": true
-  }
-}
-```
-
-Then run Stage C apply:
-
-```bash
-node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply --blueprint init/project-blueprint.json
-```
-
-### Option B: Manual install
+### Manual install
 
 1. Copy templates into the repository root:
    - `.ai/skills/features/release/templates/`
@@ -52,6 +29,13 @@ node init/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs 
 
 ```bash
 node .ai/skills/features/release/scripts/releasectl.mjs init --strategy semantic
+```
+
+Optional (recommended for LLM routing): record the flag in project state:
+
+```bash
+node .ai/scripts/projectctl.mjs init
+node .ai/scripts/projectctl.mjs set features.release true
 ```
 
 ## Usage
