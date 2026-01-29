@@ -14,7 +14,8 @@ Standardize how the project versions, changelogs, and release execution are trac
 When enabled, this feature materializes:
 
 - `release/**` (checklists, config, templates)
-- `.releaserc.json.template` (seed for semantic-release or similar tools)
+- `release/CHANGELOG.md` (seeded from `release/changelog-template.md` if missing)
+- `release/.releaserc.json.template` (seed for semantic-release or similar tools)
 
 Controller script (provided by the template SSOT):
 
@@ -54,4 +55,4 @@ node .ai/skills/features/release/scripts/releasectl.mjs verify
 
 - Release actions (tagging/publishing) are human-executed unless CI is explicitly configured.
 - Do not store credentials/tokens in repo; keep release metadata/config non-secret.
-- Keep changes within the declared blast radius (`release/**`, `.releaserc.json.template`).
+- Keep changes within the declared blast radius (`release/**`, `release/.releaserc.json.template`).

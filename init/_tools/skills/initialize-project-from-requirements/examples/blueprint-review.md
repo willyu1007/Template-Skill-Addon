@@ -45,7 +45,13 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
 
 ## Approve Stage B
 
-After reviewing, approve Stage B (automatically marks packs as reviewed):
+After reviewing packs, confirm `blueprint.skills.packs`:
+
+```bash
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs review-packs --repo-root .
+```
+
+After reviewing, approve Stage B:
 
 ```bash
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage B --repo-root .

@@ -21,7 +21,7 @@ In `init/_work/project-blueprint.json`:
 
 When enabled, Stage C runs:
 
-Note (Windows): if `python3` is not available, use `python`.
+Note (Windows): prefer `py -3` (Python Launcher). The pipeline will also try `python3`, then `python`.
 
 ```bash
 python3 -B -S .ai/skills/features/ui/ui-system-bootstrap/scripts/ui_specctl.py init

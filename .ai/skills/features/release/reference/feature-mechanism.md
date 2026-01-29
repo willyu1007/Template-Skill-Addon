@@ -14,9 +14,10 @@ New files/directories (created if missing):
   - `release/AGENTS.md` (LLM guidance)
 - `release/config.json` (release configuration)
 - `release/changelog-template.md` (changelog template)
+- `release/CHANGELOG.md` (changelog; seeded from template if missing)
 - `release/workdocs/` (release planning)
 - `.ai/skills/features/release/scripts/releasectl.mjs` (release management)
-- `.releaserc.json.template` (semantic-release config template)
+- `release/.releaserc.json.template` (semantic-release config template)
 - `.ai/skills/features/release/` (feature documentation)
 
 ## Install

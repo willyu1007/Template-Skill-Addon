@@ -14,6 +14,16 @@
       "enum": ["en", "zh"],
       "description": "Default language for init-generated human docs (single language; do not mix within one init run)."
     },
+    "llm": {
+      "type": "object",
+      "description": "LLM-managed metadata (not used for pipeline stage gating).",
+      "properties": {
+        "language": {
+          "type": "string",
+          "description": "User-facing docs language (free-form; may be more than zh/en)."
+        }
+      }
+    },
     "stage": {
       "type": "string",
       "enum": ["A", "B", "C", "complete"],
@@ -57,6 +67,10 @@
           "type": "boolean",
           "description": "check-docs passed"
         },
+        "docsFingerprint": {
+          "type": "string",
+          "description": "SHA-256 fingerprint of Stage A docs at the last successful check-docs (normalized newlines)."
+        },
         "userApproved": {
           "type": "boolean",
           "description": "User explicitly approved Stage A outputs"
@@ -69,8 +83,20 @@
       "properties": {
         "drafted": { "type": "boolean" },
         "validated": { "type": "boolean" },
+        "blueprintFingerprint": {
+          "type": "string",
+          "description": "SHA-256 fingerprint of the blueprint at the last successful validate (canonical JSON)."
+        },
         "packsReviewed": { "type": "boolean" },
-        "userApproved": { "type": "boolean" }
+        "packsReviewedFingerprint": {
+          "type": "string",
+          "description": "SHA-256 fingerprint of the blueprint when packs were reviewed/confirmed."
+        },
+        "userApproved": { "type": "boolean" },
+        "approvedBlueprintFingerprint": {
+          "type": "string",
+          "description": "SHA-256 fingerprint of the blueprint at Stage B approval time."
+        }
       }
     },
     "stage-c": {
@@ -81,7 +107,23 @@
         "configsGenerated": { "type": "boolean" },
         "manifestUpdated": { "type": "boolean" },
         "wrappersSynced": { "type": "boolean" },
+        "appliedBlueprintFingerprint": {
+          "type": "string",
+          "description": "SHA-256 fingerprint of the blueprint used for the last successful apply."
+        },
+        "appliedProviders": {
+          "type": "string",
+          "description": "Providers used for the last successful apply (e.g. both/codex/claude)."
+        },
         "skillRetentionReviewed": { "type": "boolean" },
+        "skillRetentionTablePath": {
+          "type": "string",
+          "description": "Path to the skill retention table used for confirmation (repo-relative)."
+        },
+        "skillRetentionTableFingerprint": {
+          "type": "string",
+          "description": "SHA-256 fingerprint of the skill retention table at confirmation time (normalized newlines)."
+        },
         "userApproved": { "type": "boolean" }
       }
     },

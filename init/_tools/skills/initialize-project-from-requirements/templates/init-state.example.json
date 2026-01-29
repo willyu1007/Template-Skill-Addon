@@ -1,6 +1,7 @@
 {
   "version": 1,
   "language": "en",
+  "llm": { "language": "en" },
   "stage": "A",
   "createdAt": "2020-01-01T00:00:00.000Z",
   "stage-a": {

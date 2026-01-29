@@ -1,4 +1,4 @@
-# init/_work (Init Workdir) — Rules of the Road
+# init/_work (Init Workdir) - Rules of the Road
 
 `init/_work/` is the **working directory** for the init pipeline. The directory holds the stage outputs (human SSOT + machine SSOT) and the pipeline-owned runtime state that drives the status board.
 
@@ -8,7 +8,8 @@
   - Stage A: `init/_work/stage-a-docs/*` (human-readable SSOT)
   - Stage B: `init/_work/project-blueprint.json` (machine-readable SSOT)
 - Keep Stage A outputs in **one language per init run** (choose once via `start --lang <zh|en>`; do not mix languages across Stage A docs).
-- Do **not** hand-edit `init/_work/.init-state.json`. The pipeline owns the state file and uses the state to keep `init/INIT-BOARD.md` accurate.
+- Do **not** hand-edit pipeline-owned fields in `init/_work/.init-state.json`. The pipeline owns the state file and uses it as the audit trail.
+  - Exception: the LLM MAY add/update `llm.language` (string; free-form) to drive user-facing docs in any language.
 - Do **not** commit raw materials (PDFs/screenshots/spreadsheets) into the repo as part of init. Instead, record **links + extracted decisions**:
   - Register sources in `init/START-HERE.md`
   - Write decisions into Stage A docs and/or the blueprint
@@ -23,7 +24,8 @@
 
 - `init/_work/.init-state.json` (pipeline-owned runtime state)
   - Created/updated by the pipeline.
-  - Do not edit manually.
+  - Do not edit pipeline-owned fields manually.
+  - Exception: the LLM MAY add/update `llm.language` (string; free-form).
   - To restart from scratch: delete `init/_work/.init-state.json`, then re-run `start`.
 
 - `init/_work/stage-a-docs/` (Stage A: requirements SSOT)
@@ -42,6 +44,9 @@
   - Keep the blueprint **decision-oriented**: avoid implementation details that belong in code.
   - Validation (required):
     - `node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root . --blueprint init/_work/project-blueprint.json`
+  - Packs confirmation (required before Stage B approval):
+    - Have the user review `blueprint.skills.packs`, then run:
+      - `node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs review-packs --repo-root .`
 
 - `init/_work/skill-retention-table.template.md` (Stage C checkpoint artifact)
   - Required before approving Stage C.
@@ -49,8 +54,12 @@
 
 ## Relationship to the entry files (avoid info explosion)
 
-- `init/START-HERE.md` (manual): pre-Stage A intake, comms conventions, materials register, temporary questions.
-- `init/INIT-BOARD.md` (generated): the canonical “where are we and what’s next” view; refreshed implicitly after every pipeline command.
+- `init/START-HERE.md` (LLM-maintained): user-friendly intake + running notebook (key inputs, current conclusions, AI questions, folded archive).
+- `init/INIT-BOARD.md` (LLM-owned layout): concise stage/status board.
+  - The pipeline updates ONLY the machine snapshot block between:
+    - `<!-- INIT-BOARD:MACHINE_SNAPSHOT:START -->`
+    - `<!-- INIT-BOARD:MACHINE_SNAPSHOT:END -->`
+  - The rest of the file is owned by the LLM (layout/wording/sections).
 - `init/README.md` / `init/AGENTS.md`: human/LLM entrypoints for the overall init workflow.
 
 ## Recovery (missing files)

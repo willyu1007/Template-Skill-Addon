@@ -5,7 +5,7 @@
 
 Run these commands from repo root.
 
-> **Note**: During initialization, working files are stored in `init/` (Stage A docs in `init/_work/stage-a-docs/`, blueprint in `init/_work/project-blueprint.json`). The pipeline also maintains `init/INIT-BOARD.md` as an auto-updated status board. Optional: if you plan to remove `init/`, use `cleanup-init --archive` to archive artifacts to `docs/project/overview/`.
+> **Note**: During initialization, working files are stored in `init/` (Stage A docs in `init/_work/stage-a-docs/`, blueprint in `init/_work/project-blueprint.json`). The pipeline updates only the machine snapshot block inside `init/INIT-BOARD.md` after commands (it never rewrites the whole file). Optional: if you plan to remove `init/`, use `cleanup-init --archive` to archive artifacts to `docs/project/overview/`.
 
 ---
 
@@ -20,13 +20,24 @@ This creates:
 - `init/_work/project-blueprint.json` - Blueprint template
 - `init/_work/.init-state.json` - State tracking file
 
-Then open:
-- `init/START-HERE.md` (manual intake)
-- `init/INIT-BOARD.md` (auto-updated; do not edit)
+Then (LLM-driven):
+
+1) Set the user-facing doc language (free-form):
+```bash
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs set-llm-language --repo-root . --value "<language>"
+```
+
+2) Create:
+- `init/START-HERE.md` (LLM-maintained intake + notebook)
+- `init/INIT-BOARD.md` (LLM-owned layout; must include the machine snapshot markers)
+
+Templates:
+- `init/_tools/skills/initialize-project-from-requirements/templates/START-HERE.llm.template.md`
+- `init/_tools/skills/initialize-project-from-requirements/templates/INIT-BOARD.llm.template.md`
 
 ---
 
-## 1) Stage A: validate docs → approve
+## 1) Stage A: validate docs -> approve
 
 Edit the templates in `init/_work/stage-a-docs/`, then validate:
 
@@ -55,7 +66,7 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
 
 ---
 
-## 2) Stage B: validate blueprint → approve
+## 2) Stage B: validate blueprint -> approve
 
 Edit `init/_work/project-blueprint.json`, then validate:
 
@@ -71,7 +82,13 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
   --repo-root .
 ```
 
-After the user explicitly approves Stage B (automatically marks packs as reviewed):
+After the user reviews `blueprint.skills.packs`, confirm packs selection:
+
+```bash
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs review-packs --repo-root .
+```
+
+After the user explicitly approves Stage B:
 
 ```bash
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage B --repo-root .
@@ -79,12 +96,19 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
 
 ---
 
-## 3) Stage C: apply → approve
+## 3) Stage C: apply -> approve
 
 ```bash
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs apply \
   --repo-root . \
   --providers both
+```
+
+Skill retention (required before Stage C approval):
+
+```bash
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs skill-retention --repo-root .
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs skill-retention --repo-root . --apply
 ```
 
 After the user explicitly approves Stage C:

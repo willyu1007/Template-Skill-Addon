@@ -85,9 +85,9 @@ Run the checklist after drafting `project-blueprint.json`, **before** requesting
 
 - [ ] Does `skills.packs` include `workflows` (always required)?
 - [ ] Does `skills.packs` match the enabled capabilities?
-  - `backend.enabled` → `backend` pack
-  - `frontend.enabled` → `frontend` pack
-  - `database.enabled` → `data` pack
+  - `backend.enabled` -> `backend` pack
+  - `frontend.enabled` -> `frontend` pack
+  - `database.enabled` -> `data` pack
 - [ ] Are there no **extra** packs that don't match any capability?
 
 ### B4. Repo Layout
@@ -136,5 +136,5 @@ Run the checklist after `apply` command, **before** cleanup.
 ## Verification
 
 - Stage A: `check-docs --strict` should pass AND the quality checklist should pass.
-- Stage B: `validate` should pass AND the quality checklist should pass.
-- Stage C: `apply` should complete AND the quality checklist should pass.
+- Stage B: `validate` should pass AND `review-packs` should be confirmed AND the quality checklist should pass.
+- Stage C: `apply` should complete AND `skill-retention` should be confirmed AND the quality checklist should pass.

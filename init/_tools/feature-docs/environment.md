@@ -5,7 +5,7 @@
 - Treats `env/contract.yaml` as env var contract SSOT (no secrets in repo)
 - Scaffolds `env/values/*` and `env/secrets/*.ref.yaml` (secret refs only)
 - Writes the SSOT gate file: `docs/project/env-ssot.json`
-- Can generate non-secret artifacts: `.env.example`, `docs/env.md`, `docs/context/env/contract.json`
+- Can generate non-secret artifacts: `env/.env.example`, `docs/env.md`, `docs/context/env/contract.json`
 
 ## How to enable
 
@@ -21,7 +21,7 @@ In `init/_work/project-blueprint.json`:
 
 When enabled, Stage C runs:
 
-Note (Windows): if `python3` is not available, use `python`.
+Note (Windows): prefer `py -3` (Python Launcher). The pipeline will also try `python3`, then `python`.
 
 ```bash
 python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py init --root .
@@ -42,7 +42,7 @@ python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contra
 - `env/secrets/*.ref.yaml` (secret refs only; no values)
 - `env/inventory/*.yaml`
 - Generated (non-secret) artifacts when `generate` runs:
-  - `.env.example`
+  - `env/.env.example`
   - `docs/env.md`
   - `docs/context/env/contract.json`
 

@@ -169,7 +169,7 @@ function getChangelogTemplatePath(repoRoot) {
 }
 
 function getRootChangelogPath(repoRoot) {
-  return path.join(repoRoot, 'CHANGELOG.md');
+  return path.join(getReleaseDir(repoRoot), 'CHANGELOG.md');
 }
 
 function normalizeStrategy(strategy) {
@@ -293,7 +293,7 @@ All notable changes to this project will be documented in this file.
 `;
   actions.push(dryRun ? { op: 'write', path: changelogTemplatePath, mode: 'dry-run' } : writeFileIfMissing(changelogTemplatePath, changelogTemplateContent));
 
-  // Optional: seed CHANGELOG.md at repo root (copy-if-missing)
+  // Optional: seed release/CHANGELOG.md (copy-if-missing)
   const rootChangelogPath = getRootChangelogPath(repoRoot);
   if (dryRun) {
     actions.push({ op: 'write', path: rootChangelogPath, mode: 'dry-run' });
@@ -303,7 +303,7 @@ All notable changes to this project will be documented in this file.
   }
 
   // Optional: create .releaserc.json from template (copy-if-missing) for semantic strategy
-  const templateRc = path.join(repoRoot, '.releaserc.json.template');
+  const templateRc = path.join(releaseDir, '.releaserc.json.template');
   const rc = path.join(repoRoot, '.releaserc.json');
   if (normalizedStrategy === 'semantic') {
     actions.push(dryRun ? { op: 'write', path: rc, mode: 'dry-run' } : copyFileIfMissing(templateRc, rc));
@@ -359,7 +359,7 @@ function cmdPrepare(repoRoot, version) {
 
   console.log(`[ok] Prepared release: ${v}`);
   console.log('\nNext steps (human-executed):');
-  console.log('  1. Update CHANGELOG.md (or release/changelog-template.md) with release notes');
+  console.log('  1. Update release/CHANGELOG.md (use release/changelog-template.md as reference)');
   console.log('  2. Run tests and verify artifacts');
   console.log(`  3. Tag when ready: node .ai/skills/features/release/scripts/releasectl.mjs tag --version ${v}`);
 }
@@ -406,7 +406,7 @@ function cmdTag(repoRoot, version) {
   console.log(`  git push origin ${tag}`);
   console.log('');
   console.log('Notes:');
-  console.log('  - Ensure CHANGELOG.md is updated and committed before tagging.');
+  console.log('  - Ensure release/CHANGELOG.md is updated and committed before tagging.');
   console.log('  - If using semantic-release, prefer CI-driven tagging.');
 }
 
@@ -432,7 +432,7 @@ function cmdVerify(repoRoot) {
   if (config.changelog) {
     const changelogPath = getRootChangelogPath(repoRoot);
     if (!fs.existsSync(changelogPath)) {
-      warnings.push('CHANGELOG.md is missing (changelog enabled)');
+      warnings.push('release/CHANGELOG.md is missing (changelog enabled)');
     }
   }
 

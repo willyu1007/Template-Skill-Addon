@@ -4,8 +4,8 @@
 
 The `init/` package provides a 3-stage, checkpointed workflow to bootstrap a repository from requirements:
 
-- **Stage A**: Requirements docs → `init/_work/stage-a-docs/`
-- **Stage B**: Blueprint → `init/_work/project-blueprint.json`
+- **Stage A**: Requirements docs -> `init/_work/stage-a-docs/`
+- **Stage B**: Blueprint -> `init/_work/project-blueprint.json`
 - **Stage C**: Scaffold + configs + skill packs + features + wrapper sync
 
 ---
@@ -16,6 +16,7 @@ The `init/` package provides a 3-stage, checkpointed workflow to bootstrap a rep
 flowchart TD
     subgraph PreInit [Pre-Init]
         Start([start --lang zh/en])
+        SetLang([set-llm-language])
         StartHere[init/START-HERE.md]
         InitBoard[init/INIT-BOARD.md]
     end
@@ -30,7 +31,8 @@ flowchart TD
         B1[Fill blueprint JSON]
         B2[validate]
         B3[suggest-packs / suggest-features]
-        B4[approve --stage B]
+        B4[review-packs]
+        B5[approve --stage B]
     end
 
     subgraph StageC [Stage C: Apply]
@@ -45,8 +47,9 @@ flowchart TD
         Archive[docs/project/overview/]
     end
 
-    Start --> StartHere
-    Start --> InitBoard
+    Start --> SetLang
+    SetLang --> StartHere
+    SetLang --> InitBoard
     StartHere --> A1
     A1 --> A2
     A2 -->|pass| A3
@@ -56,7 +59,8 @@ flowchart TD
     B2 -->|pass| B3
     B2 -->|fail| B1
     B3 --> B4
-    B4 --> C1
+    B4 --> B5
+    B5 --> C1
     C1 --> C2
     C2 --> C3
     C3 --> C4
@@ -71,7 +75,7 @@ flowchart TD
 | File | Purpose | Edit? |
 |------|---------|-------|
 | `init/START-HERE.md` | Human/LLM entry + running log | Yes (LLM-maintained) |
-| `init/INIT-BOARD.md` | Auto-generated status board | No |
+| `init/INIT-BOARD.md` | Concise status board (LLM-owned layout; pipeline snapshot inside markers) | Yes (LLM-maintained) |
 | `init/_work/AGENTS.md` | Workdir rules + SSOT guidance | Reference |
 
 ---
@@ -79,27 +83,30 @@ flowchart TD
 ## Quick start
 
 ```bash
-# 1. Initialize (choose zh or en)
+# 1. Initialize pipeline state (choose zh or en)
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs start --repo-root . --lang <zh|en>
 
-# 2. Check progress
+# 2. Set user-facing doc language (free-form)
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs set-llm-language --repo-root . --value "<language>"
+
+# 3. Check progress
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs status --repo-root .
 
-# 3. See next actions
+# 4. See next actions
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs advance --repo-root .
 ```
 
-After `start`, open `init/START-HERE.md` (your entry) and `init/INIT-BOARD.md` (auto status).
+After `start` + language selection, ask the LLM to create `init/START-HERE.md` and `init/INIT-BOARD.md` from the templates under `init/_tools/skills/initialize-project-from-requirements/templates/`.
 
 ---
 
 ## Stage flow summary
 
-| Stage | Action | Validate | Approve |
-|-------|--------|----------|---------|
-| A | Fill Stage A docs | `check-docs --strict` | `approve --stage A` |
-| B | Fill blueprint | `validate` | `approve --stage B` |
-| C | Run apply | `apply --providers both` | `approve --stage C` |
+| Stage | Validate | Confirm | Approve |
+|-------|----------|---------|---------|
+| A | `check-docs --strict` | - | `approve --stage A` |
+| B | `validate` | `review-packs` | `approve --stage B` |
+| C | `apply --providers both` | `skill-retention` | `approve --stage C` |
 
 For detailed stage instructions, see `init/_tools/skills/initialize-project-from-requirements/SKILL.md`.
 
@@ -107,9 +114,10 @@ For detailed stage instructions, see `init/_tools/skills/initialize-project-from
 
 ## Key principles
 
-- **Do not skip stages**: complete A → B → C in order
+- **Do not skip stages**: complete A -> B -> C in order
 - **Explicit approval**: every stage transition requires user confirmation
 - **Validation gates**: each stage has a validation step before approval
+- **Staleness checks**: approvals require artifacts unchanged since the last validate/check
 
 ---
 

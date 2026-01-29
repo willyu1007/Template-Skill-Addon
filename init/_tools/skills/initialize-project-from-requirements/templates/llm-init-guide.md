@@ -8,42 +8,34 @@ Step-by-step guidance for an AI assistant to help a user complete project initia
 
 Before Phase 1:
 
-1. Ask the user to choose the doc language: `zh` or `en` (**single language per init run**).
-2. Run:
+1. Run (pipeline language is still `zh`/`en` for Stage A templates/validation):
    ```bash
    node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs start --repo-root . --lang <zh|en>
    ```
-3. Open:
-   - `init/START-HERE.md` (human/LLM entry; safe to edit)
-   - `init/INIT-BOARD.md` (auto-updated status board; do not edit)
+2. Ask the user to confirm the user-facing documentation language (free-form).
+   - Set it in init state:
+     ```bash
+     node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs set-llm-language --repo-root . --value "<language>"
+     ```
+3. Create (LLM-written; in the selected language):
+   - `init/START-HERE.md` (intake + notebook)
+   - `init/INIT-BOARD.md` (concise board; LLM-owned layout, pipeline snapshot inside markers)
+   - Use templates:
+     - `init/_tools/skills/initialize-project-from-requirements/templates/START-HERE.llm.template.md`
+     - `init/_tools/skills/initialize-project-from-requirements/templates/INIT-BOARD.llm.template.md`
 
-**LLM maintenance protocol** for `init/START-HERE.md`:
-- After every user message: update materials register + decision index, land decisions into Stage A docs / blueprint.
-- After every pipeline command: append one log entry (timestamp, command, outcome, next step).
+**LLM maintenance protocol**:
+- After every user message: update `init/START-HERE.md` (current conclusions, key inputs table, AI questions).
+- After every pipeline command: the pipeline refreshes the INIT-BOARD machine snapshot automatically; the LLM may re-layout the rest of INIT-BOARD as needed.
+- At each stage start (A->B, B->C, C->complete): roll the finished stage summary into a folded Archive section at the end of `init/START-HERE.md`.
 
 ```
-user starts initialization
-       │
-       ▼
-┌──────────────────────────┐
-│ Phase 1: requirements    │
-└──────────┬───────────────┘
-           ▼
-┌──────────────────────────┐
-│ Phase 2: tech stack      │
-└──────────┬───────────────┘
-           ▼
-┌──────────────────────────┐
-│ Phase 3: blueprint       │
-└──────────┬───────────────┘
-           ▼
-┌──────────────────────────┐
-│ Phase 4: features        │
-└──────────┬───────────────┘
-           ▼
-┌──────────────────────────┐
-│ Phase 5: config + apply  │
-└──────────────────────────┘
+Workflow sketch (high level):
+- Phase 1: requirements
+- Phase 2: tech stack
+- Phase 3: blueprint
+- Phase 4: features
+- Phase 5: config + apply
 ```
 
 ---
@@ -54,7 +46,7 @@ user starts initialization
 
 | # | Question | Write to |
 |---|----------|----------|
-| 0 | **Terminology alignment**: "Do we need to align domain terms now?" (sync → use glossary as SSOT, skip → record skip decision) | `domain-glossary.md` |
+| 0 | **Terminology alignment**: "Do we need to align domain terms now?" (sync -> use glossary as SSOT, skip -> record skip decision) | `domain-glossary.md` |
 | 1 | **One-line purpose**: "In one sentence, what problem does this project solve, for whom?" | `requirements.md` |
 | 2 | **User roles**: "Who are the primary users (2-5 roles)? Who is NOT a user?" | `requirements.md` |
 | 3 | **MUST requirements**: "List 3-10 testable MUST-have capabilities." | `requirements.md` |
@@ -71,21 +63,21 @@ All paths above are relative to `init/_work/stage-a-docs/`.
 - Style: REST / GraphQL / event-driven?
 - Auth: none / session / JWT / OAuth2 / API key?
 - Error model, pagination, versioning?
-→ Write to: `requirements.md` + `capabilities.api.*`
+- Write to: `requirements.md` + `capabilities.api.*`
 
 **B2. Database module** (if persistent data):
 - DB kind: postgres / mysql / sqlite / document?
 - **SSOT mode (MUST choose)**: `none` / `repo-prisma` / `database`
 - Consistency, migration strategy, backup?
-→ Write to: `non-functional-requirements.md` + `db.*`
+- Write to: `non-functional-requirements.md` + `db.*`
 
 **B3. CI/Quality module** (if maintained project):
 - CI provider constraints?
 - Quality gate: lint, typecheck, unit tests?
 - Test levels: unit / integration / e2e?
-→ Write to: `non-functional-requirements.md` + `quality.*`
+- Write to: `non-functional-requirements.md` + `quality.*`
 
-### Answer → Artifact mapping
+### Answer -> Artifact mapping
 
 | Answer type | Write to |
 |-------------|----------|
@@ -124,8 +116,8 @@ Languages marked ❌: LLM generates configs (see Phase 5).
 
 ### Repo layout
 
-- **single** → `src/` structure (simple projects)
-- **monorepo** → `apps/` + `packages/` (multi-service)
+- **single** -> `src/` structure (simple projects)
+- **monorepo** -> `apps/` + `packages/` (multi-service)
 
 ### Framework options
 
@@ -178,6 +170,7 @@ Generate `init/_work/project-blueprint.json`:
 **Stage B validation**:
 ```bash
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs validate --repo-root .
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs review-packs --repo-root .
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage B --repo-root .
 ```
 
@@ -259,6 +252,8 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
 
 # Skill retention (required before Stage C approval)
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs skill-retention --repo-root .
+# If deletions are listed, apply them to confirm:
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs skill-retention --repo-root . --apply
 
 # Update root docs (recommended)
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs update-root-docs --repo-root .
@@ -293,18 +288,18 @@ Before declaring a stage complete, review `templates/quality-checklist.md` for s
 
 ```
 Language selection
-├── TypeScript/JS → pnpm
-├── Python → poetry
-├── Go → go
-├── Java/Kotlin → gradle
-├── Rust → cargo
-└── C/C++ → xmake
+- TypeScript/JS -> pnpm
+- Python -> poetry
+- Go -> go
+- Java/Kotlin -> gradle
+- Rust -> cargo
+- C/C++ -> xmake
 
-Capabilities → Features
-├── API/DB/BPMN → contextAwareness
-├── db.ssot != none → database
-├── frontend → ui
-├── containerization → packaging
-├── multi-env → deployment
-└── versioning → release
+Capabilities -> Features
+- API/DB/BPMN -> contextAwareness
+- db.ssot != none -> database
+- frontend -> ui
+- containerization -> packaging
+- multi-env -> deployment
+- versioning -> release
 ```

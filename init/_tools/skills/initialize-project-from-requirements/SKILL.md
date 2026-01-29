@@ -10,19 +10,24 @@ Goal: a robust, repeatable, rollback-friendly initialization workflow (not "fast
 
 ---
 
-## LLM driving contract (entrypoints + single-language rule)
+## LLM driving contract (entrypoints + language)
 
 The init kit is intended to be **LLM-driven** (or human-driven with the same discipline):
 
-- **Intake (human/LLM, manual edits)**: `init/START-HERE.md`
-  - Use for pre-Stage A: language choice, timezones, materials register, async handoff notes, temporary questions.
-  - The pipeline never overwrites the file (copy-if-missing only).
-- **Status board (generated)**: `init/INIT-BOARD.md`
-  - Auto-updated by the pipeline after every command (implicit refresh).
-  - Treat the board as the single place to answer: “where are we now, what’s next, and what files matter?”
-- **Single language per init run**: choose exactly one of `zh` or `en`.
-  - Set the language via `start --lang <zh|en>`.
-  - Stage A templates + validation follow that language; do not mix languages across Stage A docs.
+- `init/START-HERE.md` (LLM-maintained): user-friendly intake + running notebook
+  - Keep it one-screen: current conclusions, a key inputs table (`todo`/`confirmed`/`tbd`), and a short "AI questions" list.
+  - Older context goes to a folded Archive section at the end (append-only; LLM-written).
+- `init/INIT-BOARD.md` (LLM-owned layout): concise stage/status board
+  - The pipeline updates ONLY a machine snapshot block inside INIT-BOARD (between snapshot markers). It never rewrites the whole file.
+  - Board content SHOULD be derived from `init/_work/.init-state.json` (audit trail) and the machine snapshot block, not from chat history.
+- Language (LLM-managed; supports more than zh/en without script changes):
+  - Ask the user to confirm the documentation language.
+  - Record it in `init/_work/.init-state.json` under `llm.language` (string; free-form).
+    - Preferred: `node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs set-llm-language --repo-root . --value "<language>"`
+  - Render `init/START-HERE.md` and `init/INIT-BOARD.md` in that language.
+- Pipeline language (zh/en):
+  - `start --lang <zh|en>` still controls Stage A templates/validation.
+  - If the user language is not zh/en, use `--lang en` and rely on `llm.language` for user-facing docs.
 
 SSOT rule:
 - Decisions MUST be written into Stage A docs and/or the blueprint (not just chat).
@@ -30,23 +35,22 @@ SSOT rule:
 
 ## START-HERE maintenance protocol (LLM-only)
 
-Goal: keep `init/START-HERE.md` as the single **human/LLM entry point** across Stage A/B/C, without mixing generated content into the file.
+Goal: keep `init/START-HERE.md` as the user-friendly intake + notebook (key inputs), while `init/INIT-BOARD.md` carries stage mechanics.
 
 Rules:
-- The pipeline never overwrites `init/START-HERE.md` (copy-if-missing only).
-- `init/INIT-BOARD.md` is generated-only. Do not edit the board.
-- Keep `init/START-HERE.md` in the init run language (`zh` or `en`). Do not mix languages.
+- The pipeline never writes `init/START-HERE.md` (LLM-created).
+- Keep the top of `init/START-HERE.md` one-screen readable; avoid pasting long transcripts.
+- Do not show explicit "SSOT mapping" tables; capture user inputs + current conclusions only.
+- Keep an Archive section at the end (folded by default; append-only; LLM-written).
 
 LLM actions (required):
-- After every user message: update `init/START-HERE.md` (materials register + decision index + temporary questions) and land executable decisions into Stage A docs and/or the blueprint.
-- After every pipeline command: append one log entry to `init/START-HERE.md` (timestamp, command, outcome, paths updated, next step).
-- After every stage approval (`approve`): record an approval note and the approved artifact locations (Stage A docs / blueprint / Stage C outputs).
+- After every user message: update current conclusions, key inputs table (todo/confirmed/tbd), and AI questions.
+- After every pipeline command: ensure `init/INIT-BOARD.md` is up to date (the pipeline refreshes the machine snapshot automatically; the LLM may re-layout the rest as needed).
+- After each stage approval (`approve`): do a START-HERE rolling refresh (append a folded archive snapshot; reset the top focus for the new stage).
 
-Suggested log entry format (append-only):
-- `### <ISO timestamp> — <event>`
-- `- Command: <...>`
-- `- Landed to: <paths>`
-- `- Next: <...>`
+Templates (recommended):
+- `templates/START-HERE.llm.template.md`
+- `templates/INIT-BOARD.llm.template.md`
 
 ## Inputs
 
@@ -82,7 +86,7 @@ Stage C `apply` materializes enabled features by copying templates into the repo
 ### Working files (during initialization)
 
 - Human intake entry: `init/START-HERE.md` (manual; never overwritten)
-- Status board: `init/INIT-BOARD.md` (generated; do not edit)
+- Status board: `init/INIT-BOARD.md` (LLM-owned layout; the pipeline updates machine snapshot only)
 - Workdir rules: `init/_work/AGENTS.md` (copy-if-missing; safe to edit)
 - Stage A docs: `init/_work/stage-a-docs/*`
 - Blueprint: `init/_work/project-blueprint.json`
@@ -117,11 +121,11 @@ Depending on `blueprint.features`, Stage C may also materialize:
 - Context Awareness: `docs/context/**` + `config/environments/**` (and related context contracts)
 - Database: `db/**` (when `db.ssot=database`) or `prisma/**` (when `db.ssot=repo-prisma`)
 - UI: `ui/**` + `docs/context/ui/**`
-- Environment: `env/**` + `docs/project/env-ssot.json` (and optionally generated `.env.example` + `docs/env.md`)
+- Environment: `env/**` + `docs/project/env-ssot.json` (and optionally generated `env/.env.example` + `docs/env.md`)
 - Packaging: `ops/packaging/**` + `docs/packaging/registry.json`
 - Deployment: `ops/deploy/**`
 - Observability: `observability/**` + `docs/context/observability/**`
-- Release: `release/**` + `.releaserc.json.template`
+- Release: `release/**` + `release/.releaserc.json.template`
 
 ---
 
@@ -146,18 +150,22 @@ All command paths in the document assume you run from the repo root.
 
 ### 0) Initialize state
 
+Before running `start`:
+- Ask the user to confirm the documentation language.
+- After `start` creates `init/_work/.init-state.json`, write `llm.language` (string; free-form), then (re-)render `init/START-HERE.md` and `init/INIT-BOARD.md` in that language.
+
 ```bash
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs start --repo-root . --lang <zh|en>
 ```
 
 Then open:
-- `init/START-HERE.md` (manual intake)
-- `init/INIT-BOARD.md` (auto-updated board)
+- `init/START-HERE.md` (LLM-maintained intake + notebook)
+- `init/INIT-BOARD.md` (LLM-owned layout; pipeline updates only the machine snapshot block between markers)
 - `init/_work/AGENTS.md` (workdir rules)
 
 ### 1) Stage A: validate requirements docs -> user approval
 
-**Pre-step (optional)**: Terminology alignment — ask if user wants to sync/align terms now or skip. If sync, use `init/_work/stage-a-docs/domain-glossary.md` as SSOT.
+**Pre-step (optional)**: Terminology alignment - ask if user wants to sync/align terms now or skip. If sync, use `init/_work/stage-a-docs/domain-glossary.md` as SSOT.
 
 **Validation**:
 
@@ -200,7 +208,13 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs suggest-features --repo-root .
 ```
 
-**Approval** (after user explicitly approves the blueprint; automatically marks packs as reviewed):
+**Confirm packs** (after user reviews `blueprint.skills.packs`):
+
+```bash
+node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs review-packs --repo-root .
+```
+
+**Approval** (after user explicitly approves the blueprint):
 
 ```bash
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs approve --stage B --repo-root .

@@ -8,14 +8,24 @@ The repository includes an `init/` bootstrap kit for checkpointed project initia
 
 ## Key principles
 
-- Do not skip stages (A → B → C).
+- Do not skip stages (A -> B -> C).
 - Do not advance stages without explicit user approval.
-- Do not hand-edit `init/_work/.init-state.json`; use pipeline commands.
+- Staleness protection: approvals require artifacts unchanged since the last successful validate/check.
+- Do not hand-edit pipeline-owned fields in `init/_work/.init-state.json`; use pipeline commands.
+  - Exception: the LLM MAY set `llm.language` (string; free-form) to drive user-facing docs in any language.
+    - Preferred: `node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs set-llm-language --repo-root . --value "<language>"`
 - Do not create dev-docs task bundles during initialization.
-- Keep `init/START-HERE.md` as the single human/LLM entry point:
-  - Update after each user message and stage transition.
-  - Land decisions into Stage A docs and/or blueprint.
-  - Do not edit `init/INIT-BOARD.md` (generated-only).
+- LLM-driven docs:
+  - `init/START-HERE.md`: user-friendly intake + running notebook (key inputs, current conclusions, AI questions).
+  - `init/INIT-BOARD.md`: concise stage/status board (LLM-owned layout).
+  - Entry docs are created by the LLM only after `llm.language` is set (minimal: START-HERE + INIT-BOARD).
+  - The pipeline never rewrites the whole INIT-BOARD; it only updates the machine snapshot block between:
+    - `<!-- INIT-BOARD:MACHINE_SNAPSHOT:START -->`
+    - `<!-- INIT-BOARD:MACHINE_SNAPSHOT:END -->`
+  - LLM MAY re-layout INIT-BOARD at any time, but MUST preserve the snapshot marker block.
+- START-HERE rolling refresh (LLM-managed):
+  - At each stage start (A->B, B->C, C->complete), summarize the finished stage and append it to a folded Archive section at the end of `init/START-HERE.md`.
+  - Keep the top of `init/START-HERE.md` one-screen readable and focused on the current stage's main questions.
 
 ---
 
@@ -34,11 +44,11 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
 
 ## Quick reference
 
-| Stage | Validate | Approve |
-|-------|----------|---------|
-| A | `check-docs --strict` | `approve --stage A` |
-| B | `validate` | `approve --stage B` |
-| C | `apply --providers both` | `approve --stage C` |
+| Stage | Validate | Confirm | Approve |
+|-------|----------|---------|---------|
+| A | `check-docs --strict` | - | `approve --stage A` |
+| B | `validate` | `review-packs` | `approve --stage B` |
+| C | `apply --providers both` | `skill-retention` | `approve --stage C` |
 
 **Stage C checkpoint** (before approval):
 1. **Skill retention**: `skill-retention --repo-root .` then `skill-retention --apply`

@@ -3,7 +3,7 @@
 ## Conclusions (read first)
 
 - Provides release/versioning conventions and templates under `release/`
-- Adds release tooling templates (e.g. `.releaserc.json.template`)
+- Adds release tooling templates (e.g. `release/.releaserc.json.template`)
 - Designed to be CI-friendly but provider-agnostic
 
 ## How to enable
@@ -45,4 +45,5 @@ node .ai/skills/features/release/scripts/releasectl.mjs verify --repo-root .
 ## Key outputs
 
 - `release/**`
-- `.releaserc.json.template`
+- `release/.releaserc.json.template`
+- `release/CHANGELOG.md` (seeded from `release/changelog-template.md` if missing)
