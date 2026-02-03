@@ -160,6 +160,15 @@ function getReleaseDir(repoRoot) {
   return path.join(repoRoot, 'release');
 }
 
+function resolveHandbookDir(baseDir) {
+  const handbookDir = path.join(baseDir, 'handbook');
+  const legacyWorkdocsDir = path.join(baseDir, 'workdocs');
+
+  if (fs.existsSync(handbookDir)) return { dir: handbookDir, legacy: false };
+  if (fs.existsSync(legacyWorkdocsDir)) return { dir: legacyWorkdocsDir, legacy: true };
+  return { dir: handbookDir, legacy: false };
+}
+
 function getConfigPath(repoRoot) {
   return path.join(getReleaseDir(repoRoot), 'config.json');
 }
@@ -235,9 +244,10 @@ function validateVersion(strategy, version) {
 
 function cmdInit(repoRoot, dryRun, strategy) {
   const releaseDir = getReleaseDir(repoRoot);
+  const { dir: handbookDir, legacy: usesLegacyWorkdocsDir } = resolveHandbookDir(releaseDir);
   const actions = [];
 
-  const dirs = [releaseDir, path.join(releaseDir, 'workdocs')];
+  const dirs = [releaseDir, handbookDir];
   for (const dir of dirs) {
     actions.push(dryRun ? { op: 'mkdir', path: dir, mode: 'dry-run' } : ensureDir(dir));
   }
@@ -310,6 +320,9 @@ All notable changes to this project will be documented in this file.
   }
 
   console.log('[ok] Release configuration initialized.');
+  if (usesLegacyWorkdocsDir) {
+    console.log('[warn] Detected legacy release/workdocs/. Consider renaming to release/handbook/.');
+  }
   for (const a of actions) {
     const modeStr = a.mode ? ` (${a.mode})` : '';
     const reason = a.reason ? ` [${a.reason}]` : '';

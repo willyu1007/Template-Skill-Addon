@@ -182,6 +182,15 @@ function getPackagingDir(repoRoot) {
   return path.join(repoRoot, 'ops', 'packaging');
 }
 
+function resolveHandbookDir(baseDir) {
+  const handbookDir = path.join(baseDir, 'handbook');
+  const legacyWorkdocsDir = path.join(baseDir, 'workdocs');
+
+  if (fs.existsSync(handbookDir)) return { dir: handbookDir, legacy: false };
+  if (fs.existsSync(legacyWorkdocsDir)) return { dir: legacyWorkdocsDir, legacy: true };
+  return { dir: handbookDir, legacy: false };
+}
+
 function getRegistryPath(repoRoot) {
   return path.join(repoRoot, 'docs', 'packaging', 'registry.json');
 }
@@ -292,6 +301,7 @@ function applyDockerTag(imageRef, tag) {
 
 function cmdInit(repoRoot, dryRun) {
   const packagingDir = getPackagingDir(repoRoot);
+  const { dir: handbookDir, legacy: usesLegacyWorkdocsDir } = resolveHandbookDir(packagingDir);
   const actions = [];
 
   const dirs = [
@@ -300,7 +310,7 @@ function cmdInit(repoRoot, dryRun) {
     path.join(packagingDir, 'jobs'),
     path.join(packagingDir, 'apps'),
     path.join(packagingDir, 'scripts'),
-    path.join(packagingDir, 'workdocs'),
+    handbookDir,
     path.join(repoRoot, 'docs', 'packaging')
   ];
 
@@ -319,6 +329,9 @@ function cmdInit(repoRoot, dryRun) {
   }
 
   console.log('[ok] Packaging configuration initialized.');
+  if (usesLegacyWorkdocsDir) {
+    console.log('[warn] Detected legacy ops/packaging/workdocs/. Consider renaming to ops/packaging/handbook/.');
+  }
   for (const a of actions) {
     const mode = a.mode ? ` (${a.mode})` : '';
     const reason = a.reason ? ` [${a.reason}]` : '';

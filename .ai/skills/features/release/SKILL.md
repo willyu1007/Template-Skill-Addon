@@ -43,7 +43,7 @@ node .ai/scripts/projectctl.mjs set features.release true
 ## Operating rules
 
 - Releases are **human-executed** unless CI automation is explicitly configured.
-- Keep release decisions and checklists under `release/workdocs/`.
+- Keep release decisions and checklists under `release/handbook/`.
 
 ## Verification
 

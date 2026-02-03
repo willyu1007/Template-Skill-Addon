@@ -196,6 +196,15 @@ function getDeployDir(repoRoot) {
   return path.join(repoRoot, 'ops', 'deploy');
 }
 
+function resolveHandbookDir(baseDir) {
+  const handbookDir = path.join(baseDir, 'handbook');
+  const legacyWorkdocsDir = path.join(baseDir, 'workdocs');
+
+  if (fs.existsSync(handbookDir)) return { dir: handbookDir, legacy: false };
+  if (fs.existsSync(legacyWorkdocsDir)) return { dir: legacyWorkdocsDir, legacy: true };
+  return { dir: handbookDir, legacy: false };
+}
+
 function getEnvsDir(repoRoot) {
   return path.join(getDeployDir(repoRoot), 'environments');
 }
@@ -263,6 +272,7 @@ function parseArtifactRef(artifact) {
 
 function cmdInit(repoRoot, dryRun, model, k8sTool) {
   const deployDir = getDeployDir(repoRoot);
+  const { dir: handbookDir, legacy: usesLegacyWorkdocsDir } = resolveHandbookDir(deployDir);
   const actions = [];
 
   const normalizedModel = normalizeModel(model);
@@ -275,8 +285,8 @@ function cmdInit(repoRoot, dryRun, model, k8sTool) {
     path.join(deployDir, 'workloads'),
     path.join(deployDir, 'clients'),
     path.join(deployDir, 'scripts'),
-    path.join(deployDir, 'workdocs'),
-    path.join(deployDir, 'workdocs', 'runbooks'),
+    handbookDir,
+    path.join(handbookDir, 'runbooks'),
     path.join(deployDir, 'k8s'),
     path.join(deployDir, 'k8s', 'helm'),
     path.join(deployDir, 'k8s', 'kustomize'),
@@ -345,6 +355,9 @@ node .ai/skills/features/deployment/scripts/deployctl.mjs verify
   }
 
   console.log('[ok] Deployment configuration initialized.');
+  if (usesLegacyWorkdocsDir) {
+    console.log('[warn] Detected legacy ops/deploy/workdocs/. Consider renaming to ops/deploy/handbook/.');
+  }
   for (const a of actions) {
     const modeStr = a.mode ? ` (${a.mode})` : '';
     const reason = a.reason ? ` [${a.reason}]` : '';
@@ -484,7 +497,9 @@ function cmdPlan(repoRoot, serviceId, envId, tagOverride) {
 
     console.log('# Optional: verify health (adjust URL)\nnode ops/deploy/scripts/healthcheck.mjs --url https://example.com/health\n');
   } else {
-    console.log(`# Model "${config.model}"\n# See: ops/deploy/workdocs/runbooks/rollback-procedure.md\n# Add your deploy procedure here.\n`);
+    console.log(
+      `# Model "${config.model}"\n# See: ops/deploy/handbook/runbooks/rollback-procedure.md\n# Legacy: ops/deploy/workdocs/runbooks/rollback-procedure.md\n# Add your deploy procedure here.\n`
+    );
   }
 
   config.history.push({

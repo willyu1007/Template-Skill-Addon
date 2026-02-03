@@ -134,6 +134,15 @@ function getCiDir(repoRoot) {
   return path.join(repoRoot, 'ci');
 }
 
+function resolveHandbookDir(baseDir) {
+  const handbookDir = path.join(baseDir, 'handbook');
+  const legacyWorkdocsDir = path.join(baseDir, 'workdocs');
+
+  if (fs.existsSync(handbookDir)) return { dir: handbookDir, legacy: false };
+  if (fs.existsSync(legacyWorkdocsDir)) return { dir: legacyWorkdocsDir, legacy: true };
+  return { dir: handbookDir, legacy: false };
+}
+
 function getConfigPath(repoRoot) {
   return path.join(getCiDir(repoRoot), 'config.json');
 }
@@ -269,6 +278,7 @@ function upsertGitlabManagedBlock(filePath, beginMarker, endMarker, blockBody, d
 
 function cmdInit(repoRoot, provider, dryRun) {
   const ciDir = getCiDir(repoRoot);
+  const { dir: handbookDir, legacy: usesLegacyWorkdocsDir } = resolveHandbookDir(ciDir);
   const actions = [];
 
   // Validate provider if specified
@@ -277,7 +287,7 @@ function cmdInit(repoRoot, provider, dryRun) {
   }
 
   // Create directories
-  const dirs = [ciDir, path.join(ciDir, 'workdocs')];
+  const dirs = [ciDir, handbookDir];
   for (const dir of dirs) {
     if (dryRun) {
       actions.push({ op: 'mkdir', path: dir, mode: 'dry-run' });
@@ -347,6 +357,9 @@ node .ai/skills/features/ci/scripts/cictl.mjs status
   }
 
   console.log('[ok] CI configuration initialized.');
+  if (usesLegacyWorkdocsDir) {
+    console.log('[warn] Detected legacy ci/workdocs/. Consider renaming to ci/handbook/.');
+  }
   for (const a of actions) {
     const mode = a.mode ? ` (${a.mode})` : '';
     const reason = a.reason ? ` [${a.reason}]` : '';

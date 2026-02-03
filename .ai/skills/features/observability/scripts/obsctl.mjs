@@ -171,6 +171,15 @@ function getObsDir(repoRoot) {
   return path.join(repoRoot, 'observability');
 }
 
+function resolveHandbookDir(baseDir) {
+  const handbookDir = path.join(baseDir, 'handbook');
+  const legacyWorkdocsDir = path.join(baseDir, 'workdocs');
+
+  if (fs.existsSync(handbookDir)) return { dir: handbookDir, legacy: false };
+  if (fs.existsSync(legacyWorkdocsDir)) return { dir: legacyWorkdocsDir, legacy: true };
+  return { dir: handbookDir, legacy: false };
+}
+
 function getContextObsDir(repoRoot) {
   return path.join(repoRoot, 'docs', 'context', 'observability');
 }
@@ -283,13 +292,14 @@ function saveLogsSchema(repoRoot, schema) {
 
 function cmdInit(repoRoot, dryRun) {
   const obsDir = getObsDir(repoRoot);
+  const { dir: handbookDir, legacy: usesLegacyWorkdocsDir } = resolveHandbookDir(obsDir);
   const contextObsDir = getContextObsDir(repoRoot);
   const actions = [];
 
   const dirs = [
     obsDir,
-    path.join(obsDir, 'workdocs'),
-    path.join(obsDir, 'workdocs', 'alert-runbooks'),
+    handbookDir,
+    path.join(handbookDir, 'alert-runbooks'),
     contextObsDir
   ];
 
@@ -331,7 +341,7 @@ node .ai/skills/features/observability/scripts/obsctl.mjs verify
 ## Directory Structure
 
 - \`observability/config.json\` - Configuration
-- \`observability/workdocs/alert-runbooks/\` - Alert runbooks
+- \`observability/handbook/alert-runbooks/\` - Alert runbooks
 - \`docs/context/observability/\` - Metrics/logs/traces contracts
 
 ## Metric Types
@@ -379,6 +389,9 @@ node .ai/skills/features/observability/scripts/obsctl.mjs verify
   }
 
   console.log('[ok] Observability configuration initialized.');
+  if (usesLegacyWorkdocsDir) {
+    console.log('[warn] Detected legacy observability/workdocs/. Consider renaming to observability/handbook/.');
+  }
   for (const a of actions) {
     const mode = a.mode ? ` (${a.mode})` : '';
     const reason = a.reason ? ` [${a.reason}]` : '';
