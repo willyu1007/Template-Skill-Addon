@@ -427,6 +427,9 @@ policy:
   - `prod-deploy`：只读 `<org>-<project>-prod`（在该 Project 内读取 `project/prod/*` + `shared/*`）
   - `secrets-writer`（可选）：写入/轮换（限制在必要项目范围内）；只在运维机使用
 - 强约束：Access Token **不进入 ECS 运行时环境**；只允许存在于开发者本机或运维/部署机的安全存储中。
+- **命名建议（v1）**：
+  - Machine Account：`<project>-<env>-<purpose>`（示例：`common-dev-local`、`common-staging-deploy`）
+  - Access Token：`<machine-account>-<scope>-<yyyymmdd>`（示例：`common-dev-local-read-dev-20260204`）
 
 #### Bitwarden Secrets Manager（v1）设置清单（交互式）
 
@@ -446,6 +449,20 @@ policy:
    - 从 Bitwarden pull `dev + shared` → 生成 `.env.local` → preflight → 启动应用。
 7. 云端部署验证（staging/prod）：
    - 运维机从 Bitwarden pull `staging|prod + shared` → 生成 env-file（`/etc/<org>/<project>/<env>.env`）→ `docker compose` 重启 → 验证服务。
+
+#### Bitwarden Secrets Manager CLI（bws）最小验证命令（v1）
+
+> 目标：验证 Machine Account + Access Token 能正常读取对应 Project 的 secrets。
+>
+> 注意：不要把 Access Token 写进 repo；不要粘贴到文档或聊天记录里。
+
+- PowerShell（会话内临时设置）：
+  - 设置 token：`$env:BWS_ACCESS_TOKEN = "<your-access-token>"`
+  - 列出 projects：`bws project list`
+  - 列出某个 project 下的 secrets（返回含 `id`/`key` 的列表）：`bws secret list <PROJECT_ID> --output json`
+  - 获取单条 secret（用于核对 key/value 是否正确；注意不要在共享屏幕/日志里泄露 value）：`bws secret get <SECRET_ID> --output json`
+
+> 备注：Bitwarden 提供 `--output env` / `bws run` 这类“直接把 key 当环境变量名”的能力，但我们的 key 包含 `/`，在 POSIX 约束下可能会被注释或不可用；v1 选择由脚本/环境工具渲染 `.env.local`/env-file（环境变量名以 repo 的变量名为准）。
 
 #### Bitwarden（v1）示例：以阿里云 RAM Role 为基线，哪些需要 secrets？
 
