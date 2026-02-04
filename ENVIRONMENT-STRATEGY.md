@@ -446,6 +446,31 @@ policy:
 7. 云端部署验证（staging/prod）：
    - 运维机从 Bitwarden pull `staging|prod + shared` → 生成 env-file（`/etc/<org>/<project>/<env>.env`）→ `docker compose` 重启 → 验证服务。
 
+#### Bitwarden（v1）示例：以阿里云 RAM Role 为基线，哪些需要 secrets？
+
+> 关键原则：**云厂商访问凭证（AK/Secret）不进入运行时**（staging/prod(ECS) 强制 `role-only`）。因此很多“云资源”本身不需要 secrets；需要的是业务层面的账号/口令/第三方 key。
+
+- **RDS（通常需要）**：
+  - `project/<env>/db/password`：数据库密码（secret）
+  - `project/<env>/db/user`：数据库用户名（是否视为 secret 由你们决定；保守起见可按 secret）
+  - 非 secret 建议放 `env/values` / IaC outputs：`DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_SSL_MODE` 等
+  - 若你们习惯用 “DATABASE_URL（包含口令）”：则将其作为 secret，例如 `project/<env>/db/url`
+- **OSS（role-only 下通常不需要 secrets）**：
+  - 不存 AK；SDK 走实例 RAM Role/STS 即可
+  - bucket 名/region 等属于非 secret，建议来自 IaC outputs 或 `env/values`
+- **ECS（role-only 下通常不需要 secrets）**：
+  - 运行时不需要 secrets 来“访问 ECS”；访问云 API 也应走 RAM Role
+  - 例外：若运维/部署机需要 SSH 私钥去 push（部署注入），这是 **ops secret**，不应注入运行时；建议用 `shared/ops/ssh/private-key`（并限制只在运维机可读）
+- **验证服务（按你们实现方式）**：
+  - 如果调用阿里云验证相关 API 且 SDK 支持 role：通常不需要 secrets（无 AK）；只需要非 secret 配置（如 signName/templateCode 等）放 `env/values`
+  - 如果接第三方验证供应商：将其 API key/secret 作为 secrets（推荐按功能拆 `verify/<capability>/api-key`）
+
+#### Bitwarden 里是否需要填真实 value？我需要你提供 UUID 吗？
+
+- **value 是否必须真实**：可以先用临时值跑通流程；但一旦进入真实联调/部署，value 就是“真实 secret 值”（例如 DB 密码、第三方 API key）。请不要把真实 value 粘贴到仓库或聊天记录里。
+- **value 是否等于 API key**：是的。对“第三方 API key”这类 secret，value 就是供应商给你的那串 key（或 token/secret）。
+- **我是否需要 Project UUID/Secret UUID**：不需要你发给我。我们 v1 约定以 `Projects + secret.key` 做稳定映射；UUID 只在你们本地/运维机用 CLI 时会用到，建议记录在 `ops/secrets/handbook/<run-id>/meta.yaml` 或运维机本地配置中，不要提交到模板仓库。
+
 **4) 可选的 shared 权限边界（仅在需要时）**
 
 如果未来 shared 下出现权限不一致的需求（例如部分 shared secrets 只允许 ops/iac 使用），建议拆分二级命名空间：
