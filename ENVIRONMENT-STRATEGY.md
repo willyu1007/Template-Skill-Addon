@@ -413,10 +413,9 @@ policy:
   - `project/<env>/<secret_ref>`：环境隔离（`<env>` 为 `dev|staging|prod`）
   - `shared/<secret_ref>`：全局共享（跨 env；**物理上需在 dev/staging/prod 三个 Project 里各存一份相同的值**，以避免部署侧被迫访问“别的 env 的 Project”）
 - `secret_ref` 的规范不变：`kebab-case + /` 分段、全小写、不包含 env（由 `project/<env>/...` 承载）。
-- 注：Bitwarden Secrets Manager 的 `secret.key` 是否允许 `/` 由产品约束决定；v1 需要做一次兼容性测试：
-  - 如果允许 `/`：按上述规则落地（推荐）。
-  - 如果不允许 `/`：再引入“可逆归一化”规则（例如 `/`→`__`），并在 repo 侧固定映射（后续补齐到 `policy.yaml` schema）。
+- `secret.key` 允许包含 `/`（已在当前项目验证可保存），因此 v1 直接按上述规则落地；无需引入 key 归一化规则。
 - 注：我们**不依赖** Bitwarden CLI 的 “run->环境变量名=key” 直接注入能力；由 `ops/secrets`/环境工具把 `secret_ref` 映射到实际环境变量名（如 `DB_PASSWORD`）后生成 `.env.local`/部署注入物。
+  - 背景：Bitwarden Secrets Manager CLI 文档提到，非 POSIX 的 key 在 `env` 输出格式下可能会被注释掉；我们绕开该限制，直接渲染 `.env.local` / env-file（key 由 repo 的变量名决定）。
 
 **3) 权限/令牌（v1 最小建议）**
 
@@ -436,7 +435,7 @@ policy:
    - 在 `<org>-<project>-dev` 创建 1 条 secret：
      - `key=shared/llm/chat/api-key`
      - `value` 随便填临时值
-   - 若保存失败：记录报错并停止在 key 中使用 `/`，改走“可逆归一化”规则（后续补齐到 `policy.yaml`）。
+   - （已验证）当前项目允许保存包含 `/` 的 key；v1 不需要 key 归一化。
 4. 为每个 env 建立第一批 secrets（建议先从最小集开始：DB、LLM、OAuth 等），并按 v1 规则填 `secret.key`：
    - `project/<env>/<secret_ref>` 或 `shared/<secret_ref>`
 5. 选择权限策略：
