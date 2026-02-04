@@ -468,8 +468,10 @@ policy:
 - PowerShell（会话内临时设置）：
   - 设置 token：`$env:BWS_ACCESS_TOKEN = "<your-access-token>"`
   - 列出 projects：`bws project list`
-  - 列出某个 project 下的 secrets（返回含 `id`/`key` 的列表）：`bws secret list <PROJECT_ID> --output json`
-  - 获取单条 secret（用于核对 key/value 是否正确；注意不要在共享屏幕/日志里泄露 value）：`bws secret get <SECRET_ID> --output json`
+  - 列出某个 project 下的 secrets（⚠️ 原始输出包含 `value`，不要直接打印/粘贴）：`bws secret list <PROJECT_ID> --output json --color no`
+  - 只显示 `id/key`（推荐，用于验证权限与命名）：`bws secret list <PROJECT_ID> --output json --color no | ConvertFrom-Json | Select-Object id,key`
+  - 只显示 key（最安全的验证方式）：`bws secret list <PROJECT_ID> --output json --color no | ConvertFrom-Json | Select-Object -ExpandProperty key`
+  - 获取单条 secret（会输出 value；只在本机自查，避免出现在共享屏幕/日志里）：`bws secret get <SECRET_ID> --output json --color no`
 
 > 备注：Bitwarden 提供 `--output env` / `bws run` 这类“直接把 key 当环境变量名”的能力，但我们的 key 包含 `/`，在 POSIX 约束下可能会被注释或不可用；v1 选择由脚本/环境工具渲染 `.env.local`/env-file（环境变量名以 repo 的变量名为准）。
 
