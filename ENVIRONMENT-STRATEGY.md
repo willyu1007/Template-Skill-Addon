@@ -350,9 +350,9 @@ policy:
   - `role-only`：发现 `ak_env` 或可能污染默认凭证链的 credentials/profile 文件 => fail；同时如果 role/STS 链路不可用（例如元数据不可达且无 `sts_env`）=> fail。
   - `auto`：默认 warn；若策略未显式允许 fallback，则在 role/STS 链路不可用时 fail（避免无意间使用 AK）。
 
-### M. secrets 值 SSOT：外部统一（v1：Bitwarden），支持 shared secrets/roles
+### M. secrets 值 SSOT：外部统一（v1：Bitwarden Secrets Manager），支持 shared secrets/roles
 
-- **结论（已对齐）**：secrets 的“值”以 **repo 外部** 的 secrets 系统为 SSOT（优先便利性与多项目复用）。v1 选择 **Bitwarden（免费版可先用于 2 人测试阶段）**；repo 侧只维护契约与引用（`secret_ref` / 逻辑名 / 元数据），不存明文。
+- **结论（已对齐）**：secrets 的“值”以 **repo 外部** 的 secrets 系统为 SSOT（优先便利性与多项目复用）。v1 选择 **Bitwarden Secrets Manager**；repo 侧只维护契约与引用（`secret_ref` / 逻辑名 / 元数据），不存明文。
 - **取值/注入策略（已对齐）**：
   - `dev(local)`：开发者从 Bitwarden **pull** 仅 `dev + shared` 范围的 secrets，渲染生成 `.env.local`（gitignore + 权限收紧）后启动；启动前执行 preflight（避免 AK 注入/缺失关键 secret）。
   - `staging/prod(ECS)`：ECS 运行时不直接访问 Bitwarden；由运维机/部署机从 Bitwarden **pull**，在“部署时”**push 注入**（生成 env-file/配置并重启服务）。ECS 运行时仍严格 `role-only` 访问云资源（RAM Role/STS），不依赖 Bitwarden token/AK。
@@ -394,6 +394,46 @@ policy:
 - `secrets-writer/rotator`（运维）：“写入/轮换”权限与“读取/部署”权限分离；写入侧按需覆盖对应前缀（避免把 writer 能力发到运行时）。
 - `runtime (ECS)`：v1 不授予读取 Bitwarden 的能力（避免在运行时引入新 token/解密钥）；运行时只通过已注入的 env/config 读取业务 secrets。
 
+#### Bitwarden Secrets Manager（v1）映射约定（项目/密钥命名）
+
+> 目标：让脚本/LLM 可以确定性地“按 `env + secret_ref` 拉取”，并生成 `.env.local` 或部署注入物；同时保证将来迁移到 1Password 只需要改适配层，不改业务代码与 `secret_ref`。
+
+**1) Projects（v1 固定 4 个）**
+
+- `<org>-<project>-dev`
+- `<org>-<project>-staging`
+- `<org>-<project>-prod`
+- `<org>-shared`
+
+**2) Secrets（key 规则）**
+
+- 每个 secret 在对应 Project 下创建 1 条记录。
+- `secret.key` **必须等于** repo 侧的 `secret_ref`（完全一致，区分大小写；建议全小写）。
+- 注：`secret_ref` 允许包含 `/`；因此我们**不依赖** Bitwarden CLI 的 “run->环境变量名=key” 直接注入能力，而是由 `ops/secrets`/环境工具把 `secret_ref` 映射到实际环境变量名（如 `DB_PASSWORD`）后再生成 `.env.local`/部署注入物。
+
+**3) 权限/令牌（v1 最小建议）**
+
+- 人员（2 人测试期）：两位开发者都加入 Organization，并拥有管理 `Projects/Secrets` 的权限（可先从简单开始）。
+- 机器身份（可后置，但建议尽早）：按用途发 Machine Account + Access Token：
+  - `dev-local`：只读 `<org>-<project>-dev` + `<org>-shared`
+  - `staging-deploy`：只读 `<org>-<project>-staging` + `<org>-shared`
+  - `prod-deploy`：只读 `<org>-<project>-prod` + `<org>-shared`
+  - `secrets-writer`（可选）：写入/轮换（限制在必要项目范围内）；只在运维机使用
+- 强约束：Access Token **不进入 ECS 运行时环境**；只允许存在于开发者本机或运维/部署机的安全存储中。
+
+#### Bitwarden Secrets Manager（v1）设置清单（交互式）
+
+1. 创建/确认 Organization（你已完成）。
+2. 在 Secrets Manager 中创建 4 个 Projects（按上文命名）。
+3. 为每个 env 建立第一批 secrets（建议先从最小集开始：DB、LLM、OAuth 等），并确保 `secret.key == secret_ref`。
+4. 选择权限策略：
+   - 2 人测试期可先用“人账号直接管理”跑通；
+   - 或者创建 Machine Accounts（`dev-local` / `staging-deploy` / `prod-deploy`），生成 Access Tokens 并分别配置到开发者机器/运维机。
+5. 本地开发验证（dev）：
+   - 从 Bitwarden pull `dev + shared` → 生成 `.env.local` → preflight → 启动应用。
+6. 云端部署验证（staging/prod）：
+   - 运维机从 Bitwarden pull `staging|prod + shared` → 生成 env-file（`/etc/<org>/<project>/<env>.env`）→ `docker compose` 重启 → 验证服务。
+
 **4) 可选的 shared 权限边界（仅在需要时）**
 
 如果未来 shared 下出现权限不一致的需求（例如部分 shared secrets 只允许 ops/iac 使用），建议拆分二级命名空间：
@@ -419,8 +459,9 @@ policy:
 ```text
 请按 ENVIRONMENT-STRATEGY.md 的 secrets 命名规范：
 1) 为以下配置键生成 secret_ref（kebab-case + / 分段，不含 env）；
-2) 给出每个 secret 在阿里云的路径（project 按 dev/staging/prod 分层；shared 全局一份）；
-3) 给出 staging/prod runtime-reader 需要的最小前缀权限清单（只写前缀，不写具体值）。
+2) 给出每个 secret 的逻辑路径（project 按 dev/staging/prod 分层；shared 全局一份）；
+3) 给出 Bitwarden Secrets Manager v1 的映射（Project 名 + secret.key）；
+4) 给出 dev/local 与 staging/prod 的最小读取权限范围（按 Project 粒度，不写具体值）。
 
 org=acme
 project=tinder
@@ -482,7 +523,7 @@ keys=[DB_PASSWORD, LLM_API_KEY, OAUTH_CLIENT_SECRET]
 
 - `secrets:read`：
   - （适用于“运行时直接从云端 secrets 拉取”的方案）允许读取 `/<org>/<project>/<env>/*` + 必要的 `/<org>/shared/*`（或 `shared/runtime/*`，若启用）。
-  - （v1=Bitwarden）运行时不直接访问 Bitwarden，因此不需要给 runtime 侧配置该类“secrets:read”能力；读取权限由 Bitwarden 的 vault/collection 控制，部署时注入到 env/config。
+  - （v1=Bitwarden Secrets Manager）运行时不直接访问 Bitwarden，因此不需要给 runtime 侧配置该类“secrets:read”能力；读取权限由 Bitwarden 的 Projects/Machine Accounts 控制，部署时注入到 env/config。
 - `oss:app-buckets`：
   - 只允许访问指定 bucket（v1 不做 object prefix 白名单）
   - 最小动作集一般是：`list`（限定前缀）、`get`（v1 默认 read-only；如后续确需写入，建议通过拆 workload/拆 role 的方式新增 write 包）
@@ -696,8 +737,8 @@ notes: "Applied after review; no secrets included."
    - 要检测哪些来源（环境变量/常见凭证文件/容器注入）？
    - 在 `role-only` 的 fail-fast 与 `auto` 的 warn/record 的边界怎么写死？
 4. secrets（外部 SSOT）的产品与流程细节（便利性 + 多项目复用）：
-   - （已对齐）v1 使用 Bitwarden（免费版起步，2 人测试期），并采用：`dev(local)=pull`，`staging/prod(ECS)=pull+push 注入`；ECS 运行时不直接访问 Bitwarden。
-   - Bitwarden 中如何稳定映射 `secret_ref`：vault/collection/item/field 的约定（需要补齐，确保脚本/LLM 可确定性生成）。
+   - （已对齐）v1 使用 Bitwarden Secrets Manager，并采用：`dev(local)=pull`，`staging/prod(ECS)=pull+push 注入`；ECS 运行时不直接访问 Bitwarden。
+   - Bitwarden 中如何稳定映射 `secret_ref`：Projects + `secret.key` 的约定（已在上文 “M” 给出；仍需把它落入 `docs/project/policy.yaml` 的可机器校验 schema）。
    - （已对齐）`dev(local)` bootstrap 身份链与缓存策略（以便利性为主：SSO/RAM User→STS；允许缓存短期 STS；禁止长期 AK 注入项目运行配置）
    - （已对齐）`dev-reader` 最小读权限：`/<org>/<project>/dev/*` + `/<org>/shared/*`；多账号 profile：`<org>-<account-alias>`（不编码 env）
    - （已对齐）写入/轮换执行方式：人工在本地/运维机执行；留痕目录：`ops/secrets/handbook/`
@@ -739,7 +780,7 @@ notes: "Applied after review; no secrets included."
 - 2026-02-03：补齐 IaC 执行模型 v1（`plan` 走 CI，`apply` 走人工）。
 - 2026-02-03：补齐 IaC `plan` 的 CI 身份约束（OIDC→STS/RAM Role，禁用 AK）与证据归档策略（CI artifact + `ops/iac/handbook/` 归档）。
 - 2026-02-03：补齐 `dev(local)` 拉取 secrets 的身份链与缓存策略（以便利性为主：SSO/RAM User→STS，允许缓存短期 STS，禁止长期 AK 注入项目运行配置）。
-- 2026-02-04：对齐 secrets SSOT v1：采用 Bitwarden（免费版起步，2 人测试期）；`dev(local)` 使用 `.env.local` 并由开发者 pull；`staging/prod(ECS)` 由运维机/部署机 pull 并在部署时 push 注入；ECS 运行时不直接访问 Bitwarden；ECS 部署形态推荐 `docker compose` + `systemd` 托管。
+- 2026-02-04：对齐 secrets SSOT v1：采用 Bitwarden Secrets Manager；`dev(local)` 使用 `.env.local` 并由开发者 pull；`staging/prod(ECS)` 由运维机/部署机 pull 并在部署时 push 注入；ECS 运行时不直接访问 Bitwarden；ECS 部署形态推荐 `docker compose` + `systemd` 托管。
 - 2026-02-03：补齐 `dev-reader` 最小读权限前缀与多账号 profile 命名（`<org>-<account-alias>`）。
 - 2026-02-03：补齐 `ops/iac/handbook/` 与 `ops/secrets/handbook/` 的 v1 默认留痕字段（meta.yaml 模板）。
 - 2026-02-03：对齐“不再生成任何 `<env>.yaml`”：资源清单以 IaC state+outputs 为准，环境目标描述/生成输入统一放 `docs/project/policy.yaml`（`policy.env`）。
