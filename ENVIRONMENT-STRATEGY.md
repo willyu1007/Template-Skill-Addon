@@ -452,7 +452,7 @@ policy:
 
 - **RDS（通常需要）**：
   - `project/<env>/db/password`：数据库密码（secret）
-  - `project/<env>/db/user`：数据库用户名（是否视为 secret 由你们决定；保守起见可按 secret）
+  - `project/<env>/db/username`：数据库用户名（是否视为 secret 由你们决定；保守起见可按 secret）
   - 非 secret 建议放 `env/values` / IaC outputs：`DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_SSL_MODE` 等
   - 若你们习惯用 “DATABASE_URL（包含口令）”：则将其作为 secret，例如 `project/<env>/db/url`
 - **OSS（role-only 下通常不需要 secrets）**：
@@ -470,6 +470,14 @@ policy:
 - **value 是否必须真实**：可以先用临时值跑通流程；但一旦进入真实联调/部署，value 就是“真实 secret 值”（例如 DB 密码、第三方 API key）。请不要把真实 value 粘贴到仓库或聊天记录里。
 - **value 是否等于 API key**：是的。对“第三方 API key”这类 secret，value 就是供应商给你的那串 key（或 token/secret）。
 - **我是否需要 Project UUID/Secret UUID**：不需要你发给我。我们 v1 约定以 `Projects + secret.key` 做稳定映射；UUID 只在你们本地/运维机用 CLI 时会用到，建议记录在 `ops/secrets/handbook/<run-id>/meta.yaml` 或运维机本地配置中，不要提交到模板仓库。
+
+#### 当前项目（v1）已创建的最小 secrets（对齐记录）
+
+> 仅记录 key，不记录 value。并且注意：`shared/*` 在 v1 需要在 dev/staging/prod 三个 Project 中各存一份相同 key（值保持一致），避免部署侧跨 Project 读取。
+
+- `project/<env>/db/password`
+- `project/<env>/db/username`
+- `shared/llm/chat/api-key`
 
 **4) 可选的 shared 权限边界（仅在需要时）**
 
@@ -555,6 +563,9 @@ keys=[DB_PASSWORD, LLM_API_KEY, OAUTH_CLIENT_SECRET]
   - 第三方 LLM：通常不需要云端 IAM 权限，走 secrets（API key）即可；v1 默认将第三方 LLM 的 API key 放在 `shared`（跨项目复用）。
   - 阿里云 LLM：走 role 的最小动作集白名单（按功能拆包，便于最小权限与替换）。
   - **provider 不设默认**：provider 选择与实际工作流程强相关，v1 不给出默认 provider；要求在项目/部署流程中显式指定（允许同一 env 内按功能混用不同 provider）。
+  - **多 provider（建议做法）**：
+    - provider 选择属于非敏感配置，放 `env/values/<env>.yaml`（例如 `LLM_CHAT_PROVIDER` / `LLM_EMBEDDINGS_PROVIDER` / `LLM_MODERATION_PROVIDER`）。
+    - secrets 仍以功能为单位：如果同一功能需要支持多个 provider，建议用 `shared/llm/<provider>/<function>/api-key` 的 `secret_ref` 命名空间（例如 `shared/llm/openai/chat/api-key`、`shared/llm/aliyun/chat/api-key`），并由运行时配置选择其中一个（避免“一个 key 同时服务多个 provider”的隐式耦合）。
 
 #### v1 建议的权限包拆分（概念级；具体 Action/Resource 由 IaC 生成）
 
