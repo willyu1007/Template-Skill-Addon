@@ -456,6 +456,14 @@ policy:
 >
 > 注意：不要把 Access Token 写进 repo；不要粘贴到文档或聊天记录里。
 
+- 安装（Windows，推荐本机安装）：
+  - 从 Bitwarden 官方文档页面下载 `bws`（Secrets Manager CLI）Windows 版本压缩包并解压。
+  - 将 `bws.exe` 放到固定目录（示例：`C:\Tools\bws\`）。
+  - （可选）解除下载阻止：`Unblock-File C:\Tools\bws\bws.exe`
+  - 将目录加入 PATH：
+    - 仅当前 PowerShell 会话：`$env:Path += ';C:\Tools\bws'`
+    - 永久（当前用户）：`[Environment]::SetEnvironmentVariable('Path', $env:Path + ';C:\Tools\bws', 'User')`（重开终端生效）
+  - 验证：`bws --help`
 - PowerShell（会话内临时设置）：
   - 设置 token：`$env:BWS_ACCESS_TOKEN = "<your-access-token>"`
   - 列出 projects：`bws project list`
