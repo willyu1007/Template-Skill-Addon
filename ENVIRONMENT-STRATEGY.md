@@ -394,44 +394,57 @@ policy:
 - `secrets-writer/rotator`（运维）：“写入/轮换”权限与“读取/部署”权限分离；写入侧按需覆盖对应前缀（避免把 writer 能力发到运行时）。
 - `runtime (ECS)`：v1 不授予读取 Bitwarden 的能力（避免在运行时引入新 token/解密钥）；运行时只通过已注入的 env/config 读取业务 secrets。
 
-#### Bitwarden Secrets Manager（v1）映射约定（项目/密钥命名）
+#### Bitwarden Secrets Manager（v1）映射约定（Projects/Secret Key）
 
 > 目标：让脚本/LLM 可以确定性地“按 `env + secret_ref` 拉取”，并生成 `.env.local` 或部署注入物；同时保证将来迁移到 1Password 只需要改适配层，不改业务代码与 `secret_ref`。
 
-**1) Projects（v1 固定 4 个）**
+**1) Projects（v1 固定 3 个；受 Bitwarden 限制）**
 
 - `<org>-<project>-dev`
 - `<org>-<project>-staging`
 - `<org>-<project>-prod`
-- `<org>-shared`
 
-**2) Secrets（key 规则）**
+> 说明：由于项目数上限，v1 不单独创建 `<org>-shared` 项目；`shared` 以 **key 前缀命名空间**表达（见下文）。
+
+**2) Secrets（key 规则；v1）**
 
 - 每个 secret 在对应 Project 下创建 1 条记录。
-- `secret.key` **必须等于** repo 侧的 `secret_ref`（完全一致，区分大小写；建议全小写）。
-- 注：`secret_ref` 允许包含 `/`；因此我们**不依赖** Bitwarden CLI 的 “run->环境变量名=key” 直接注入能力，而是由 `ops/secrets`/环境工具把 `secret_ref` 映射到实际环境变量名（如 `DB_PASSWORD`）后再生成 `.env.local`/部署注入物。
+- `secret.key` 采用“命名空间前缀 + secret_ref”形式：
+  - `project/<env>/<secret_ref>`：环境隔离（`<env>` 为 `dev|staging|prod`）
+  - `shared/<secret_ref>`：全局共享（跨 env；**物理上需在 dev/staging/prod 三个 Project 里各存一份相同的值**，以避免部署侧被迫访问“别的 env 的 Project”）
+- `secret_ref` 的规范不变：`kebab-case + /` 分段、全小写、不包含 env（由 `project/<env>/...` 承载）。
+- 注：Bitwarden Secrets Manager 的 `secret.key` 是否允许 `/` 由产品约束决定；v1 需要做一次兼容性测试：
+  - 如果允许 `/`：按上述规则落地（推荐）。
+  - 如果不允许 `/`：再引入“可逆归一化”规则（例如 `/`→`__`），并在 repo 侧固定映射（后续补齐到 `policy.yaml` schema）。
+- 注：我们**不依赖** Bitwarden CLI 的 “run->环境变量名=key” 直接注入能力；由 `ops/secrets`/环境工具把 `secret_ref` 映射到实际环境变量名（如 `DB_PASSWORD`）后生成 `.env.local`/部署注入物。
 
 **3) 权限/令牌（v1 最小建议）**
 
 - 人员（2 人测试期）：两位开发者都加入 Organization，并拥有管理 `Projects/Secrets` 的权限（可先从简单开始）。
 - 机器身份（可后置，但建议尽早）：按用途发 Machine Account + Access Token：
-  - `dev-local`：只读 `<org>-<project>-dev` + `<org>-shared`
-  - `staging-deploy`：只读 `<org>-<project>-staging` + `<org>-shared`
-  - `prod-deploy`：只读 `<org>-<project>-prod` + `<org>-shared`
+  - `dev-local`：只读 `<org>-<project>-dev`（在该 Project 内读取 `project/dev/*` + `shared/*`）
+  - `staging-deploy`：只读 `<org>-<project>-staging`（在该 Project 内读取 `project/staging/*` + `shared/*`）
+  - `prod-deploy`：只读 `<org>-<project>-prod`（在该 Project 内读取 `project/prod/*` + `shared/*`）
   - `secrets-writer`（可选）：写入/轮换（限制在必要项目范围内）；只在运维机使用
 - 强约束：Access Token **不进入 ECS 运行时环境**；只允许存在于开发者本机或运维/部署机的安全存储中。
 
 #### Bitwarden Secrets Manager（v1）设置清单（交互式）
 
 1. 创建/确认 Organization（你已完成）。
-2. 在 Secrets Manager 中创建 4 个 Projects（按上文命名）。
-3. 为每个 env 建立第一批 secrets（建议先从最小集开始：DB、LLM、OAuth 等），并确保 `secret.key == secret_ref`。
-4. 选择权限策略：
+2. 在 Secrets Manager 中创建 3 个 Projects（按上文命名）。
+3. 做一次 key 兼容性测试（确认 `secret.key` 是否允许 `/`）：
+   - 在 `<org>-<project>-dev` 创建 1 条 secret：
+     - `key=shared/llm/chat/api-key`
+     - `value` 随便填临时值
+   - 若保存失败：记录报错并停止在 key 中使用 `/`，改走“可逆归一化”规则（后续补齐到 `policy.yaml`）。
+4. 为每个 env 建立第一批 secrets（建议先从最小集开始：DB、LLM、OAuth 等），并按 v1 规则填 `secret.key`：
+   - `project/<env>/<secret_ref>` 或 `shared/<secret_ref>`
+5. 选择权限策略：
    - 2 人测试期可先用“人账号直接管理”跑通；
    - 或者创建 Machine Accounts（`dev-local` / `staging-deploy` / `prod-deploy`），生成 Access Tokens 并分别配置到开发者机器/运维机。
-5. 本地开发验证（dev）：
+6. 本地开发验证（dev）：
    - 从 Bitwarden pull `dev + shared` → 生成 `.env.local` → preflight → 启动应用。
-6. 云端部署验证（staging/prod）：
+7. 云端部署验证（staging/prod）：
    - 运维机从 Bitwarden pull `staging|prod + shared` → 生成 env-file（`/etc/<org>/<project>/<env>.env`）→ `docker compose` 重启 → 验证服务。
 
 **4) 可选的 shared 权限边界（仅在需要时）**
