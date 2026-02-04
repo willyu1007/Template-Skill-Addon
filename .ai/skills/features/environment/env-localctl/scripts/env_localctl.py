@@ -22,14 +22,16 @@ import argparse
 import json
 import os
 import re
+import shutil
 import socket
 import stat
+import subprocess
 import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import yaml_min
 
@@ -39,12 +41,135 @@ _DATE_YYYY_MM_DD_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 ENV_VAR_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
 
+_BWS_PROJECT_ID_CACHE: Dict[str, str] = {}
+_BWS_SECRETS_CACHE: Dict[str, Dict[str, str]] = {}
+
+
 def utc_now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def _run_cli_json(
+    args: Sequence[str],
+    *,
+    name: str,
+    allow_stdout_in_error: bool = True,
+) -> Tuple[Optional[Any], Optional[str]]:
+    """Run CLI command and parse JSON output.
+
+    Important: callers must ensure secret values are not printed/logged.
+    """
+    try:
+        proc = subprocess.run(
+            list(args),
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except FileNotFoundError:
+        return None, f"{name} not found in PATH: {args[0]!r}"
+    except Exception as e:
+        return None, f"failed to run {name}: {e}"
+
+    if proc.returncode != 0:
+        stderr = (proc.stderr or "").strip()
+        stdout = (proc.stdout or "").strip() if allow_stdout_in_error else ""
+        details = stderr if stderr else stdout
+        details = details.splitlines()[-1] if details else f"exit={proc.returncode}"
+        return None, f"{name} failed: {details}"
+
+    try:
+        return json.loads(proc.stdout), None
+    except Exception as e:
+        return None, f"{name} returned invalid JSON: {e}"
+
+
+def _bws_bin() -> Optional[str]:
+    return shutil.which("bws")
+
+
+def _bws_projects() -> Tuple[Optional[List[Mapping[str, Any]]], Optional[str]]:
+    bws = _bws_bin()
+    if not bws:
+        return None, "bws CLI not found in PATH (install Bitwarden Secrets Manager CLI)"
+    if not os.environ.get("BWS_ACCESS_TOKEN"):
+        return None, "BWS_ACCESS_TOKEN is not set (export your Bitwarden Secrets Manager access token)"
+    data, err = _run_cli_json([bws, "project", "list", "--output", "json", "--color", "no"], name="bws project list")
+    if err:
+        return None, err
+    if not isinstance(data, list):
+        return None, "bws project list: expected JSON array"
+    return data, None
+
+
+def _bws_project_id_by_name(project_name: str) -> Tuple[Optional[str], Optional[str]]:
+    name_norm = project_name.strip().lower()
+    if not name_norm:
+        return None, "bws project_name must be a non-empty string"
+    if name_norm in _BWS_PROJECT_ID_CACHE:
+        return _BWS_PROJECT_ID_CACHE[name_norm], None
+
+    projects, err = _bws_projects()
+    if err:
+        return None, err
+    matches: List[str] = []
+    for p in projects or []:
+        if not isinstance(p, dict):
+            continue
+        pname = p.get("name")
+        pid = p.get("id")
+        if isinstance(pname, str) and isinstance(pid, str) and pname.strip().lower() == name_norm:
+            matches.append(pid)
+    if not matches:
+        return None, f"bws project not found by name: {project_name!r}"
+    if len(matches) > 1:
+        return None, f"bws project name is not unique: {project_name!r}"
+    _BWS_PROJECT_ID_CACHE[name_norm] = matches[0]
+    return matches[0], None
+
+
+def _bws_secrets_for_project(project_id: str) -> Tuple[Optional[Dict[str, str]], Optional[str]]:
+    pid = project_id.strip()
+    if not pid:
+        return None, "bws project_id must be a non-empty string"
+    if pid in _BWS_SECRETS_CACHE:
+        return _BWS_SECRETS_CACHE[pid], None
+
+    bws = _bws_bin()
+    if not bws:
+        return None, "bws CLI not found in PATH (install Bitwarden Secrets Manager CLI)"
+    if not os.environ.get("BWS_ACCESS_TOKEN"):
+        return None, "BWS_ACCESS_TOKEN is not set (export your Bitwarden Secrets Manager access token)"
+    data, err = _run_cli_json(
+        [bws, "secret", "list", pid, "--output", "json", "--color", "no"],
+        name="bws secret list",
+        allow_stdout_in_error=False,
+    )
+    if err:
+        return None, err
+    if not isinstance(data, list):
+        return None, "bws secret list: expected JSON array"
+
+    out: Dict[str, str] = {}
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        k = item.get("key")
+        v = item.get("value")
+        if isinstance(k, str) and isinstance(v, str):
+            # If duplicates occur, fail fast to avoid ambiguous resolution.
+            if k in out:
+                return None, f"bws project has duplicate secret key: {k!r}"
+            out[k] = v
+
+    _BWS_SECRETS_CACHE[pid] = out
+    return out, None
 
 
 def load_yaml(path: Path) -> Any:
@@ -467,7 +592,50 @@ def resolve_secret(root: Path, env: str, secret_name: str, secret_cfg: Mapping[s
         val = read_text(path)
         return val.rstrip("\n"), None
 
-    return None, f"unsupported secret backend: {backend!r} (supported: mock, env, file)"
+    if backend == "bws":
+        # Bitwarden Secrets Manager (bws CLI).
+        #
+        # Recommended config (avoid committing sensitive tokens):
+        #   backend: bws
+        #   project_name: "mr-common-dev"
+        #   key: "project/dev/db/password"
+        #
+        # Alternative compact ref form:
+        #   ref: "bws://<PROJECT_ID>?key=<SECRET_KEY>"
+        project_id = secret_cfg.get("project_id")
+        project_name = secret_cfg.get("project_name")
+        key = secret_cfg.get("key")
+
+        if (not project_id or not isinstance(project_id, str)) and ref.startswith("bws://"):
+            u = urlparse(ref)
+            project_id = u.netloc
+            q = parse_qs(u.query or "")
+            k = q.get("key", [None])[0]
+            if isinstance(k, str) and k.strip():
+                key = k.strip()
+
+        if not isinstance(key, str) or not key.strip():
+            return None, "bws backend requires secret_cfg.key (or ref like bws://<PROJECT_ID>?key=<SECRET_KEY>)"
+        key = key.strip()
+
+        pid: Optional[str] = None
+        if isinstance(project_id, str) and project_id.strip():
+            pid = project_id.strip()
+        elif isinstance(project_name, str) and project_name.strip():
+            pid, err = _bws_project_id_by_name(project_name)
+            if err:
+                return None, err
+        else:
+            return None, "bws backend requires secret_cfg.project_id or secret_cfg.project_name"
+
+        secrets, err = _bws_secrets_for_project(pid or "")
+        if err:
+            return None, err
+        if not secrets or key not in secrets:
+            return None, f"bws secret key not found in project_id={pid}: {key!r}"
+        return secrets[key], None
+
+    return None, f"unsupported secret backend: {backend!r} (supported: mock, env, file, bws)"
 
 
 def redact_effective(vars_def: Mapping[str, VarDef], effective: Mapping[str, Any]) -> Dict[str, Any]:

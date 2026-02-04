@@ -50,6 +50,43 @@ secrets:
     ref: "file:./.secrets/api_key"
 ```
 
+## Backend: bws (Bitwarden Secrets Manager)
+
+Use when secret values are stored in Bitwarden Secrets Manager and you want `env_localctl.py compile` to pull them
+via the `bws` CLI.
+
+Prerequisites:
+- Install `bws` and ensure it is in `PATH`.
+- Create a Machine Account + Access Token with **read-only** access to the target Bitwarden Project.
+- Export the token in the current shell (do not commit it):
+  - PowerShell: `$env:BWS_ACCESS_TOKEN = "<token>"`
+
+Secret ref example (recommended):
+
+```yaml
+version: 1
+secrets:
+  db/password:
+    backend: bws
+    project_name: "mr-common-dev"
+    key: "project/dev/db/password"
+    hint: "Bitwarden Secrets Manager key in mr-common-dev"
+```
+
+Alternative ref example (compact):
+
+```yaml
+version: 1
+secrets:
+  db/password:
+    backend: bws
+    ref: "bws://<PROJECT_ID>?key=project/dev/db/password"
+```
+
+Notes:
+- `bws secret list` output includes secret values; `env_localctl.py` MUST NOT print them.
+- Do not rely on `bws --output env` for injection when keys contain `/` (non-POSIX); render `.env.local` instead.
+
 ## Unsupported backend
 
 If a backend is not implemented, the script fails fast with a clear action request.

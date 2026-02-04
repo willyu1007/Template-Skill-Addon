@@ -35,5 +35,27 @@ Backends:
 - `mock`: for tests and local demos (reads from `env/.secrets-store/<env>/<name>`)
 - `env`: read from an environment variable named by `ref: env://VAR_NAME`
 - `file`: read from a local file path named by `ref: file:///abs/path` or `ref: file:relative/path`
+- `bws`: Bitwarden Secrets Manager via `bws` CLI (requires `BWS_ACCESS_TOKEN` in the shell; do not commit tokens)
+
+`bws` structure (recommended):
+
+```yaml
+version: 1
+secrets:
+  db/password:
+    backend: bws
+    project_name: "<your-bitwarden-project-name>"
+    key: "project/dev/db/password"
+```
+
+Alternative (compact `ref`):
+
+```yaml
+version: 1
+secrets:
+  db/password:
+    backend: bws
+    ref: "bws://<PROJECT_ID>?key=project/dev/db/password"
+```
 
 Any backend not implemented should fail fast with a clear action request.
