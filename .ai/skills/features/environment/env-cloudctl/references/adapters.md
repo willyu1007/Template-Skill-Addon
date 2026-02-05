@@ -8,6 +8,7 @@ Instead:
 
 - Maintain **spec** centrally (contract/values/secret refs/inventory).
 - Route at runtime to provider-specific adapters.
+- Prefer `docs/project/policy.yaml` (`policy.env.cloud.targets`) for routing; inventory remains a fallback.
 
 ## What an adapter must provide
 
@@ -18,4 +19,9 @@ Instead:
 - `rotate(secret_ref) -> rotation_log` (optional)
 - `decommission(env) -> log` (optional)
 
-The bundled scripts ship only a `mockcloud` adapter for offline tests.
+The bundled scripts ship:
+
+- `mockcloud` adapter (offline tests)
+- `envfile` adapter (legacy alias: `ecs-envfile`) (copy a prebuilt env file on the deploy machine)
+  - `transport: local` (default) or `transport: ssh` for remote hosts
+  - remote execution requires `env-cloudctl apply --approve --approve-remote`

@@ -17,3 +17,4 @@ Rules:
 
 - Secret values must not be committed.
 - Evidence artifacts must not contain secret values.
+- Policy preflight is driven by `docs/project/policy.yaml` (auth_mode / preflight rules).

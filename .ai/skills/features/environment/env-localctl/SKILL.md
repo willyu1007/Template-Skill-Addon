@@ -16,6 +16,7 @@ The `env-localctl` skill:
 - resolves secrets via approved mechanisms (never via chat)
 - generates a local env file (`.env.local` or `.env.<env>.local`)
 - produces redacted LLM context (`docs/context/env/effective-<env>.json`)
+- applies policy preflight checks from `docs/project/policy.yaml` (auth_mode/preflight rules)
 
 ## Hard precondition (SSOT mode gate)
 
@@ -62,6 +63,7 @@ Avoid when:
 - Non-secret values: `env/values/<env>.yaml` (+ optional `env/values/<env>.local.yaml` for per-developer overrides)
 - Secret references: `env/secrets/<env>.ref.yaml`
 - Secret material: resolved via secret backends (e.g., mock file store, environment, or file reference)
+- Policy (preflight/auth): `docs/project/policy.yaml` (selects `auth_mode` + `preflight` rules via `env/runtime_target/workload`)
 
 ## Outputs (evidence + generated artifacts)
 
@@ -87,6 +89,21 @@ Evidence files (templates available in `./templates/`):
 - `.env.local` (default for `dev`) or `.env.<env>.local`
 - `docs/context/env/effective-<env>.json` (redacted; safe for LLM)
 
+### Deployment-oriented usage (cloud injection)
+
+Use the same controller on a deploy machine to render a target env-file without writing repo-local context:
+
+```bash
+python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py compile \
+  --root . \
+  --env staging \
+  --runtime-target remote \
+  --workload api \
+  --env-file /etc/<org>/<project>/staging.env \
+  --no-context \
+  --out <EVIDENCE_DIR>/02-config-compile-report.md
+```
+
 ## Steps
 
 ### Phase 0 — Confirm scope and mode
@@ -102,7 +119,12 @@ Evidence files (templates available in `./templates/`):
 5. Run a deterministic local doctor:
 
 ```bash
-python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py doctor --root . --env dev --out <EVIDENCE_DIR>/00-prereq-check.md
+python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py doctor \
+  --root . \
+  --env dev \
+  --runtime-target local \
+  --workload api \
+  --out <EVIDENCE_DIR>/00-prereq-check.md
 ```
 
 6. If doctor reports missing **non-secret** values, use the minimal entry point:
@@ -121,7 +143,12 @@ python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.
 8. Compile and write `.env.local` and redacted context:
 
 ```bash
-python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py compile --root . --env dev --out <EVIDENCE_DIR>/02-config-compile-report.md
+python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py compile \
+  --root . \
+  --env dev \
+  --runtime-target local \
+  --workload api \
+  --out <EVIDENCE_DIR>/02-config-compile-report.md
 ```
 
 ### Phase C — Connectivity smoke (optional)
@@ -129,7 +156,12 @@ python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.
 9. If needed, run a light connectivity check (best-effort; safe; redacted):
 
 ```bash
-python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py connectivity --root . --env dev --out <EVIDENCE_DIR>/03-connectivity-smoke.md
+python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py connectivity \
+  --root . \
+  --env dev \
+  --runtime-target local \
+  --workload api \
+  --out <EVIDENCE_DIR>/03-connectivity-smoke.md
 ```
 
 ### Phase D — Reconcile (idempotent repair)

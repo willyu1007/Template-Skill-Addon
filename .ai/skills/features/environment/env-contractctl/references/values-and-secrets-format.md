@@ -48,6 +48,31 @@ secrets:
     key: "project/dev/db/password"
 ```
 
+Optional (policy defaults + scope):
+
+```yaml
+version: 1
+secrets:
+  db/password:
+    backend: bws
+    scope: project
+    key: "db/password"
+```
+
+Where `docs/project/policy.yaml` defines:
+
+```yaml
+policy:
+  env:
+    secrets:
+      backends:
+        bws:
+          key_prefix: "project/dev"
+          scopes:
+            project:
+              project_name: "<project-name>"
+```
+
 Alternative (compact `ref`):
 
 ```yaml

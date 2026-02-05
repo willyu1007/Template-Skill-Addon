@@ -1,6 +1,6 @@
 ---
 name: env-cloudctl
-description: Plan/apply/verify cloud environment config and secret references using env contract + inventory; detect drift, rotate secrets, and decommission environments with approval gates. Use for staging/prod deployments and maintenance.
+description: Plan/apply/verify cloud environment config and secret references using env contract + policy/inventory routing; detect drift, rotate secrets, and decommission environments with approval gates. Use for staging/prod deployments and maintenance.
 ---
 
 # Cloud Environment Control (plan / apply / drift / rotate / decommission)
@@ -15,7 +15,8 @@ The `env-cloudctl` skill:
   - `env/contract.yaml`
   - `env/values/<env>.yaml`
   - `env/secrets/<env>.ref.yaml` (refs only)
-  - `env/inventory/<env>.yaml` (routing)
+  - `docs/project/policy.yaml` (`policy.env.cloud.targets`, preferred)
+  - `env/inventory/<env>.yaml` (fallback routing)
 - produces a deterministic change plan (diff)
 - applies changes only after explicit approval
 - detects drift
@@ -26,10 +27,14 @@ The `env-cloudctl` skill:
 
 1. Env SSOT mode is `repo-env-contract`.
    - Check: `docs/project/env-ssot.json`
-2. The target env has an inventory file.
-   - Required: `env/inventory/<env>.yaml`
+2. The target env has routing:
+   - Preferred: `docs/project/policy.yaml` with `policy.env.cloud.targets`
+   - Fallback: `env/inventory/<env>.yaml`
 
-If either is not true, STOP.
+If neither is true, STOP.
+
+If `docs/project/policy.yaml` sets `policy.env.cloud.require_target: true`, a matching
+`policy.env.cloud.targets` entry is mandatory and inventory fallback is disabled.
 
 If `docs/project/env-ssot.json` or `env/contract.yaml` does not exist (first-time setup), run:
 
@@ -46,6 +51,7 @@ Use when the user asks to:
 - deploy or update configuration for staging/prod
 - preview changes (plan/diff) before a release
 - check configuration drift
+- inject a prebuilt env-file on a deploy machine (cloud host / CI)
 - rotate or revoke secrets
 - decommission an environment
 
@@ -62,13 +68,23 @@ Avoid when:
 - MUST require explicit approval before apply/rotate/decommission.
 - MUST treat **Identity/IAM changes as out of scope for automatic apply**.
   - You may generate a runbook or policy diff, but do not apply permissions changes automatically.
+- Remote commands (SSH) are allowed only with explicit user action:
+  - `apply --approve --approve-remote` (only when `injection.transport=ssh`)
+  - `verify --remote --approve-remote` (remote hash checks)
 
 ## Inputs
 
 - Contract: `env/contract.yaml`
 - Values: `env/values/<env>.yaml`
 - Secret refs: `env/secrets/<env>.ref.yaml`
+- Policy: `docs/project/policy.yaml` (`policy.env.cloud.targets`, preferred)
 - Inventory: `env/inventory/<env>.yaml`
+  - Optional when policy targets match
+  - If both exist, policy targets take precedence
+  - Use `--runtime-target` / `--workload` to select policy targets
+  - For `envfile` (or legacy `ecs-envfile`), inventory must include `injection.env_file` (see references)
+  - For remote injection, set `injection.transport: ssh` and `injection.ssh` (hosts + auth)
+    - Host sources may be hand-maintained (`ssh.hosts`) or IaC outputs (`ssh.hosts_file`)
 
 ## Outputs (evidence + context)
 
@@ -111,6 +127,64 @@ python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.
 ```
 
 5. Record `00-target-and-scope.md` and summarize high-risk operations.
+
+### Env-file injection (deploy machine)
+
+If the inventory provider is `envfile` (or legacy `ecs-envfile`), generate the env-file
+first with `env-localctl`, then plan/apply with `env-cloudctl`:
+
+```bash
+python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py compile \
+  --root . \
+  --env staging \
+  --runtime-target remote \
+  --workload api \
+  --env-file ops/deploy/env-files/staging.env \
+  --no-context
+```
+
+```bash
+python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan \
+  --root . \
+  --env staging \
+  --runtime-target remote \
+  --workload api
+```
+
+Apply (transport: `local`):
+
+```bash
+python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py apply \
+  --root . \
+  --env staging \
+  --runtime-target remote \
+  --workload api \
+  --approve
+```
+
+Apply (transport: `ssh`):
+
+```bash
+python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py apply \
+  --root . \
+  --env staging \
+  --runtime-target remote \
+  --workload api \
+  --approve \
+  --approve-remote
+```
+
+Optional remote verification (only for `transport: ssh`):
+
+```bash
+python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py verify \
+  --root . \
+  --env staging \
+  --runtime-target remote \
+  --workload api \
+  --remote \
+  --approve-remote
+```
 
 ### Approval checkpoint (mandatory)
 

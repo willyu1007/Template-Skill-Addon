@@ -227,11 +227,11 @@ export function run(ctx) {
     const detail = generate.error ? String(generate.error) : generate.stderr || generate.stdout;
     return { name, status: 'FAIL', error: `env-contractctl generate failed: ${detail}` };
   }
-  const envExample = path.join(rootDir, '.env.example');
+  const envExample = path.join(rootDir, 'env', '.env.example');
   if (!fs.existsSync(envExample)) {
-    return { name, status: 'FAIL', error: 'missing .env.example' };
+    return { name, status: 'FAIL', error: 'missing env/.env.example' };
   }
-  assertIncludes(readUtf8(envExample), 'DATABASE_URL', 'Expected DATABASE_URL in .env.example');
+  assertIncludes(readUtf8(envExample), 'DATABASE_URL', 'Expected DATABASE_URL in env/.env.example');
 
   const envDoc = path.join(rootDir, 'docs', 'env.md');
   if (!fs.existsSync(envDoc)) {

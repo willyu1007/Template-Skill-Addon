@@ -68,9 +68,20 @@ version: 1
 secrets:
   db/password:
     backend: bws
-    project_name: "mr-common-dev"
+    project_name: "<project-name>"
     key: "project/dev/db/password"
-    hint: "Bitwarden Secrets Manager key in mr-common-dev"
+    hint: "Bitwarden Secrets Manager key in <project-name>"
+```
+
+Optional (policy defaults + scope):
+
+```yaml
+version: 1
+secrets:
+  db/password:
+    backend: bws
+    scope: project
+    key: "db/password"
 ```
 
 Alternative ref example (compact):

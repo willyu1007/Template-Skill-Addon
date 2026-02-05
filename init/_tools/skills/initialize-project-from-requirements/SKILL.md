@@ -72,6 +72,7 @@ Working location (default): `init/_work/project-blueprint.json`
 ### Optional: features
 
 Feature flags live under `blueprint.features`.
+Exception: IaC is enabled by `iac.tool` (`none | ros | terraform`); `features.iac` is optional.
 
 **No external payload directory is required.** Feature templates are integrated in the template repository under:
 
@@ -121,7 +122,8 @@ Depending on `blueprint.features`, Stage C may also materialize:
 - Context Awareness: `docs/context/**` + `config/environments/**` (and related context contracts)
 - Database: `db/**` (when `db.ssot=database`) or `prisma/**` (when `db.ssot=repo-prisma`)
 - UI: `ui/**` + `docs/context/ui/**`
-- Environment: `env/**` + `docs/project/env-ssot.json` (and optionally generated `env/.env.example` + `docs/env.md`)
+- Environment: `env/**` + `docs/project/env-ssot.json` + `docs/project/policy.yaml` (and optionally generated `env/.env.example` + `docs/env.md`)
+- IaC: `ops/iac/<tool>/` + `docs/context/iac/overview.json` (enabled via `iac.tool`)
 - Packaging: `ops/packaging/**` + `docs/packaging/registry.json`
 - Deployment: `ops/deploy/**`
 - Observability: `observability/**` + `docs/context/observability/**`

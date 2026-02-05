@@ -877,6 +877,108 @@ def run_init(root: Path, envs: Sequence[str], force: bool = False) -> Dict[str, 
 """,
     )
 
+    # Policy SSOT (v1 skeleton). Template repos should only create this when the
+    # environment feature is enabled (init pipeline Stage C calls `init`).
+    _ensure(
+        root / "docs" / "project" / "policy.yaml",
+        """version: 1
+
+policy:
+  env:
+    merge:
+      strategy: most-specific-wins
+      tie_breaker: error
+
+    defaults:
+      auth_mode: auto
+      preflight:
+        mode: warn
+
+    evidence:
+      fallback_dir: .ai/.tmp/env/fallback
+
+    preflight:
+      detect:
+        providers:
+          cloud_a:
+            env_credential_sets:
+              - id_vars: [CLOUD_ACCESS_KEY_ID]
+                secret_vars: [CLOUD_ACCESS_KEY_SECRET]
+                token_vars: [CLOUD_SESSION_TOKEN]
+            credential_files:
+              paths:
+                - "~/.cloud/credentials"
+          cloud_b:
+            env_var_presence:
+              - CLOUD_APPLICATION_CREDENTIALS
+            credential_files:
+              paths:
+                - "~/.config/cloud/application_default_credentials.json"
+
+    rules:
+      - id: remote-default
+        match: { runtime_target: remote }
+        set:
+          auth_mode: role-only
+          preflight: { mode: fail }
+
+      - id: prod-remote
+        match: { env: prod, runtime_target: remote }
+        set:
+          auth_mode: role-only
+          preflight: { mode: fail }
+
+      - id: staging-local
+        match: { env: staging, runtime_target: local }
+        set:
+          auth_mode: role-only
+          preflight: { mode: fail }
+          sts_bootstrap:
+            allowed: true
+            allow_ak_for_sts_only: true
+
+      - id: dev-local
+        match: { env: dev, runtime_target: local }
+        set:
+          auth_mode: auto
+          preflight: { mode: warn }
+          ak_fallback:
+            allowed: true
+            require_explicit_policy: true
+            record: true
+
+    secrets:
+      backends:
+        bws:
+          # Optional defaults; keep empty to disable.
+          key_prefix: ""
+          scopes:
+            project: {}
+            shared: {}
+
+    cloud:
+      # Set to true to disallow inventory fallback and enforce policy-only routing.
+      require_target: false
+      defaults:
+        provider: envfile
+        env_file_source: "ops/deploy/env-files/{env}.env"
+        env_file_name: "{env}.env"
+        transport: local
+        write:
+          chmod: "600"
+          remote_tmp_dir: "/tmp"
+      targets: []
+
+  iac:
+    cloud_scope: multi-cloud
+    tool: none
+    evidence_dir: ops/iac/handbook
+    identity:
+      allow_ak: true
+      forbid_runtime_injection: true
+""",
+    )
+
     # Minimal contract template
     _ensure(
         root / "env" / "contract.yaml",

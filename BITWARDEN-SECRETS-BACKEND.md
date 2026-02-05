@@ -31,7 +31,7 @@ This is designed for the v1 environment strategy where:
 - **Do not commit tokens**: `BWS_ACCESS_TOKEN` must be provided via the user shell / CI secret store only.
 - **Do not print secret values**: `env_localctl.py` must not log or echo values returned by `bws`.
 - **Prefer read-only tokens**: Machine Accounts used for `compile` should typically be read-only for their target Project.
-- **No runtime Bitwarden access**: in the recommended deployment model, ECS/runtime does not receive Bitwarden tokens; env/config is injected during deploy.
+- **No runtime Bitwarden access**: in the recommended deployment model, runtime workloads do not receive Bitwarden tokens; env/config is injected during deploy.
 
 ## Config format
 
@@ -57,6 +57,34 @@ secrets:
   db/password:
     backend: bws
     ref: "bws://<PROJECT_ID>?key=project/dev/db/password"
+```
+
+### Optional policy defaults (policy.yaml)
+
+You can define defaults in `docs/project/policy.yaml` to reduce repetition:
+
+```yaml
+policy:
+  env:
+    secrets:
+      backends:
+        bws:
+          key_prefix: "project/dev"
+          scopes:
+            project:
+              project_name: "<project-name>"
+            shared:
+              project_name: "<shared-project-name>"
+```
+
+Then reference per-secret scope only:
+
+```yaml
+secrets:
+  db/password:
+    backend: bws
+    scope: project
+    key: "db/password"
 ```
 
 ## Implementation details
@@ -104,4 +132,3 @@ The reference docs for env contracts now list `bws` as a supported backend and i
 - Automatically creating Bitwarden Projects / secrets from the repo.
 - Runtime fetching secrets from Bitwarden (dynamic secrets injection at runtime).
 - Cloud-provider-specific secret manager integration (e.g., Alibaba Cloud KMS/Credentials Manager).
-

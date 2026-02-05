@@ -1036,6 +1036,20 @@ function validateBlueprint(blueprint) {
     errors.push('features.database=true is only valid when db.ssot != none.');
   }
 
+  // IaC tool checks
+  const iac = blueprint.iac && typeof blueprint.iac === 'object' ? blueprint.iac : {};
+  const iacToolValue = iacTool(blueprint);
+  const validIacTools = ['none', 'ros', 'terraform'];
+  if (iac.tool && !validIacTools.includes(iacToolValue)) {
+    errors.push(`iac.tool must be one of: ${validIacTools.join(', ')}`);
+  }
+  if (featureFlags(blueprint).iac === true && iacToolValue === 'none') {
+    errors.push('features.iac=true requires iac.tool to be "ros" or "terraform".');
+  }
+  if (iacToolValue !== 'none' && featureFlags(blueprint).iac !== true) {
+    warnings.push('iac.tool is set; IaC feature will be enabled even if features.iac is not true.');
+  }
+
   // Feature dependencies
   if (isObservabilityEnabled(blueprint) && !isContextAwarenessEnabled(blueprint)) {
     errors.push('features.observability=true requires features.contextAwareness=true (observability contracts live under docs/context/).');
@@ -1148,6 +1162,9 @@ function recommendedFeaturesFromBlueprint(blueprint) {
     (blueprint.observability && blueprint.observability.enabled);
   if (envLikely) rec.push('environment');
 
+  const iacToolValue = iacTool(blueprint);
+  if (iacToolValue && iacToolValue !== 'none') rec.push('iac');
+
   // release: enabled when release management is configured
   const releaseEnabled =
     (blueprint.release && blueprint.release.enabled);
@@ -1175,6 +1192,7 @@ function getEnabledFeatures(blueprint) {
   if (isDatabaseEnabled(blueprint)) enabled.push('database');
   if (isUiEnabled(blueprint)) enabled.push('ui');
   if (isEnvironmentEnabled(blueprint)) enabled.push('environment');
+  if (isIacEnabled(blueprint)) enabled.push('iac');
   if (isPackagingEnabled(blueprint)) enabled.push('packaging');
   if (isDeploymentEnabled(blueprint)) enabled.push('deployment');
   if (isReleaseEnabled(blueprint)) enabled.push('release');
@@ -2154,6 +2172,12 @@ function refreshDbContextContract(repoRoot, blueprint, apply, verifyFeatures) {
 // Feature Detection Functions
 // ============================================================================
 
+function iacTool(blueprint) {
+  const iac = blueprint && typeof blueprint === 'object' && typeof blueprint.iac === 'object' ? blueprint.iac : {};
+  const tool = typeof iac.tool === 'string' ? iac.tool.trim().toLowerCase() : 'none';
+  return tool || 'none';
+}
+
 function isDatabaseEnabled(blueprint) {
   const flags = featureFlags(blueprint);
   // Only feature flags trigger materialization; db.* is configuration only.
@@ -2168,6 +2192,13 @@ function isUiEnabled(blueprint) {
 function isEnvironmentEnabled(blueprint) {
   const flags = featureFlags(blueprint);
   return flags.environment === true;
+}
+
+function isIacEnabled(blueprint) {
+  const tool = iacTool(blueprint);
+  if (tool && tool !== 'none') return true;
+  const flags = featureFlags(blueprint);
+  return flags.iac === true;
 }
 
 function isPackagingEnabled(blueprint) {
@@ -2459,6 +2490,38 @@ function ensureEnvironmentFeature(repoRoot, blueprint, apply, options = {}) {
     if (genRes.mode === 'failed') {
       result.verifyFailed = true;
       result.verifyError = 'Environment feature generate failed';
+    }
+  }
+
+  return result;
+}
+
+function ensureIacFeature(repoRoot, blueprint, apply, options = {}) {
+  const { verify = false } = options;
+  const result = { enabled: true, featureId: 'iac', op: 'ensure', actions: [], warnings: [], errors: [] };
+
+  result.actions.push(markProjectFeature(repoRoot, 'iac', apply));
+
+  const tool = iacTool(blueprint);
+  if (!tool || tool === 'none') {
+    result.errors.push('IaC feature enabled but iac.tool is none. Set iac.tool to "ros" or "terraform".');
+    return result;
+  }
+
+  const script = path.join(repoRoot, '.ai', 'skills', 'features', 'iac', 'scripts', 'iacctl.mjs');
+  if (!fs.existsSync(script)) {
+    result.errors.push(`IaC feature script not found: ${path.relative(repoRoot, script)}`);
+    return result;
+  }
+
+  result.actions.push(runNodeScriptWithRepoRootFallback(repoRoot, script, ['init', '--tool', tool, '--repo-root', repoRoot], apply));
+
+  if (verify && apply) {
+    const verifyRes = runNodeScriptWithRepoRootFallback(repoRoot, script, ['verify', '--repo-root', repoRoot, '--tool', tool], apply);
+    result.actions.push(verifyRes);
+    if (verifyRes.mode === 'failed') {
+      result.verifyFailed = true;
+      result.verifyError = 'IaC feature verify failed';
     }
   }
 
@@ -3852,6 +3915,13 @@ if (command === 'validate') {
       console.log('[info] Enabling Environment feature...');
       const res = ensureEnvironmentFeature(repoRoot, blueprint, true, featureOptions);
       handleFeatureResult(res, 'environment');
+    }
+
+    // IaC feature
+    if (isIacEnabled(blueprint)) {
+      console.log('[info] Enabling IaC feature...');
+      const res = ensureIacFeature(repoRoot, blueprint, true, featureOptions);
+      handleFeatureResult(res, 'iac');
     }
 
     // CI feature
