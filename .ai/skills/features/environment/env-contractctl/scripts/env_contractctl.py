@@ -915,15 +915,17 @@ policy:
               paths:
                 - "~/.config/cloud/application_default_credentials.json"
 
+    # Supported auth_mode: role-only | auto | ak-only
+    # Supported preflight.mode: fail | warn | off
     rules:
-      - id: remote-default
-        match: { runtime_target: remote }
+      - id: ecs-default
+        match: { runtime_target: ecs }
         set:
           auth_mode: role-only
           preflight: { mode: fail }
 
-      - id: prod-remote
-        match: { env: prod, runtime_target: remote }
+      - id: prod-ecs
+        match: { env: prod, runtime_target: ecs }
         set:
           auth_mode: role-only
           preflight: { mode: fail }
@@ -944,7 +946,6 @@ policy:
           preflight: { mode: warn }
           ak_fallback:
             allowed: true
-            require_explicit_policy: true
             record: true
 
     secrets:
@@ -970,7 +971,9 @@ policy:
       targets: []
 
   iac:
+    # cloud_scope: aliyun-only | multi-cloud
     cloud_scope: multi-cloud
+    # tool: none | ros | terraform | opentofu (none = IaC feature not enabled)
     tool: none
     evidence_dir: ops/iac/handbook
     identity:

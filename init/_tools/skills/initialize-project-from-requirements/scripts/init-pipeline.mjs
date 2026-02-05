@@ -1039,12 +1039,12 @@ function validateBlueprint(blueprint) {
   // IaC tool checks
   const iac = blueprint.iac && typeof blueprint.iac === 'object' ? blueprint.iac : {};
   const iacToolValue = iacTool(blueprint);
-  const validIacTools = ['none', 'ros', 'terraform'];
+  const validIacTools = ['none', 'ros', 'terraform', 'opentofu'];
   if (iac.tool && !validIacTools.includes(iacToolValue)) {
     errors.push(`iac.tool must be one of: ${validIacTools.join(', ')}`);
   }
   if (featureFlags(blueprint).iac === true && iacToolValue === 'none') {
-    errors.push('features.iac=true requires iac.tool to be "ros" or "terraform".');
+    errors.push('features.iac=true requires iac.tool to be "ros", "terraform", or "opentofu".');
   }
   if (iacToolValue !== 'none' && featureFlags(blueprint).iac !== true) {
     warnings.push('iac.tool is set; IaC feature will be enabled even if features.iac is not true.');
@@ -2504,7 +2504,7 @@ function ensureIacFeature(repoRoot, blueprint, apply, options = {}) {
 
   const tool = iacTool(blueprint);
   if (!tool || tool === 'none') {
-    result.errors.push('IaC feature enabled but iac.tool is none. Set iac.tool to "ros" or "terraform".');
+    result.errors.push('IaC feature enabled but iac.tool is none. Set iac.tool to "ros", "terraform", or "opentofu".');
     return result;
   }
 

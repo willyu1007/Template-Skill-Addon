@@ -41,6 +41,9 @@ policy:
 Notes:
 
 - `match.runtime_target` and `match.workload` use `env-cloudctl --runtime-target/--workload`.
+- `runtime_target` (policy matching) vs `runtime` (inventory deployment location):
+  - `runtime_target` in policy rules: `local | ecs` — determines which policy rules apply (local dev vs ECS cloud).
+  - `runtime` in inventory: `local | remote | mock` — describes where the env file is deployed (local machine vs SSH remote).
 - `provider: ssh` is accepted as an alias for `provider: envfile` + `transport: ssh`.
 - `policy.env.cloud.require_target: true` disables inventory fallback (policy-only routing).
 

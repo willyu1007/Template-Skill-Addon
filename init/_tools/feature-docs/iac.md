@@ -3,7 +3,7 @@
 ## Conclusions (read first)
 
 - `ops/iac/<tool>/` is the IaC SSOT (plan/apply owned by humans/CI).
-- The tool is selected via `iac.tool` in the blueprint (`none | ros | terraform`).
+- The tool is selected via `iac.tool` in the blueprint (`none | ros | terraform | opentofu`).
 - `docs/context/iac/overview.json` records the tool + SSOT path (no secrets).
 
 ## How to enable

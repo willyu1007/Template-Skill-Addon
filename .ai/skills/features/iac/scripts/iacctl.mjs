@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import childProcess from 'node:child_process';
 
-const VALID_TOOLS = ['none', 'ros', 'terraform'];
+const VALID_TOOLS = ['none', 'ros', 'terraform', 'opentofu'];
 
 function usage(exitCode = 0) {
   const msg = `
@@ -23,13 +23,13 @@ Usage:
 
 Commands:
   init
-    --tool <none|ros|terraform>  IaC tool selection (required)
-    --repo-root <path>           Repo root (default: cwd)
-    --dry-run                    Show actions without writing
+    --tool <none|ros|terraform|opentofu>  IaC tool selection (required)
+    --repo-root <path>                    Repo root (default: cwd)
+    --dry-run                             Show actions without writing
 
   verify
-    --repo-root <path>           Repo root (default: cwd)
-    --tool <none|ros|terraform>  Optional override (default: from overview.json)
+    --repo-root <path>                    Repo root (default: cwd)
+    --tool <none|ros|terraform|opentofu>  Optional override (default: from overview.json)
 
   status
     --repo-root <path>           Repo root (default: cwd)

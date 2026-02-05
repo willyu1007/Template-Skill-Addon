@@ -68,6 +68,16 @@ def resolve_path(root: Path, raw: str) -> Path:
     return path
 
 
+def normalize_runtime_target(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    target = str(value or "").strip().lower()
+    if target == "remote":
+        # Backward-compatible alias: remote -> ecs
+        return "ecs"
+    return target
+
+
 def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
@@ -924,6 +934,7 @@ def build_desired_state(
     workload: Optional[str] = None,
 ) -> DesiredState:
     ensure_ssot_mode(root)
+    runtime_target = normalize_runtime_target(runtime_target)
     contract_vars, _contract_envs = parse_contract(root)
     policy = load_policy(root)
     inv, notes = resolve_cloud_inventory(root, env=env, runtime_target=runtime_target, workload=workload)
@@ -1516,6 +1527,8 @@ def verify_envfile_remote(
 ) -> Tuple[bool, List[Dict[str, Any]]]:
     inv, _notes = resolve_cloud_inventory(root, env=env, runtime_target=runtime_target, workload=workload)
     cfg = parse_envfile_config(root, inv)
+    if cfg.get("mode") == "noop":
+        return True, [{"status": "SKIP", "reason": "mode is noop"}]
     if cfg.get("transport") != "ssh":
         return True, [{"status": "SKIP", "reason": "transport is not ssh"}]
     if not desired.env_file or not desired.env_file.get("sha256"):
@@ -1704,7 +1717,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     def add_common(p: argparse.ArgumentParser) -> None:
         p.add_argument("--root", default=".", help="Project root")
         p.add_argument("--env", required=True, help="Environment name")
-        p.add_argument("--runtime-target", default="remote", help="Runtime target (default: remote)")
+        p.add_argument(
+            "--runtime-target",
+            default="ecs",
+            help="Runtime target for policy matching (default: ecs; supports: local|ecs, 'remote' is alias)",
+        )
         p.add_argument("--workload", default="api", help="Workload name (default: api)")
         p.add_argument("--out", default=None, help="Write markdown report to this path")
 
@@ -1737,9 +1754,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     root = Path(args.root).resolve()
     env = str(args.env)
+    runtime_target = normalize_runtime_target(args.runtime_target)
+    workload = str(args.workload)
 
     if args.cmd in {"plan", "drift"}:
-        desired = build_desired_state(root, env, runtime_target=str(args.runtime_target), workload=str(args.workload))
+        desired = build_desired_state(root, env, runtime_target=runtime_target, workload=workload)
         deployed = load_deployed_state(root, env, provider=desired.provider)
         plan = diff_state(desired, deployed)
         write_cloud_context(root, desired)
@@ -1747,13 +1766,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
 
     if args.cmd == "apply":
-        desired = build_desired_state(root, env, runtime_target=str(args.runtime_target), workload=str(args.workload))
+        desired = build_desired_state(root, env, runtime_target=runtime_target, workload=workload)
         state = apply_state(root, env, desired, approve=bool(args.approve), approve_remote=bool(args.approve_remote))
         write_output(args.out, render_apply_md(state))
         return 0 if state.get("status") != "FAIL" else 1
 
     if args.cmd == "verify":
-        desired = build_desired_state(root, env, runtime_target=str(args.runtime_target), workload=str(args.workload))
+        desired = build_desired_state(root, env, runtime_target=runtime_target, workload=workload)
         deployed = load_deployed_state(root, env, provider=desired.provider)
         ok, plan = verify_state(root, desired, deployed)
         if args.remote:
@@ -1763,8 +1782,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 root,
                 env,
                 desired,
-                runtime_target=str(args.runtime_target),
-                workload=str(args.workload),
+                runtime_target=runtime_target,
+                workload=workload,
             )
             plan["remote"] = remote_results
             ok = ok and remote_ok

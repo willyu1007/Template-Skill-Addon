@@ -47,6 +47,14 @@ _BWS_PROJECT_ID_CACHE: Dict[str, str] = {}
 _BWS_SECRETS_CACHE: Dict[str, Dict[str, str]] = {}
 
 
+def normalize_runtime_target(value: str) -> str:
+    target = str(value or "").strip().lower()
+    if target == "remote":
+        # Backward-compatible alias: remote -> ecs
+        return "ecs"
+    return target
+
+
 def utc_now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -508,6 +516,7 @@ def evaluate_preflight(
     preflight_mode: str,
     signals: Mapping[str, Any],
     ak_fallback: Mapping[str, Any],
+    sts_bootstrap: Mapping[str, Any],
     env: str,
     runtime_target: str,
     workload: str,
@@ -539,12 +548,28 @@ def evaluate_preflight(
     fallback_used = False
 
     if auth_mode == "role-only":
+        # sts_bootstrap allows AK to be used solely for obtaining STS credentials
+        sts_bootstrap_allowed = bool(sts_bootstrap.get("allowed"))
+        ak_for_sts_only = bool(sts_bootstrap.get("allow_ak_for_sts_only"))
+
         if has_ak:
-            reasons.append("AK/credential signals detected in role-only mode")
-            status = "FAIL" if preflight_mode == "fail" else "WARN"
+            # Check if AK is permitted for STS bootstrap purposes
+            if sts_bootstrap_allowed and ak_for_sts_only and has_sts:
+                # AK is acceptable because it's used only for STS bootstrap and STS is present
+                reasons.append("AK signals detected but allowed for STS bootstrap (STS present)")
+                status = "PASS"
+            else:
+                reasons.append("AK/credential signals detected in role-only mode")
+                status = "FAIL" if preflight_mode == "fail" else "WARN"
         elif not has_sts:
+            # In role-only mode without STS signals, fail-fast when preflight_mode=fail
             reasons.append("No STS env signals detected (role chain not verified)")
-            status = "WARN" if preflight_mode == "warn" else "PASS"
+            if preflight_mode == "fail":
+                status = "FAIL"
+            elif preflight_mode == "warn":
+                status = "WARN"
+            else:
+                status = "PASS"
     elif auth_mode == "auto":
         if has_sts:
             if has_ak:
@@ -552,6 +577,10 @@ def evaluate_preflight(
                 status = "WARN" if preflight_mode == "warn" else "PASS"
         elif has_ak:
             allowed = bool(ak_fallback.get("allowed"))
+            require_explicit = bool(ak_fallback.get("require_explicit_policy"))
+            if allowed and require_explicit and not rule_ids:
+                allowed = False
+                reasons.append("AK fallback requires explicit policy rule but none matched")
             if allowed:
                 fallback_used = True
                 reasons.append("AK fallback used (no STS signals detected)")
@@ -1283,6 +1312,7 @@ def run_preflight(
 ) -> Tuple[Optional[Dict[str, Any]], List[str], List[str]]:
     warnings: List[str] = []
     errors: List[str] = []
+    runtime_target = normalize_runtime_target(runtime_target)
 
     if no_preflight:
         return (
@@ -1327,6 +1357,7 @@ def run_preflight(
         preflight_mode=effective.get("preflight_mode", "warn"),
         signals=signals,
         ak_fallback=effective.get("ak_fallback") or {},
+        sts_bootstrap=effective.get("sts_bootstrap") or {},
         env=env,
         runtime_target=runtime_target,
         workload=workload,
@@ -1792,7 +1823,7 @@ def main() -> int:
     p_doc = sub.add_parser("doctor", help="Diagnose local env readiness and missing inputs.")
     p_doc.add_argument("--root", default=".", help="Project root")
     p_doc.add_argument("--env", default="dev", help="Environment name (default: dev)")
-    p_doc.add_argument("--runtime-target", default="local", help="Runtime target (default: local)")
+    p_doc.add_argument("--runtime-target", default="local", help="Runtime target (default: local; supports: local|ecs, 'remote' is alias)")
     p_doc.add_argument("--workload", default="api", help="Workload name (default: api)")
     p_doc.add_argument("--policy", default="docs/project/policy.yaml", help="Policy file path")
     p_doc.add_argument("--no-preflight", action="store_true", help="Disable policy preflight checks")
@@ -1801,7 +1832,7 @@ def main() -> int:
     p_comp = sub.add_parser("compile", help="Compile and write local env file and redacted effective context.")
     p_comp.add_argument("--root", default=".", help="Project root")
     p_comp.add_argument("--env", default="dev", help="Environment name (default: dev)")
-    p_comp.add_argument("--runtime-target", default="local", help="Runtime target (default: local)")
+    p_comp.add_argument("--runtime-target", default="local", help="Runtime target (default: local; supports: local|ecs, 'remote' is alias)")
     p_comp.add_argument("--workload", default="api", help="Workload name (default: api)")
     p_comp.add_argument("--policy", default="docs/project/policy.yaml", help="Policy file path")
     p_comp.add_argument("--no-preflight", action="store_true", help="Disable policy preflight checks")
@@ -1813,7 +1844,7 @@ def main() -> int:
     p_conn = sub.add_parser("connectivity", help="Best-effort connectivity smoke checks (redacted).")
     p_conn.add_argument("--root", default=".", help="Project root")
     p_conn.add_argument("--env", default="dev", help="Environment name (default: dev)")
-    p_conn.add_argument("--runtime-target", default="local", help="Runtime target (default: local)")
+    p_conn.add_argument("--runtime-target", default="local", help="Runtime target (default: local; supports: local|ecs, 'remote' is alias)")
     p_conn.add_argument("--workload", default="api", help="Workload name (default: api)")
     p_conn.add_argument("--policy", default="docs/project/policy.yaml", help="Policy file path")
     p_conn.add_argument("--no-preflight", action="store_true", help="Disable policy preflight checks")
@@ -1829,12 +1860,14 @@ def main() -> int:
             pol = (root / pol).resolve()
         return pol
 
+    runtime_target = normalize_runtime_target(args.runtime_target)
+
     if args.cmd == "doctor":
         return cmd_doctor(
             root,
             args.env,
             out,
-            runtime_target=args.runtime_target,
+            runtime_target=runtime_target,
             workload=args.workload,
             policy_path=_resolve_policy(args.policy),
             no_preflight=bool(args.no_preflight),
@@ -1848,7 +1881,7 @@ def main() -> int:
             no_write=bool(args.no_write),
             env_file=env_file,
             no_context=bool(args.no_context),
-            runtime_target=args.runtime_target,
+            runtime_target=runtime_target,
             workload=args.workload,
             policy_path=_resolve_policy(args.policy),
             no_preflight=bool(args.no_preflight),
@@ -1858,7 +1891,7 @@ def main() -> int:
             root,
             args.env,
             out,
-            runtime_target=args.runtime_target,
+            runtime_target=runtime_target,
             workload=args.workload,
             policy_path=_resolve_policy(args.policy),
             no_preflight=bool(args.no_preflight),
