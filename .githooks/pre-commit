@@ -13,6 +13,16 @@
 
 set -e
 
+# Lint Markdown docs when any Markdown file is staged.
+if git diff --cached --name-only | grep -qE '\.md$'; then
+  if [ -f .ai/scripts/lint-docs.mjs ]; then
+    echo "[hook] Detected Markdown changes, running lint-docs..."
+    node .ai/scripts/lint-docs.mjs --path . --check-anchors
+  else
+    echo "[hook] lint-docs script not found at .ai/scripts/lint-docs.mjs, skipping."
+  fi
+fi
+
 # Check if any dev-docs files are staged (supports multi-root dev-docs)
 if git diff --cached --name-only | grep -qE '(^|/)dev-docs/'; then
   echo "[hook] Detected dev-docs changes, running ctl-project-governance sync..."

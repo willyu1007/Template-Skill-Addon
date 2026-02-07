@@ -2,7 +2,7 @@
 
 Add a step in your CI pipeline that runs:
 
-- `node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --strict`
+- `node .ai/skills/features/context-awareness/scripts/ctl-context.mjs verify --strict`
 - `node .ai/scripts/ctl-project-state.mjs verify`
 
 This enforces that:
@@ -10,4 +10,4 @@ This enforces that:
 - the project state file is schema-valid
 
 If you also want to enforce skills wrapper sync, add:
-- `node .ai/skills/_meta/skillpacksctl.mjs sync --providers both`
+- `node .ai/skills/_meta/ctl-skill-packs.mjs sync --providers both`

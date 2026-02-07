@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * dbssotctl.mjs
+ * ctl-db-ssot.mjs
  *
  * SSOT-aware database schema context generator.
  *
@@ -59,7 +59,7 @@ function withoutUpdatedAt(obj) {
 function usage(exitCode = 0) {
   const msg = `
 Usage:
-  node .ai/scripts/dbssotctl.mjs <command> [options]
+  node .ai/scripts/ctl-db-ssot.mjs <command> [options]
 
 Commands:
   help
@@ -193,7 +193,7 @@ function buildContractFromPrisma({ repoRoot, mode }) {
         database: { kind: 'relational', dialect: 'generic', name: '', schemas: [] },
         enums: [],
         tables: [],
-        notes: `Missing prisma schema at ${toPosix(path.relative(repoRoot, prismaPath))}. Create it, then re-run dbssotctl.`
+        notes: `Missing prisma schema at ${toPosix(path.relative(repoRoot, prismaPath))}. Create it, then re-run ctl-db-ssot.`
       }),
       warnings: [`Missing Prisma schema: ${toPosix(path.relative(repoRoot, prismaPath))}`]
     };
@@ -226,7 +226,7 @@ function buildContractFromDbMirror({ repoRoot, mode }) {
         database: { kind: 'relational', dialect: 'generic', name: '', schemas: [] },
         enums: [],
         tables: [],
-        notes: `Missing DB mirror at ${toPosix(path.relative(repoRoot, mirrorPath))}. Initialize db-mirror and import schema, then re-run dbssotctl.`
+        notes: `Missing DB mirror at ${toPosix(path.relative(repoRoot, mirrorPath))}. Initialize db-mirror and import schema, then re-run ctl-db-ssot.`
       }),
       warnings: [`Missing DB mirror: ${toPosix(path.relative(repoRoot, mirrorPath))}`]
     };
@@ -261,8 +261,8 @@ function buildContractNone({ repoRoot }) {
 }
 
 function runContextTouch(repoRoot) {
-  const contextctl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'contextctl.mjs');
-  if (!exists(contextctl)) return { ran: false, reason: 'contextctl.mjs not found' };
+  const contextctl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'ctl-context.mjs');
+  if (!exists(contextctl)) return { ran: false, reason: 'ctl-context.mjs not found' };
 
   const res = spawnSync('node', [contextctl, 'touch', '--repo-root', repoRoot], {
     cwd: repoRoot,
@@ -372,9 +372,9 @@ function cmdSyncToContext(repoRoot, outPath, format) {
     for (const w of built.warnings) console.warn(`[warn] ${w}`);
   }
   if (touchRes.ran) {
-    console.log(`  - contextctl touch: ${touchRes.ok ? 'ok' : `failed (exit ${touchRes.exitCode})`}`);
+    console.log(`  - ctl-context touch: ${touchRes.ok ? 'ok' : `failed (exit ${touchRes.exitCode})`}`);
   } else {
-    console.log(`  - contextctl touch: skipped (${touchRes.reason})`);
+    console.log(`  - ctl-context touch: skipped (${touchRes.reason})`);
   }
 }
 

@@ -52,13 +52,13 @@ node .ai/scripts/ctl-project-state.mjs set-context-mode <contract|snapshot> --re
 3) Initializes context artifacts (idempotent):
 
 ```bash
-node .ai/skills/features/context-awareness/scripts/contextctl.mjs init --repo-root .
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs init --repo-root .
 ```
 
 4) Optional verification (when Stage C is run with `--verify-features`):
 
 ```bash
-node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --repo-root .
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs verify --repo-root .
 ```
 
 ## Key outputs

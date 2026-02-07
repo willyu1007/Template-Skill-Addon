@@ -24,7 +24,7 @@ When enabled, the feature materializes:
 
 Controller script (provided by the template SSOT):
 
-- `node .ai/skills/features/observability/scripts/obsctl.mjs` — manage and verify observability contracts
+- `node .ai/skills/features/observability/scripts/ctl-observability.mjs` — manage and verify observability contracts
 
 ## Dependency
 
@@ -40,8 +40,8 @@ Controller script (provided by the template SSOT):
 3. Initialize:
 
 ```bash
-node .ai/skills/features/observability/scripts/obsctl.mjs init
-node .ai/skills/features/observability/scripts/obsctl.mjs verify
+node .ai/skills/features/observability/scripts/ctl-observability.mjs init
+node .ai/skills/features/observability/scripts/ctl-observability.mjs verify
 ```
 
 Optional (recommended for LLM routing): record the flag in project state:
@@ -54,7 +54,7 @@ node .ai/scripts/ctl-project-state.mjs set features.observability true
 ## Verification
 
 ```bash
-node .ai/skills/features/observability/scripts/obsctl.mjs verify
+node .ai/skills/features/observability/scripts/ctl-observability.mjs verify
 ```
 
 ## Boundaries

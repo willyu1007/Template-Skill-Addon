@@ -5,7 +5,7 @@ Use when user asks about current tasks, task inventory, or what's being tracked.
 ## Data Source
 
 ```bash
-node .ai/scripts/ctl-project-governance.mjs query --project <project> --json
+node .ai/scripts/ctl-project-governance.mjs query --json
 ```
 
 ## Output Template

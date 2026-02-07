@@ -30,19 +30,19 @@ Supported tools: `none | ros | terraform | opentofu`.
 Stage C `apply` runs:
 
 ```bash
-node .ai/skills/features/iac/scripts/iacctl.mjs init --tool terraform --repo-root .
+node .ai/skills/features/iac/scripts/ctl-iac.mjs init --tool terraform --repo-root .
 ```
 
 Optional verify (when Stage C runs with `--verify-features`):
 
 ```bash
-node .ai/skills/features/iac/scripts/iacctl.mjs verify --repo-root .
+node .ai/skills/features/iac/scripts/ctl-iac.mjs verify --repo-root .
 ```
 
 ## Verification
 
 ```bash
-node .ai/skills/features/iac/scripts/iacctl.mjs verify --repo-root .
+node .ai/skills/features/iac/scripts/ctl-iac.mjs verify --repo-root .
 ```
 
 ## Boundaries

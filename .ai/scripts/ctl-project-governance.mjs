@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { colors, die, header, info, ok } from './lib/colors.mjs';
+import { colors, die, header, info, ok, warn } from './lib/colors.mjs';
 import { parseSimpleList, parseSimpleMap, parseTopLevelVersion } from './lib/yaml-lite.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -26,10 +26,16 @@ const __dirname = path.dirname(__filename);
 const DEFAULT_PROJECT = 'main';
 
 const TASK_ID_RE = /^T-\d{3}$/;
+const MILESTONE_ID_RE = /^M-\d{3}$/;
+const FEATURE_ID_RE = /^F-\d{3}$/;
+const REQUIREMENT_ID_RE = /^R-\d{3}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const TASK_STATUS = new Set(['planned', 'in-progress', 'blocked', 'done', 'archived']);
 const BUNDLE_STATUS = new Set(['planned', 'in-progress', 'blocked', 'done']);
+const MILESTONE_STATUS = new Set(['planned', 'in-progress', 'blocked', 'done']);
+const FEATURE_STATUS = new Set(['planned', 'in-progress', 'blocked', 'done', 'cut']);
+const REQUIREMENT_STATUS = new Set(['planned', 'in-progress', 'blocked', 'done', 'cut']);
 
 const IGNORE_DIRS = new Set([
   '.git',
@@ -72,7 +78,7 @@ Commands:
   lint
     --repo-root <path>        Repo root (default: auto-detect; fallback: cwd)
     --project <slug>          Project slug (default: ${DEFAULT_PROJECT})
-    --check                   Exit non-zero only on errors (warnings do not fail)
+    --check                   (default) Exit non-zero only on errors (warnings do not fail)
     --strict                  Treat warnings as errors (except "human verification" warnings)
     Validate repo project governance state against the Project Contract.
 
@@ -127,7 +133,10 @@ function parseArgs(argv) {
   while (args.length > 0) {
     const token = args.shift();
     if (token === '-h' || token === '--help') usage(0);
-    if (!token.startsWith('--')) continue;
+    if (!token.startsWith('--')) {
+      console.error(`[warning] Ignoring unrecognized argument: "${token}" (use --${token.replace(/^-+/, '')} for flags)`);
+      continue;
+    }
 
     const key = token.slice(2);
     if (args.length > 0 && !args[0].startsWith('--')) {
@@ -234,13 +243,20 @@ function listImmediateChildDirs(dirPath) {
   return entries.filter((e) => e.isDirectory()).map((e) => e.name).sort((a, b) => a.localeCompare(b));
 }
 
-function replaceAutoBlock(raw, blockId, content) {
+function replaceAutoBlock(raw, blockId, content, filePath, allowFullReplace = true) {
   const start = `<!-- AUTO-GENERATED:START ${blockId} -->`;
   const end = `<!-- AUTO-GENERATED:END ${blockId} -->`;
   const sIdx = raw.indexOf(start);
   const eIdx = raw.indexOf(end);
   if (sIdx === -1 || eIdx === -1 || eIdx < sIdx) {
-    // If missing markers, replace entire file (safe fallback for templates).
+    const label = filePath ? toPosix(filePath) : '(unknown file)';
+    if (!allowFullReplace) {
+      // Existing file with missing markers: refuse to overwrite to prevent data loss.
+      warn(`[warning] Missing AUTO-GENERATED markers for "${blockId}" in ${label}; skipping update to preserve manual content. Restore markers or run init --force to recreate.`);
+      return null;
+    }
+    // Safe fallback for freshly created templates.
+    warn(`[warning] Missing AUTO-GENERATED markers for "${blockId}" in ${label}; replacing entire file content.`);
     return content.endsWith('\n') ? content : `${content}\n`;
   }
 
@@ -262,6 +278,11 @@ function stripInlineComment(line) {
   let inDouble = false;
   for (let i = 0; i < s.length; i++) {
     const ch = s[i];
+    // Skip escaped characters inside quoted strings
+    if (ch === '\\' && (inSingle || inDouble) && i + 1 < s.length) {
+      i++; // skip the next character (escaped)
+      continue;
+    }
     if (ch === "'" && !inDouble) inSingle = !inSingle;
     else if (ch === '"' && !inSingle) inDouble = !inDouble;
     else if (ch === '#' && !inSingle && !inDouble) {
@@ -653,7 +674,8 @@ function getBundleStatusFromOverview(overviewRaw) {
     }
 
     if (!BUNDLE_STATUS.has(value)) {
-      return { status: null, error: `Invalid State value: "${value}". Allowed: ${[...BUNDLE_STATUS].join(', ')}` };
+      const hint = BUNDLE_STATUS.has(value.toLowerCase()) ? ' (status values must be lowercase)' : '';
+      return { status: null, error: `Invalid State value: "${value}". Allowed: ${[...BUNDLE_STATUS].join(', ')}${hint}` };
     }
 
     return { status: value, error: null };
@@ -917,6 +939,68 @@ function cmdLint({ repoRoot, projectSlug, strict }) {
     );
     devDocsRoots = discoverDevDocsRoots(repoRoot);
   } else {
+    // CONTRACT 5.2: Validate required top-level keys
+    const REQUIRED_REGISTRY_KEYS = ['version', 'project', 'milestones', 'features', 'requirements', 'tasks'];
+    for (const key of REQUIRED_REGISTRY_KEYS) {
+      if (!(key in registry) || registry[key] === undefined) {
+        errors.push(`Registry missing required top-level key: "${key}" (CONTRACT 5.2).`);
+      }
+    }
+
+    // CONTRACT 2.1: Validate M/F/R ID formats
+    if (Array.isArray(registry.milestones)) {
+      for (const m of registry.milestones) {
+        if (!m || typeof m !== 'object') continue;
+        const id = String(m.id || '').trim();
+        if (!id) {
+          errors.push('Milestone is missing required "id" field (CONTRACT 2.1).');
+          continue;
+        }
+        if (!MILESTONE_ID_RE.test(id)) {
+          errors.push(`Milestone ID "${id}" does not match required format M-### (CONTRACT 2.1).`);
+        }
+      }
+    }
+    if (Array.isArray(registry.features)) {
+      for (const f of registry.features) {
+        if (!f || typeof f !== 'object') continue;
+        const id = String(f.id || '').trim();
+        if (!id) {
+          errors.push('Feature is missing required "id" field (CONTRACT 2.1).');
+          continue;
+        }
+        if (!FEATURE_ID_RE.test(id)) {
+          errors.push(`Feature ID "${id}" does not match required format F-### (CONTRACT 2.1).`);
+        }
+      }
+    }
+    if (Array.isArray(registry.requirements)) {
+      for (const r of registry.requirements) {
+        if (!r || typeof r !== 'object') continue;
+        const id = String(r.id || '').trim();
+        if (!id) {
+          errors.push('Requirement is missing required "id" field (CONTRACT 2.1).');
+          continue;
+        }
+        if (!REQUIREMENT_ID_RE.test(id)) {
+          errors.push(`Requirement ID "${id}" does not match required format R-### (CONTRACT 2.1).`);
+        }
+      }
+    }
+    if (Array.isArray(registry.tasks)) {
+      for (const t of registry.tasks) {
+        if (!t || typeof t !== 'object') continue;
+        const id = String(t.id || '').trim();
+        if (!id) {
+          errors.push('Task is missing required "id" field (CONTRACT 2.1).');
+          continue;
+        }
+        if (!TASK_ID_RE.test(id)) {
+          errors.push(`Task ID "${id}" does not match required format T-### (CONTRACT 2.1).`);
+        }
+      }
+    }
+
     const configured = getConfiguredRootsFromRegistry(registry);
     devDocsRoots =
       configured.length > 0
@@ -1056,6 +1140,55 @@ function cmdLint({ repoRoot, projectSlug, strict }) {
   for (const [slug, ids] of slugToIds.entries()) {
     if (ids.size <= 1) continue;
     errors.push(`Slug "${slug}" appears with multiple task_ids: ${[...ids].sort().join(', ')}`);
+  }
+
+  // Orphaned registry entries (task deleted from filesystem but still in registry)
+  if (registry && Array.isArray(registry.tasks)) {
+    for (const regTask of registry.tasks) {
+      if (!regTask || typeof regTask !== 'object') continue;
+      const id = String(regTask.id || '').trim();
+      if (!id) continue;
+      // Skip tasks that were found on disk
+      if (taskIdToTask.has(id)) continue;
+      const devDocsPath = String(regTask.dev_docs_path || '');
+      warnings.push(
+        `Registry task ${id} (slug="${regTask.slug || ''}"): dev_docs_path "${devDocsPath}" not found on disk. Consider removing from registry or re-creating the task bundle.`
+      );
+    }
+  }
+
+  // Validate Milestone/Feature/Requirement status enums (CONTRACT 3.2, 3.3)
+  if (registry) {
+    if (Array.isArray(registry.milestones)) {
+      for (const m of registry.milestones) {
+        if (!m || typeof m !== 'object') continue;
+        const id = String(m.id || '');
+        const st = String(m.status || '').trim();
+        if (st && !MILESTONE_STATUS.has(st)) {
+          errors.push(`Milestone ${id}: Invalid status "${st}". Allowed: ${[...MILESTONE_STATUS].join(', ')}`);
+        }
+      }
+    }
+    if (Array.isArray(registry.features)) {
+      for (const f of registry.features) {
+        if (!f || typeof f !== 'object') continue;
+        const id = String(f.id || '');
+        const st = String(f.status || '').trim();
+        if (st && !FEATURE_STATUS.has(st)) {
+          errors.push(`Feature ${id}: Invalid status "${st}". Allowed: ${[...FEATURE_STATUS].join(', ')}`);
+        }
+      }
+    }
+    if (Array.isArray(registry.requirements)) {
+      for (const r of registry.requirements) {
+        if (!r || typeof r !== 'object') continue;
+        const id = String(r.id || '');
+        const st = String(r.status || '').trim();
+        if (st && !REQUIREMENT_STATUS.has(st)) {
+          errors.push(`Requirement ${id}: Invalid status "${st}". Allowed: ${[...REQUIREMENT_STATUS].join(', ')}`);
+        }
+      }
+    }
   }
 
   const humanWarnings = warnings.filter((w) => w.includes('Acceptance criteria') || w.includes('meta.status'));
@@ -1226,7 +1359,7 @@ function appendChangelog({ repoRoot, changelogPath, entries, dryRun, apply, init
   }
 
   const normalized = normalizeEol(base).trimEnd() + '\n';
-  const hasEntries = /(^|\n)## Entries\n/.test(normalized);
+  const hasEntries = /(^|\n)## Entries\s*\n/.test(normalized);
   const toAppend = entries.join('\n') + '\n';
   const next = hasEntries ? normalized + toAppend : normalized + '\n## Entries\n' + toAppend;
 
@@ -1357,7 +1490,7 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
       }
       candidate++;
     }
-    throw new Error('Exhausted task IDs (T-000..T-999).');
+    throw new Error('Exhausted task IDs (T-001..T-999).');
   }
 
   const todayStr = today();
@@ -1611,6 +1744,7 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
 
   function updateDerived(filePath, blockId, content) {
     let base = readText(filePath);
+    const existedOnDisk = base !== null;
     if (!base && initIfMissing) {
       // In init-if-missing mode, use the rendered template as the base for dry-run planning.
       const tplName = path.basename(filePath);
@@ -1624,7 +1758,17 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
       return;
     }
 
-    const next = replaceAutoBlock(base, blockId, content);
+    // For files that already existed on disk, refuse full-file replacement when markers
+    // are missing (prevents destroying manual notes). Freshly created templates are safe.
+    const next = replaceAutoBlock(base, blockId, content, filePath, !existedOnDisk);
+    if (next === null) {
+      // Markers missing in existing file; skipped to prevent data loss.
+      warnings.push(
+        `Skipped update of ${toPosix(path.relative(repoRoot, filePath))}: missing AUTO-GENERATED markers for "${blockId}". Restore markers or run init --force to recreate.`
+      );
+      return;
+    }
+
     if (dryRun || !apply) {
       actions.push({ op: 'update', path: filePath, note: `regen ${blockId}`, mode: 'dry-run' });
       return;
@@ -1672,6 +1816,20 @@ function cmdMap({ repoRoot, projectSlug, taskId, featureId, milestoneId, require
 
   if (!featureId && !milestoneId && !requirementId) {
     errors.push('At least one of --feature, --milestone, or --requirement is required.');
+    return { ok: false, errors, actions };
+  }
+
+  // Validate ID formats per CONTRACT 2.1
+  if (featureId && !FEATURE_ID_RE.test(featureId)) {
+    errors.push(`Invalid --feature ID format (expected F-###, got "${featureId}").`);
+    return { ok: false, errors, actions };
+  }
+  if (milestoneId && !MILESTONE_ID_RE.test(milestoneId)) {
+    errors.push(`Invalid --milestone ID format (expected M-###, got "${milestoneId}").`);
+    return { ok: false, errors, actions };
+  }
+  if (requirementId && !REQUIREMENT_ID_RE.test(requirementId)) {
+    errors.push(`Invalid --requirement ID format (expected R-###, got "${requirementId}").`);
     return { ok: false, errors, actions };
   }
 
@@ -1789,6 +1947,11 @@ function main() {
       break;
     case 'lint': {
       const strict = !!opts.strict;
+      // --check is the default behavior (exit non-zero only on errors; warnings do not fail).
+      // It is accepted for explicitness but does not change behavior.
+      // --strict promotes non-human-verification warnings to errors.
+      const _check = opts.check; // consumed to avoid "unknown flag" warnings
+      void _check;
       const { ok: okLint } = cmdLint({ repoRoot, projectSlug, strict });
       process.exit(okLint ? 0 : 1);
       break;

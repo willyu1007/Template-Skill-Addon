@@ -4,9 +4,10 @@
  */
 import * as uiSystemBootstrap from './ui-system-bootstrap.mjs';
 import * as uiGovernanceGate from './ui-governance-gate.mjs';
+import * as uiGovernanceGateApprovalOrder from './ui-governance-gate-approval-order.mjs';
 import * as uiStyleIntake from './ui-style-intake-from-image.mjs';
 
-const TESTS = [uiSystemBootstrap, uiGovernanceGate, uiStyleIntake];
+const TESTS = [uiSystemBootstrap, uiGovernanceGate, uiGovernanceGateApprovalOrder, uiStyleIntake];
 
 export function run(ctx) {
   const results = [];

@@ -44,7 +44,7 @@ Before making any code/config changes for a task that meets the Decision Gate:
 2. If the work is ambiguous, or the user asked for a plan/roadmap, create `roadmap.md` via `plan-maker` before implementation.
 3. During implementation, keep the bundle current:
    - update `00-overview.md` when status changes
-   - append to `03-implementation-notes.md` after milestones
+   - append to `03-implementation-notes.md` after each phase
    - record every verification run in `04-verification.md` (commands + outcomes)
 4. Before pausing, handing off, or finishing, run `update-dev-docs-for-handoff`.
 
@@ -55,7 +55,7 @@ dev-docs/
   active/<task-slug>/
     roadmap.md              # Macro-level planning (plan-maker)
     00-overview.md          # Goal, non-goals, status
-    01-plan.md              # Phases, milestones, acceptance criteria
+    01-plan.md              # Phases, acceptance criteria
     02-architecture.md      # Boundaries, interfaces, risks
     03-implementation-notes.md  # Decisions, changes, rationale
     04-verification.md      # Checks run, results
@@ -69,9 +69,9 @@ dev-docs/
 |------|----------|------------------|
 | `roadmap.md` | Macro-level planning: milestones, scope, risks, rollback | On initial planning |
 | `00-overview.md` | Goal, non-goals, current status | On status change |
-| `01-plan.md` | Phases, steps, acceptance criteria | On scope change |
+| `01-plan.md` | Phases, steps, acceptance criteria | On scope/phase change |
 | `02-architecture.md` | Boundaries, interfaces, key risks | On design decision |
-| `03-implementation-notes.md` | What changed, why, and open issues (actionable TODOs) | After each milestone |
+| `03-implementation-notes.md` | What changed, why, and open issues (actionable TODOs) | After each phase |
 | `04-verification.md` | Checks run and results | After each check |
 | `05-pitfalls.md` | Resolved failures, dead ends, historical lessons (not current issues) | After issue is resolved |
 
@@ -87,7 +87,7 @@ dev-docs/
 ### During Work
 
 - Update `00-overview.md` status field on state change
-- Append to `03-implementation-notes.md` after milestones
+- Append to `03-implementation-notes.md` after each phase
 - Record all verification runs in `04-verification.md`
 - Record pitfalls in `05-pitfalls.md` after resolving a significant error/bug/dead-end (historical lessons, not current issues):
   - MUST include: symptom, root cause, what was tried, fix/workaround, and a prevention note
@@ -98,6 +98,21 @@ dev-docs/
 |----------|----------|
 | `create-dev-docs-plan` | Starting new complex task |
 | `update-dev-docs-for-handoff` | Pausing, resuming, handing off, or completing |
+
+### Project Governance Integration
+
+If the repository uses a project hub (`.ai/project/<project>/`), keep the hub in sync with task changes:
+
+| Event | Action |
+|-------|--------|
+| Task bundle created | Run `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main` to register the task |
+| Task status changed | Run `sync --apply` to propagate the new status to the registry |
+| Task archived | Run `sync --apply` to update the registry (status becomes `archived`) |
+
+Notes:
+- `sync --apply` is idempotent; safe to run after any task change.
+- If the project hub is not initialized, sync will prompt you to run `init` first.
+- For full project governance details, see `.ai/project/AGENTS.md`.
 
 ### Archive Rules
 

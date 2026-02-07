@@ -9,14 +9,28 @@
  */
 
 /**
- * Strip inline YAML comments (everything after #).
+ * Strip inline YAML comments (everything after # outside quotes).
  * @param {string} line - YAML line
  * @returns {string}
  */
 export function stripInlineComment(line) {
-  const idx = line.indexOf('#');
-  if (idx === -1) return line;
-  return line.slice(0, idx);
+  const s = String(line || '');
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    // Skip escaped characters inside quoted strings
+    if (ch === '\\' && (inSingle || inDouble) && i + 1 < s.length) {
+      i++; // skip the next character (escaped)
+      continue;
+    }
+    if (ch === "'" && !inDouble) inSingle = !inSingle;
+    else if (ch === '"' && !inSingle) inDouble = !inDouble;
+    else if (ch === '#' && !inSingle && !inDouble) {
+      return s.slice(0, i);
+    }
+  }
+  return s;
 }
 
 /**

@@ -18,7 +18,7 @@ New files/directories (created if missing):
   - `observability/AGENTS.md` (LLM guidance)
   - `observability/config.json` (observability configuration)
   - `observability/handbook/` (observability planning)
-- `.ai/skills/features/observability/scripts/obsctl.mjs` (observability management)
+- `.ai/skills/features/observability/scripts/ctl-observability.mjs` (observability management)
 - `.ai/skills/features/observability/` (feature documentation)
 
 ## Install
@@ -30,7 +30,7 @@ New files/directories (created if missing):
 2. Initialize:
 
 ```bash
-node .ai/skills/features/observability/scripts/obsctl.mjs init
+node .ai/skills/features/observability/scripts/ctl-observability.mjs init
 ```
 
 Optional (recommended for LLM routing): record the flag in project state:
@@ -46,34 +46,34 @@ node .ai/scripts/ctl-project-state.mjs set features.observability true
 ### Initialize Observability
 
 ```bash
-node .ai/skills/features/observability/scripts/obsctl.mjs init
+node .ai/skills/features/observability/scripts/ctl-observability.mjs init
 ```
 
 ### Manage Metrics
 
 ```bash
 # Add a metric
-node .ai/skills/features/observability/scripts/obsctl.mjs add-metric --name request_duration --type histogram --unit seconds
+node .ai/skills/features/observability/scripts/ctl-observability.mjs add-metric --name request_duration --type histogram --unit seconds
 
 # List metrics
-node .ai/skills/features/observability/scripts/obsctl.mjs list-metrics
+node .ai/skills/features/observability/scripts/ctl-observability.mjs list-metrics
 ```
 
 ### Manage Log Fields
 
 ```bash
 # Add a log field
-node .ai/skills/features/observability/scripts/obsctl.mjs add-log-field --name user_id --type string
+node .ai/skills/features/observability/scripts/ctl-observability.mjs add-log-field --name user_id --type string
 
 # List log fields
-node .ai/skills/features/observability/scripts/obsctl.mjs list-log-fields
+node .ai/skills/features/observability/scripts/ctl-observability.mjs list-log-fields
 ```
 
 ### Generate Instrumentation Hints
 
 ```bash
 # Generate instrumentation code hints
-node .ai/skills/features/observability/scripts/obsctl.mjs generate-instrumentation --lang typescript
+node .ai/skills/features/observability/scripts/ctl-observability.mjs generate-instrumentation --lang typescript
 ```
 
 ## Observability Contracts
@@ -103,7 +103,7 @@ node .ai/skills/features/observability/scripts/obsctl.mjs generate-instrumentati
 
 ```bash
 # Verify observability configuration
-node .ai/skills/features/observability/scripts/obsctl.mjs verify
+node .ai/skills/features/observability/scripts/ctl-observability.mjs verify
 ```
 
 ## Rollback / Uninstall
@@ -112,5 +112,5 @@ Delete these paths:
 
 - `docs/context/observability/`
 - `observability/`
-- `.ai/skills/features/observability/scripts/obsctl.mjs`
+- `.ai/skills/features/observability/scripts/ctl-observability.mjs`
 - `.ai/skills/features/observability/`

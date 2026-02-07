@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * iacctl.mjs
+ * ctl-iac.mjs
  *
  * Minimal IaC feature controller.
  *
@@ -19,7 +19,7 @@ const VALID_TOOLS = ['none', 'ros', 'terraform', 'opentofu'];
 function usage(exitCode = 0) {
   const msg = `
 Usage:
-  node .ai/skills/features/iac/scripts/iacctl.mjs <command> [options]
+  node .ai/skills/features/iac/scripts/ctl-iac.mjs <command> [options]
 
 Commands:
   init
@@ -111,7 +111,7 @@ function runNode(repoRoot, scriptPath, args) {
 
 function maybeRegisterContext(repoRoot, overviewPath, dryRun) {
   const registryPath = path.join(repoRoot, 'docs', 'context', 'registry.json');
-  const contextctl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'contextctl.mjs');
+  const contextctl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'ctl-context.mjs');
   if (!fs.existsSync(registryPath) || !fs.existsSync(contextctl)) {
     return { op: 'skip', reason: 'context registry not available' };
   }
@@ -142,16 +142,16 @@ function maybeRegisterContext(repoRoot, overviewPath, dryRun) {
       'iac',
     ]);
     if (res.status !== 0) {
-      return { op: 'warn', reason: 'contextctl add-artifact failed', stderr: res.stderr || res.stdout };
+      return { op: 'warn', reason: 'ctl-context add-artifact failed', stderr: res.stderr || res.stdout };
     }
-    return { op: 'contextctl', action: 'add-artifact' };
+    return { op: 'ctl-context', action: 'add-artifact' };
   }
 
   const res = runNode(repoRoot, contextctl, ['touch', '--repo-root', repoRoot]);
   if (res.status !== 0) {
-    return { op: 'warn', reason: 'contextctl touch failed', stderr: res.stderr || res.stdout };
+    return { op: 'warn', reason: 'ctl-context touch failed', stderr: res.stderr || res.stdout };
   }
-  return { op: 'contextctl', action: 'touch' };
+  return { op: 'ctl-context', action: 'touch' };
 }
 
 function cmdInit(repoRoot, tool, dryRun) {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * contextctl.mjs
+ * ctl-context.mjs
  *
  * Context artifacts and registry management for the Context Awareness feature.
  *
@@ -28,7 +28,7 @@ import crypto from 'node:crypto';
 function usage(exitCode = 0) {
   const msg = `
 Usage:
-  node .ai/skills/features/context-awareness/scripts/contextctl.mjs <command> [options]
+  node .ai/skills/features/context-awareness/scripts/ctl-context.mjs <command> [options]
 
 Commands:
   help
@@ -85,9 +85,9 @@ Commands:
     Verify environment configuration.
 
 Examples:
-  node .ai/skills/features/context-awareness/scripts/contextctl.mjs init
-  node .ai/skills/features/context-awareness/scripts/contextctl.mjs add-artifact --id my-api --type openapi --path docs/context/api/my-api.yaml
-  node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --strict
+  node .ai/skills/features/context-awareness/scripts/ctl-context.mjs init
+  node .ai/skills/features/context-awareness/scripts/ctl-context.mjs add-artifact --id my-api --type openapi --path docs/context/api/my-api.yaml
+  node .ai/skills/features/context-awareness/scripts/ctl-context.mjs verify --strict
 `;
   console.log(msg.trim());
   process.exit(exitCode);
@@ -371,7 +371,7 @@ AI/LLM should:
 2. Check registry.json for available artifacts
 3. Load specific artifacts as needed
 
-All context changes go through \`contextctl.mjs\` commands.
+All context changes go through \`ctl-context.mjs\` commands.
 `;
 
   if (dryRun) {
@@ -543,7 +543,7 @@ function cmdAddArtifact(repoRoot, id, type, artifactPath, mode, format, tagsCsv)
     lastUpdated: now,
     source: {
       kind: 'command',
-      command: 'contextctl add-artifact',
+      command: 'ctl-context add-artifact',
       cwd: '.'
     }
   });
@@ -622,13 +622,13 @@ function cmdVerify(repoRoot, strict) {
 
   // Check context directory exists
   if (!fs.existsSync(contextDir)) {
-    errors.push('docs/context directory does not exist. Run: contextctl init');
+    errors.push('docs/context directory does not exist. Run: ctl-context init');
   }
 
   // Check registry exists
   const registryPath = getRegistryPath(repoRoot);
   if (!fs.existsSync(registryPath)) {
-    errors.push('registry.json does not exist. Run: contextctl init');
+    errors.push('registry.json does not exist. Run: ctl-context init');
   } else {
     const registry = loadRegistry(repoRoot);
 
@@ -643,7 +643,7 @@ function cmdVerify(repoRoot, strict) {
 
       const currentChecksum = computeChecksumSha256(fullPath);
       if (artifact.checksumSha256 && currentChecksum !== artifact.checksumSha256) {
-        warnings.push(`Checksum mismatch for ${artifact.id}: expected ${artifact.checksumSha256}, got ${currentChecksum}. Run: contextctl touch`);
+        warnings.push(`Checksum mismatch for ${artifact.id}: expected ${artifact.checksumSha256}, got ${currentChecksum}. Run: ctl-context touch`);
       }
     }
   }

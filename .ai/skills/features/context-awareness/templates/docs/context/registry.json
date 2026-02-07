@@ -15,7 +15,7 @@
       "lastUpdated": "2025-12-25T14:14:14Z",
       "source": {
         "kind": "manual",
-        "notes": "Edit the contract file; then run contextctl touch."
+        "notes": "Edit the contract file; then run ctl-context touch."
       }
     },
     {
@@ -31,7 +31,7 @@
       "lastUpdated": "2026-01-16T23:27:36.431Z",
       "source": {
         "kind": "generated",
-        "notes": "Generated via: node .ai/scripts/dbssotctl.mjs sync-to-context (then contextctl touch). Do NOT hand-edit."
+        "notes": "Generated via: node .ai/scripts/ctl-db-ssot.mjs sync-to-context (then ctl-context touch). Do NOT hand-edit."
       }
     },
     {
@@ -48,7 +48,7 @@
       "lastUpdated": "2025-12-25T14:14:14Z",
       "source": {
         "kind": "manual",
-        "notes": "Replace with real processes or add more .bpmn files; then run contextctl touch."
+        "notes": "Replace with real processes or add more .bpmn files; then run ctl-context touch."
       }
     }
   ]

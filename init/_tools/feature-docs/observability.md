@@ -39,13 +39,13 @@ When enabled, Stage C:
 2) Runs the controller:
 
 ```bash
-node .ai/skills/features/observability/scripts/obsctl.mjs init --repo-root .
+node .ai/skills/features/observability/scripts/ctl-observability.mjs init --repo-root .
 ```
 
 3) Optional verification (when Stage C is run with `--verify-features`):
 
 ```bash
-node .ai/skills/features/observability/scripts/obsctl.mjs verify --repo-root .
+node .ai/skills/features/observability/scripts/ctl-observability.mjs verify --repo-root .
 ```
 
 ## Key outputs

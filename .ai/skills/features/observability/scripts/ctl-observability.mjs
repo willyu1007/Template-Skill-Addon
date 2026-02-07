@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * obsctl.mjs
+ * ctl-observability.mjs
  *
  * Observability configuration management for the Observability feature.
  *
@@ -26,7 +26,7 @@ import path from 'node:path';
 function usage(exitCode = 0) {
   const msg = `
 Usage:
-  node .ai/skills/features/observability/scripts/obsctl.mjs <command> [options]
+  node .ai/skills/features/observability/scripts/ctl-observability.mjs <command> [options]
 
 Commands:
   help
@@ -81,9 +81,9 @@ Commands:
     Print instrumentation hints based on the contracts (no code generation).
 
 Examples:
-  node .ai/skills/features/observability/scripts/obsctl.mjs init
-  node .ai/skills/features/observability/scripts/obsctl.mjs add-metric --name http_requests_total --type counter --unit requests --labels method,path,status
-  node .ai/skills/features/observability/scripts/obsctl.mjs list-metrics
+  node .ai/skills/features/observability/scripts/ctl-observability.mjs init
+  node .ai/skills/features/observability/scripts/ctl-observability.mjs add-metric --name http_requests_total --type counter --unit requests --labels method,path,status
+  node .ai/skills/features/observability/scripts/ctl-observability.mjs list-metrics
 `;
   console.log(msg.trim());
   process.exit(exitCode);
@@ -332,10 +332,10 @@ function cmdInit(repoRoot, dryRun) {
 ## Commands
 
 \`\`\`bash
-node .ai/skills/features/observability/scripts/obsctl.mjs init
-node .ai/skills/features/observability/scripts/obsctl.mjs add-metric --name http_requests_total --type counter
-node .ai/skills/features/observability/scripts/obsctl.mjs list-metrics
-node .ai/skills/features/observability/scripts/obsctl.mjs verify
+node .ai/skills/features/observability/scripts/ctl-observability.mjs init
+node .ai/skills/features/observability/scripts/ctl-observability.mjs add-metric --name http_requests_total --type counter
+node .ai/skills/features/observability/scripts/ctl-observability.mjs list-metrics
+node .ai/skills/features/observability/scripts/ctl-observability.mjs verify
 \`\`\`
 
 ## Directory Structure
@@ -424,7 +424,7 @@ function cmdVerify(repoRoot) {
   const warnings = [];
 
   if (!fs.existsSync(getObsDir(repoRoot))) {
-    errors.push('observability/ not found. Run: obsctl init');
+    errors.push('observability/ not found. Run: ctl-observability init');
   }
 
   if (!fs.existsSync(getContextObsDir(repoRoot))) {

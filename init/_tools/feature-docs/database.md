@@ -3,7 +3,7 @@
 ## Conclusions (read first)
 
 - Enables DB schema SSOT workflows based on `db.ssot`
-- Provides a human interface tool (query + change drafting): `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs`
+- Provides a human interface tool (query + change drafting): `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs`
 - If `db.ssot=database`: materializes a repo-local DB mirror under `db/` and initializes DB tooling
 - If `db.ssot=repo-prisma`: keeps `prisma/` as the schema SSOT convention anchor (no `db/` mirror)
 
@@ -47,13 +47,13 @@ When enabled, Stage C:
 - Runs:
 
 ```bash
-node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs init --repo-root .
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/ctl-db.mjs init --repo-root .
 ```
 
 - Optional verification (when Stage C is run with `--verify-features`):
 
 ```bash
-node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs verify --repo-root .
+node .ai/skills/features/database/sync-code-schema-from-db/scripts/ctl-db.mjs verify --repo-root .
 ```
 
 2) If `db.ssot=repo-prisma`:
@@ -63,7 +63,7 @@ node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs ver
 ## Key outputs
 
 - `docs/project/db-ssot.json` (SSOT mode selection file)
-- `node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs` (human interface)
+- `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs` (human interface)
 - `db/**` (only when `db.ssot=database`)
 - `prisma/**` (only when `db.ssot=repo-prisma`)
 
@@ -71,14 +71,14 @@ node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs ver
 
 ```bash
 # Inspect SSOT mode + input sources
-node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs status
+node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs status
 
 # Query tables/columns/enums and write a human doc
-node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs query users
+node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query users
 
 # Draft a change request (writes a modify doc with a dbops block)
-node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs modify users
+node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs modify users
 
 # Generate a plan (+ runbook when db.ssot=database)
-node .ai/skills/features/database/db-human-interface/scripts/dbdocctl.mjs plan users
+node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs plan users
 ```

@@ -1,6 +1,6 @@
 /**
  * deployctl-smoke.mjs
- * Smoke test for deployctl.mjs (init → add-service → plan → verify)
+ * Smoke test for ctl-deploy.mjs (init → add-service → plan → verify)
  */
 import fs from 'fs';
 import path from 'path';
@@ -22,7 +22,7 @@ export function run(ctx) {
     'features',
     'deployment',
     'scripts',
-    'deployctl.mjs'
+    'ctl-deploy.mjs'
   );
 
   // 1) init

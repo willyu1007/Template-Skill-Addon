@@ -30,18 +30,10 @@ from typing import Any, Dict, List, Tuple
 
 try:
     from PIL import Image
+    PIL_IMPORT_ERROR = None
 except Exception as e:  # pragma: no cover
-    # Robust fallback: do not hard-fail the whole skill when Pillow is missing.
-    # The LLM can still proceed with manual description / vision reasoning.
-    payload = {
-        "ok": False,
-        "error": "missing_dependency",
-        "dependency": "Pillow",
-        "detail": str(e),
-        "hint": "Install with: pip install pillow",
-    }
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
-    sys.exit(0)
+    Image = None  # type: ignore[assignment]
+    PIL_IMPORT_ERROR = str(e)
 
 
 def _now_utc_iso() -> str:
@@ -190,12 +182,52 @@ def _render_markdown(report: Dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _render_missing_dependency_markdown(payload: Dict[str, Any]) -> str:
+    return (
+        "# Image Style Probe\n\n"
+        "## Status\n\n"
+        "- ok: `false`\n"
+        "- error: `missing_dependency`\n"
+        "- dependency: `Pillow`\n\n"
+        "## Detail\n\n"
+        f"- detail: `{payload.get('detail', '')}`\n"
+        f"- hint: `{payload.get('hint', '')}`\n\n"
+        "## Raw JSON\n\n"
+        "```json\n"
+        f"{json.dumps(payload, indent=2, sort_keys=True)}\n"
+        "```\n"
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Extract dominant palette + brightness signals from an image.")
     parser.add_argument("image", help="Path to an image file (png/jpg/webp)")
     parser.add_argument("--colors", type=int, default=8, help="Number of dominant colors to extract")
     parser.add_argument("--out", default=None, help="Output path (.json or .md). If omitted, prints JSON.")
     args = parser.parse_args()
+
+    if Image is None:
+        payload = {
+            "ok": False,
+            "error": "missing_dependency",
+            "dependency": "Pillow",
+            "detail": PIL_IMPORT_ERROR or "Unknown import error",
+            "hint": "Install with: pip install pillow",
+        }
+        out = args.out
+        if out:
+            os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+            if out.lower().endswith(".md"):
+                with open(out, "w", encoding="utf-8") as f:
+                    f.write(_render_missing_dependency_markdown(payload))
+            else:
+                with open(out, "w", encoding="utf-8") as f:
+                    f.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+            print(out)
+            return 0
+
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
 
     image_path = args.image
     if not os.path.isfile(image_path):

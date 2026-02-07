@@ -29,8 +29,8 @@ Do not use this skill for requests that ask to create/update tasks, change mappi
    - Otherwise default to `main`.
 3. Read the corresponding reference document and use its **Data Source** command(s).
 4. Optional (recommended for accuracy when hub exists): run
-   - `node .ai/scripts/ctl-project-governance.mjs lint --check --project <project>`
-   - If lint reports errors, include a remediation command (`node .ai/scripts/ctl-project-governance.mjs sync --apply --project <project>`) in the output but do not execute the write.
+   - `node .ai/scripts/ctl-project-governance.mjs lint --check`
+   - If lint reports errors, include a remediation command (`node .ai/scripts/ctl-project-governance.mjs sync --apply`) in the output but do not execute the write.
 5. Generate output using the reference template.
 
 ## Verification

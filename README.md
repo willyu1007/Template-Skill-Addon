@@ -55,8 +55,8 @@ node .ai/scripts/sync-skills.mjs --scope current --providers both --mode reset -
 This template does **not** ship an `addons/` directory. Optional features are materialized during init **Stage C** based on `init/_work/project-blueprint.json`:
 
 - Feature toggles: `features.*` (see `init/_tools/feature-docs/README.md`)
-- Assets live under `.ai/skills/features/**/templates` and `.ai/scripts/*ctl.mjs`
-- Stage C `apply` copies templates (copy-if-missing by default) and runs `*ctl.mjs init`
+- Assets live under `.ai/skills/features/**/templates` and `.ai/scripts/ctl-*.mjs`
+- Stage C `apply` copies templates (copy-if-missing by default) and runs `ctl-*.mjs init`
 
 Example:
 

@@ -1,6 +1,6 @@
 /**
  * contextctl-smoke.mjs
- * Smoke test for contextctl.mjs (init → add-artifact → touch → verify)
+ * Smoke test for ctl-context.mjs (init → add-artifact → touch → verify)
  */
 import fs from 'fs';
 import path from 'path';
@@ -22,7 +22,7 @@ export function run(ctx) {
     'features',
     'context-awareness',
     'scripts',
-    'contextctl.mjs'
+    'ctl-context.mjs'
   );
 
   // 1) init

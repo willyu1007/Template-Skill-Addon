@@ -1,6 +1,6 @@
 ---
 name: packaging
-description: Enable and operate the Packaging feature (ops/packaging conventions + packctl) for building runnable artifacts (usually container images).
+description: Enable and operate the Packaging feature (ops/packaging conventions + ctl-packaging) for building runnable artifacts (usually container images).
 ---
 
 # Packaging Feature
@@ -21,7 +21,7 @@ When enabled, this feature materializes:
 
 Controller scripts (provided by the template SSOT):
 
-- `node .ai/skills/features/packaging/scripts/packctl.mjs` — packaging target registry management
+- `node .ai/skills/features/packaging/scripts/ctl-packaging.mjs` — packaging target registry management
 
 ## How to enable
 
@@ -31,8 +31,8 @@ Controller scripts (provided by the template SSOT):
 2. Initialize:
 
 ```bash
-node .ai/skills/features/packaging/scripts/packctl.mjs init
-node .ai/skills/features/packaging/scripts/packctl.mjs verify
+node .ai/skills/features/packaging/scripts/ctl-packaging.mjs init
+node .ai/skills/features/packaging/scripts/ctl-packaging.mjs verify
 ```
 
 Optional (recommended for LLM routing): record the flag in project state:
@@ -51,7 +51,7 @@ node .ai/scripts/ctl-project-state.mjs set features.packaging true
 ## Verification
 
 ```bash
-node .ai/skills/features/packaging/scripts/packctl.mjs verify
+node .ai/skills/features/packaging/scripts/ctl-packaging.mjs verify
 ```
 
 ## Boundaries

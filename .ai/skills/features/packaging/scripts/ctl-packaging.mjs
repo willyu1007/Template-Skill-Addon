@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * packctl.mjs
+ * ctl-packaging.mjs
  *
  * Packaging configuration management for the Packaging feature.
  *
@@ -30,7 +30,7 @@ import { spawnSync } from 'node:child_process';
 function usage(exitCode = 0) {
   const msg = `
 Usage:
-  node .ai/skills/features/packaging/scripts/packctl.mjs <command> [options]
+  node .ai/skills/features/packaging/scripts/ctl-packaging.mjs <command> [options]
 
 Commands:
   help
@@ -103,10 +103,10 @@ Commands:
     Show packaging status.
 
 Examples:
-  node .ai/skills/features/packaging/scripts/packctl.mjs init
-  node .ai/skills/features/packaging/scripts/packctl.mjs add-service --id api --module apps/backend
-  node .ai/skills/features/packaging/scripts/packctl.mjs list
-  node .ai/skills/features/packaging/scripts/packctl.mjs build --target api --tag v1.0.0
+  node .ai/skills/features/packaging/scripts/ctl-packaging.mjs init
+  node .ai/skills/features/packaging/scripts/ctl-packaging.mjs add-service --id api --module apps/backend
+  node .ai/skills/features/packaging/scripts/ctl-packaging.mjs list
+  node .ai/skills/features/packaging/scripts/ctl-packaging.mjs build --target api --tag v1.0.0
 `;
   console.log(msg.trim());
   process.exit(exitCode);
@@ -270,7 +270,7 @@ function ensureDockerfile(repoRoot, dockerfileRel, template) {
 function runDockerBuild(repoRoot, dockerfileRel, tag, contextRel) {
   const scriptPath = path.join(repoRoot, 'ops', 'packaging', 'scripts', 'docker-build.mjs');
   if (!fs.existsSync(scriptPath)) {
-    die('[error] ops/packaging/scripts/docker-build.mjs not found. Run: packctl init');
+    die('[error] ops/packaging/scripts/docker-build.mjs not found. Run: ctl-packaging init');
   }
 
   const args = ['--dockerfile', dockerfileRel, '--tag', tag];
@@ -415,7 +415,7 @@ function cmdBuild(repoRoot, targetId, tag) {
 
   const registry = loadRegistry(repoRoot);
   const target = registry.targets.find((x) => x.id === targetId);
-  if (!target) die(`[error] Target "${targetId}" not found. Run: packctl list`);
+  if (!target) die(`[error] Target "${targetId}" not found. Run: ctl-packaging list`);
 
   const dockerfileRel = target.dockerfile || getDefaultDockerfilePath(target.type, target.id);
   const contextRel = target.context || target.module || '.';
@@ -432,7 +432,7 @@ function cmdBuild(repoRoot, targetId, tag) {
 function cmdBuildAll(repoRoot, tag) {
   const registry = loadRegistry(repoRoot);
   if (registry.targets.length === 0) {
-    die('[error] No targets defined. Run: packctl add-service ...');
+    die('[error] No targets defined. Run: ctl-packaging add-service ...');
   }
   for (const target of registry.targets) {
     cmdBuild(repoRoot, target.id, tag);
@@ -444,7 +444,7 @@ function cmdVerify(repoRoot) {
   const warnings = [];
 
   if (!fs.existsSync(getPackagingDir(repoRoot))) {
-    errors.push('ops/packaging/ not found. Run: packctl init');
+    errors.push('ops/packaging/ not found. Run: ctl-packaging init');
   }
 
   const registry = loadRegistry(repoRoot);

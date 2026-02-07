@@ -27,9 +27,9 @@ When enabled, the feature **materializes** these paths in the repo root:
 
 And it assumes these controller scripts exist (they are part of the template SSOT under `.ai/`):
 
-- `node .ai/skills/features/context-awareness/scripts/contextctl.mjs` — context artifacts + registry + environments
+- `node .ai/skills/features/context-awareness/scripts/ctl-context.mjs` — context artifacts + registry + environments
 - `node .ai/scripts/ctl-project-state.mjs` — project state (`.ai/project/state.json`)
-- `node .ai/skills/_meta/skillpacksctl.mjs` — skill pack switching + wrapper sync
+- `node .ai/skills/_meta/ctl-skill-packs.mjs` — skill pack switching + wrapper sync
 
 ## Canonical entry points for LLMs
 
@@ -41,7 +41,7 @@ If a DB schema exists, the canonical DB contract is:
 
 - `docs/context/db/schema.json`
 
-That DB contract is produced by the DB SSOT workflow (see `dbssotctl`, and the database workflow skills).
+That DB contract is produced by the DB SSOT workflow (see `ctl-db-ssot`, and the database workflow skills).
 
 ## How to enable
 
@@ -55,8 +55,8 @@ node .ai/scripts/ctl-project-state.mjs init
 node .ai/scripts/ctl-project-state.mjs set features.contextAwareness true
 node .ai/scripts/ctl-project-state.mjs set context.enabled true
 node .ai/scripts/ctl-project-state.mjs set-context-mode <contract|snapshot>
-node .ai/skills/features/context-awareness/scripts/contextctl.mjs init
-node .ai/skills/features/context-awareness/scripts/contextctl.mjs touch
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs init
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch
 ```
 
 ## Operating rules
@@ -77,21 +77,21 @@ node .ai/scripts/ctl-project-state.mjs verify
 After editing any file under `docs/context/**`:
 
 ```bash
-node .ai/skills/features/context-awareness/scripts/contextctl.mjs touch
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch
 ```
 
 ### Managing environments
 
 ```bash
-node .ai/skills/features/context-awareness/scripts/contextctl.mjs list-envs
-node .ai/skills/features/context-awareness/scripts/contextctl.mjs add-env --id qa --description "QA environment"
-node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify-config
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs list-envs
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs add-env --id qa --description "QA environment"
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs verify-config
 ```
 
 ## Verification
 
 ```bash
-node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --strict
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs verify --strict
 node .ai/scripts/ctl-project-state.mjs verify
 ```
 
@@ -105,5 +105,5 @@ node .ai/scripts/ctl-project-state.mjs verify
 ## Boundaries
 
 - Do NOT store credentials or secrets in `docs/context/` or `config/`.
-- Do NOT hand-edit generated context artifacts without re-running `contextctl touch`.
+- Do NOT hand-edit generated context artifacts without re-running `ctl-context touch`.
 - Use DB SSOT workflows to update `docs/context/db/schema.json`.

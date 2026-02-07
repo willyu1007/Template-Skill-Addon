@@ -53,7 +53,7 @@ dev-docs/active/<task-slug>/
 
 ## Rules
 - The overview MUST state the goal and non-goals.
-- The plan MUST include milestones and acceptance criteria.
+- The plan MUST include phases and acceptance criteria.
 - The architecture doc MUST capture boundaries and contracts.
 - Verification MUST be concrete (commands/checks, expected results).
 - The task bundle MUST include `05-pitfalls.md` and the pitfalls log MUST be updated when failures are resolved (historical lessons, append-only).
@@ -69,7 +69,7 @@ dev-docs/active/<task-slug>/
    - non-goals
    - high-level acceptance criteria
 3. Write `01-plan.md`:
-   - milestones
+   - phases
    - step order
    - risks and mitigations
 4. Write `02-architecture.md`:
@@ -91,7 +91,7 @@ dev-docs/active/<task-slug>/
 ## Verification
 - [ ] Task directory follows the standard layout (`00-overview.md`, `01-plan.md`, etc.)
 - [ ] Overview clearly states goals and non-goals
-- [ ] Plan includes milestones with acceptance criteria
+- [ ] Plan includes phases with acceptance criteria
 - [ ] Architecture captures boundaries and contracts
 - [ ] Verification has concrete commands/checks and expected results
 - [ ] `05-pitfalls.md` exists and is structured for fast scanning + append-only updates

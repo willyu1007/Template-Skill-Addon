@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { runCommand } from '../../lib/exec.mjs';
-import { pickPython, pythonHasModule } from '../../lib/python.mjs';
+import { pickPython } from '../../lib/python.mjs';
 
 export const name = 'ui-style-intake-from-image';
 
@@ -17,39 +17,15 @@ export function run(ctx) {
     return { name, status: 'SKIP', reason: 'python not available' };
   }
 
-  if (!pythonHasModule(python, 'PIL')) {
-    ctx.log(`[${name}] SKIP (Pillow/PIL not installed)`);
-    return { name, status: 'SKIP', reason: 'Pillow/PIL not installed' };
-  }
-
   const testDir = path.join(ctx.evidenceDir, name);
   fs.mkdirSync(testDir, { recursive: true });
 
   const samplePath = path.join(testDir, 'sample.png');
   const reportPath = path.join(testDir, 'report.json');
 
-  const createImgCode = [
-    'from PIL import Image',
-    'import sys',
-    'path = sys.argv[1]',
-    'img = Image.new("RGB", (200, 100), "white")',
-    'for x in range(50, 150):',
-    '  for y in range(20, 80):',
-    '    img.putpixel((x, y), (37, 99, 235))',
-    'img.save(path)',
-    'print(path)',
-  ].join('\n');
-
-  const mk = runCommand({
-    cmd: python.cmd,
-    args: [...python.argsPrefix, '-B', '-c', createImgCode, samplePath],
-    evidenceDir: testDir,
-    label: `${name}.mkimg`,
-  });
-  if (mk.error || mk.code !== 0) {
-    const detail = mk.error ? String(mk.error) : mk.stderr || mk.stdout;
-    return { name, status: 'FAIL', error: `failed to create sample image: ${detail}` };
-  }
+  // 1x1 transparent PNG (dependency-free fixture).
+  const samplePngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
+  fs.writeFileSync(samplePath, Buffer.from(samplePngBase64, 'base64'));
 
   const probePath = path.join(
     ctx.repoRoot,
@@ -74,7 +50,11 @@ export function run(ctx) {
   }
 
   if (!fs.existsSync(reportPath)) {
-    return { name, status: 'FAIL', error: 'missing report.json' };
+    return {
+      name,
+      status: 'FAIL',
+      error: `missing report.json (stdout=${probe.stdout || ''} stderr=${probe.stderr || ''})`,
+    };
   }
 
   const validate = runCommand({
@@ -86,6 +66,20 @@ export function run(ctx) {
   if (validate.error || validate.code !== 0) {
     const detail = validate.error ? String(validate.error) : validate.stderr || validate.stdout;
     return { name, status: 'FAIL', error: `invalid json output: ${detail}` };
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+  } catch (e) {
+    return { name, status: 'FAIL', error: `failed to parse report.json: ${e.message}` };
+  }
+
+  // Either full probe output (Pillow installed) or structured fallback payload.
+  const isFallback = parsed && parsed.ok === false && parsed.error === 'missing_dependency';
+  const isFull = parsed && typeof parsed.width === 'number' && typeof parsed.height === 'number';
+  if (!isFallback && !isFull) {
+    return { name, status: 'FAIL', error: 'unexpected report shape from image style probe' };
   }
 
   ctx.log(`[${name}] PASS`);

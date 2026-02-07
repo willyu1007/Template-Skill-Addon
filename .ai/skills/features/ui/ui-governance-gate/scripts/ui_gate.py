@@ -1120,10 +1120,21 @@ def load_approvals(dir_path: Path) -> List[Dict[str, object]]:
         try:
             obj = load_json(p)
             obj["__path"] = str(p)
+            try:
+                st = p.stat()
+                obj["__mtime_ns"] = int(getattr(st, "st_mtime_ns", int(st.st_mtime * 1_000_000_000)))
+            except Exception:
+                obj["__mtime_ns"] = 0
             out.append(obj)
         except Exception:
             continue
-    out.sort(key=lambda o: str(o.get("approved_at_utc") or ""))
+    out.sort(
+        key=lambda o: (
+            str(o.get("approved_at_utc") or ""),
+            int(o.get("__mtime_ns") or 0),
+            str(o.get("__path") or ""),
+        )
+    )
     return out
 
 

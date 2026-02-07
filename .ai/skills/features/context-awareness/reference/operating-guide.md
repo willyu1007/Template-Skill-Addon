@@ -6,15 +6,15 @@
 - **Verifiable updates**: artifact checksums enable CI to detect edits that bypass the scripts.
 - **Tool-agnostic artifacts**: OpenAPI, BPMN 2.0, and a normalized DB schema mapping.
 
-## contextctl responsibilities
+## ctl-context responsibilities
 
-`contextctl` is a **registry management tool**:
+`ctl-context` is a **registry management tool**:
 
 - **Register**: add/remove artifacts to `docs/context/registry.json`
 - **Checksum**: compute and update SHA-256 checksums via `touch`
 - **Verify**: check file existence and checksum consistency
 
-`contextctl` does **NOT**:
+`ctl-context` does **NOT**:
 
 - Execute shell commands or generators
 - Auto-regenerate artifacts from source
@@ -26,8 +26,8 @@
 - The artifact file is the authoritative contract.
 - Human collaborators and LLMs edit the file directly.
 - After edits, run:
-  - `node .ai/skills/features/context-awareness/scripts/contextctl.mjs touch`
-  - `node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --strict`
+  - `node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch`
+  - `node .ai/skills/features/context-awareness/scripts/ctl-context.mjs verify --strict`
 
 ### Generated mode (opt-in)
 
@@ -35,17 +35,17 @@
 - Register the artifact with `mode=generated`.
 - Workflow:
   1. Run your external generator tool manually or via CI
-  2. Run `contextctl touch` to update checksums
-  3. Run `contextctl verify --strict` to confirm consistency
+  2. Run `ctl-context touch` to update checksums
+  3. Run `ctl-context verify --strict` to confirm consistency
 
-> **Note**: `contextctl` does not provide auto-execution of generator commands.
+> **Note**: `ctl-context` does not provide auto-execution of generator commands.
 > The `source.command` field in registry is for **documentation only**.
 
 ## Recommended CI gates
 
 Minimum:
 
-- `node .ai/skills/features/context-awareness/scripts/contextctl.mjs verify --strict`
+- `node .ai/skills/features/context-awareness/scripts/ctl-context.mjs verify --strict`
 - `node .ai/scripts/ctl-project-state.mjs verify`
 
 For generated mode artifacts, run your generators **before** the verify step.
@@ -58,5 +58,5 @@ For generated mode artifacts, run your generators **before** the verify step.
 
 ## Troubleshooting
 
-- **Checksum mismatch**: you edited an artifact but did not run `contextctl touch`.
+- **Checksum mismatch**: you edited an artifact but did not run `ctl-context touch`.
 - **Missing file**: registry references a path that does not exist; create the file or remove the registry entry via script.

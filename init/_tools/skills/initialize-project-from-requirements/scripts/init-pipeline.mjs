@@ -2043,7 +2043,7 @@ function renderDbSsotAgentsBlock(mode, contextAwarenessEnabled) {
 ` +
       `Rules:
 - Business layer MUST NOT import Prisma (repositories return domain entities).
-- If \`features.contextAwareness=true\`: refresh context via \`node .ai/scripts/dbssotctl.mjs sync-to-context\`.
+- If \`features.contextAwareness=true\`: refresh context via \`node .ai/scripts/ctl-db-ssot.mjs sync-to-context\`.
 `
     );
   }
@@ -2063,8 +2063,8 @@ function renderDbSsotAgentsBlock(mode, contextAwarenessEnabled) {
 ` +
       `Rules:
 - Human runs \`prisma db pull\` against the correct environment.
-- Mirror update: \`node .ai/skills/features/database/sync-code-schema-from-db/scripts/dbctl.mjs import-prisma\`.
-- If \`features.contextAwareness=true\`: refresh context via \`node .ai/scripts/dbssotctl.mjs sync-to-context\`.
+- Mirror update: \`node .ai/skills/features/database/sync-code-schema-from-db/scripts/ctl-db.mjs import-prisma\`.
+- If \`features.contextAwareness=true\`: refresh context via \`node .ai/scripts/ctl-db-ssot.mjs sync-to-context\`.
 `
     );
   }
@@ -2144,13 +2144,13 @@ function refreshDbContextContract(repoRoot, blueprint, apply, verifyFeatures) {
     };
   }
 
-  const dbSsotCtl = path.join(repoRoot, '.ai', 'scripts', 'dbssotctl.mjs');
+  const dbSsotCtl = path.join(repoRoot, '.ai', 'scripts', 'ctl-db-ssot.mjs');
   if (!fs.existsSync(dbSsotCtl)) {
     return {
       op: 'skip',
       path: outPath,
       mode: apply ? 'failed' : 'dry-run',
-      reason: 'dbssotctl.mjs not found'
+      reason: 'ctl-db-ssot.mjs not found'
     };
   }
 
@@ -2158,7 +2158,7 @@ function refreshDbContextContract(repoRoot, blueprint, apply, verifyFeatures) {
   const actions = [run1];
 
   if (verifyFeatures && apply) {
-    const contextCtl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'contextctl.mjs');
+    const contextCtl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'ctl-context.mjs');
     if (fs.existsSync(contextCtl)) {
       actions.push(runNodeScriptWithRepoRootFallback(repoRoot, contextCtl, ['verify', '--repo-root', repoRoot], apply));
     }
@@ -2400,7 +2400,7 @@ function ensureDatabaseFeature(repoRoot, blueprint, apply, options = {}) {
       'database',
       'sync-code-schema-from-db',
       'scripts',
-      'dbctl.mjs'
+      'ctl-db.mjs'
     );
 
     if (fs.existsSync(dbctlPath)) {
@@ -2508,7 +2508,7 @@ function ensureIacFeature(repoRoot, blueprint, apply, options = {}) {
     return result;
   }
 
-  const script = path.join(repoRoot, '.ai', 'skills', 'features', 'iac', 'scripts', 'iacctl.mjs');
+  const script = path.join(repoRoot, '.ai', 'skills', 'features', 'iac', 'scripts', 'ctl-iac.mjs');
   if (!fs.existsSync(script)) {
     result.errors.push(`IaC feature script not found: ${path.relative(repoRoot, script)}`);
     return result;
@@ -2543,7 +2543,7 @@ function ensureCiFeature(repoRoot, blueprint, apply, options = {}) {
     return result;
   }
 
-  const cictl = path.join(repoRoot, '.ai', 'skills', 'features', 'ci', 'scripts', 'cictl.mjs');
+  const cictl = path.join(repoRoot, '.ai', 'skills', 'features', 'ci', 'scripts', 'ctl-ci.mjs');
   if (!fs.existsSync(cictl)) {
     result.errors.push(`CI control script not found: ${path.relative(repoRoot, cictl)}`);
     return result;
@@ -2600,11 +2600,11 @@ function ensureContextAwarenessFeature(repoRoot, blueprint, apply, options = {})
   });
   result.actions.push(...copyRes.actions);
 
-  const contextctl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'contextctl.mjs');
+  const contextctl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'ctl-context.mjs');
   const projectStateCtl = path.join(repoRoot, '.ai', 'scripts', 'ctl-project-state.mjs');
 
   if (!fs.existsSync(contextctl)) {
-    result.errors.push('contextctl.mjs not found under .ai/skills/features/context-awareness/scripts/.');
+    result.errors.push('ctl-context.mjs not found under .ai/skills/features/context-awareness/scripts/.');
     return result;
   }
 
@@ -2711,10 +2711,10 @@ function planScaffold(repoRoot, blueprint, apply, options = {}) {
 }
 
 function updateManifest(repoRoot, blueprint, apply) {
-  // When skillpacksctl is available, pack switching should go through .ai/skills/_meta/skillpacksctl.mjs (scheme A).
+  // When skillpacksctl is available, pack switching should go through .ai/skills/_meta/ctl-skill-packs.mjs (scheme A).
   // When skillpacksctl is not available, fall back to a flat sync-manifest.json update (additive; never removes).
   const manifestPath = path.join(repoRoot, '.ai', 'skills', '_meta', 'sync-manifest.json');
-  const skillpacksctlPath = path.join(repoRoot, '.ai', 'skills', '_meta', 'skillpacksctl.mjs');
+  const skillpacksctlPath = path.join(repoRoot, '.ai', 'skills', '_meta', 'ctl-skill-packs.mjs');
 
   const warnings = [];
   const errors = [];
@@ -3943,28 +3943,28 @@ if (command === 'validate') {
     // Packaging feature
     if (isPackagingEnabled(blueprint)) {
       console.log('[info] Enabling Packaging feature...');
-      const res = ensureFeature(repoRoot, 'packaging', true, 'packctl.mjs', featureOptions);
+      const res = ensureFeature(repoRoot, 'packaging', true, 'ctl-packaging.mjs', featureOptions);
       handleFeatureResult(res, 'packaging');
     }
 
     // Deployment feature
     if (isDeploymentEnabled(blueprint)) {
       console.log('[info] Enabling Deployment feature...');
-      const res = ensureFeature(repoRoot, 'deployment', true, 'deployctl.mjs', featureOptions);
+      const res = ensureFeature(repoRoot, 'deployment', true, 'ctl-deploy.mjs', featureOptions);
       handleFeatureResult(res, 'deployment');
     }
 
     // Release feature
     if (isReleaseEnabled(blueprint)) {
       console.log('[info] Enabling Release feature...');
-      const res = ensureFeature(repoRoot, 'release', true, 'releasectl.mjs', featureOptions);
+      const res = ensureFeature(repoRoot, 'release', true, 'ctl-release.mjs', featureOptions);
       handleFeatureResult(res, 'release');
     }
 
     // Observability feature
     if (isObservabilityEnabled(blueprint)) {
       console.log('[info] Enabling Observability feature...');
-      const res = ensureFeature(repoRoot, 'observability', true, 'obsctl.mjs', featureOptions);
+      const res = ensureFeature(repoRoot, 'observability', true, 'ctl-observability.mjs', featureOptions);
       handleFeatureResult(res, 'observability');
     }
 
@@ -3988,7 +3988,7 @@ if (command === 'validate') {
 
     // Verify context awareness after DB context refresh (prevents transient mismatches).
     if (verifyFeatures && contextFeature && contextFeature.enabled) {
-      const contextctl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'contextctl.mjs');
+      const contextctl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'ctl-context.mjs');
       if (fs.existsSync(contextctl)) {
         const verifyRes = runNodeScriptWithRepoRootFallback(repoRoot, contextctl, ['verify', '--repo-root', repoRoot], true);
         if (verifyRes.mode === 'failed') {

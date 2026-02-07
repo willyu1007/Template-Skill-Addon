@@ -13,12 +13,12 @@
 ## Why a state file exists
 
 Without state, disabling a pack is ambiguous (you cannot know which prefixes/skills were added by which pack).
-`skillpacksctl` persists the set of enabled packs so disable/remove can avoid removing prefixes still required by other enabled packs.
+`ctl-skill-packs` persists the set of enabled packs so disable/remove can avoid removing prefixes still required by other enabled packs.
 
 ## Verification
 
 - Print the effective selection:
-  - `node .ai/skills/_meta/skillpacksctl.mjs status`
+  - `node .ai/skills/_meta/ctl-skill-packs.mjs status`
 - Re-generate wrappers:
-  - `node .ai/skills/_meta/skillpacksctl.mjs sync --providers both`
+  - `node .ai/skills/_meta/ctl-skill-packs.mjs sync --providers both`
 

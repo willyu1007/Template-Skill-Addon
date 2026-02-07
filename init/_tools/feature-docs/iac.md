@@ -25,13 +25,13 @@ Optional (not required) feature flag:
 When enabled, Stage C runs:
 
 ```bash
-node .ai/skills/features/iac/scripts/iacctl.mjs init --tool terraform --repo-root .
+node .ai/skills/features/iac/scripts/ctl-iac.mjs init --tool terraform --repo-root .
 ```
 
 Optional verification (when Stage C is run with `--verify-features`):
 
 ```bash
-node .ai/skills/features/iac/scripts/iacctl.mjs verify --repo-root .
+node .ai/skills/features/iac/scripts/ctl-iac.mjs verify --repo-root .
 ```
 
 ## Key outputs

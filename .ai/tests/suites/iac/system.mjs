@@ -21,7 +21,7 @@ export function run(ctx) {
     'features',
     'iac',
     'scripts',
-    'iacctl.mjs'
+    'ctl-iac.mjs'
   );
 
   const init = runCommand({

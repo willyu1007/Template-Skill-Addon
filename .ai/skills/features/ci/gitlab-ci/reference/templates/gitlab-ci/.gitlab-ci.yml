@@ -2,11 +2,12 @@
 # - Uses canonical pnpm scripts for each suite
 # - Uploads suite artifacts even on failure
 #
-# - Optional: run `node .ai/skills/features/ci/scripts/cictl.mjs init` to create `ci/config.json` metadata
+# - Optional: run `node .ai/skills/features/ci/scripts/ctl-ci.mjs init` to create `ci/config.json` metadata
 #
 # NOTE: Adjust Node version, variables, and which jobs are MR-gated for your repo.
 
 stages:
+  - governance
   - test
   - perf
 
@@ -29,6 +30,16 @@ variables:
     - corepack enable
     - pnpm config set store-dir .pnpm-store
     - pnpm install --frozen-lockfile
+
+governance-lint:
+  stage: governance
+  image: node:${NODE_VERSION}
+  timeout: 5 minutes
+  script:
+    - node .ai/scripts/ctl-project-governance.mjs lint --check --project main
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 api-newman:
   <<: *node-setup

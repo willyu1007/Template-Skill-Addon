@@ -1,6 +1,6 @@
 ---
 name: packaging
-description: Enable and operate the Packaging feature (ops/packaging conventions + packctl) for building runnable artifacts (usually container images).
+description: Enable and operate the Packaging feature (ops/packaging conventions + ctl-packaging) for building runnable artifacts (usually container images).
 category: features
 ssot_path: .ai/skills/features/packaging
 ---

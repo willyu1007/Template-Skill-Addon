@@ -2,7 +2,7 @@
 # - Uses canonical pnpm scripts for each suite
 # - Uploads suite artifacts even on failure
 #
-# - Optional: run `node .ai/skills/features/ci/scripts/cictl.mjs init` to create `ci/config.json` metadata
+# - Optional: run `node .ai/skills/features/ci/scripts/ctl-ci.mjs init` to create `ci/config.json` metadata
 #
 # NOTE: Adjust Node version, secrets, and which jobs are PR-gated for your repo.
 
@@ -15,6 +15,22 @@ on:
   workflow_dispatch:
 
 jobs:
+  governance-lint:
+    name: Governance Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run governance lint
+        run: node .ai/scripts/ctl-project-governance.mjs lint --check --project main
+
   api-newman:
     name: API (Newman)
     runs-on: ubuntu-latest
