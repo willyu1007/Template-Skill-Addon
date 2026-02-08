@@ -147,6 +147,10 @@ function getConfigPath(repoRoot) {
   return path.join(getCiDir(repoRoot), 'config.json');
 }
 
+function getSharedVerifyScriptPath(repoRoot) {
+  return path.join(repoRoot, '.ai', 'skills', 'features', 'ci', 'scripts', 'ci-verify.mjs');
+}
+
 function loadConfig(repoRoot) {
   return readJson(getConfigPath(repoRoot)) || {
     version: 1,
@@ -418,6 +422,11 @@ function cmdVerify(repoRoot) {
   }
   if (!fs.existsSync(getConfigPath(repoRoot))) {
     errors.push('ci/config.json not found. Run: ctl-ci init');
+  }
+
+  const sharedVerifyScriptPath = getSharedVerifyScriptPath(repoRoot);
+  if (!fs.existsSync(sharedVerifyScriptPath)) {
+    warnings.push('.ai/skills/features/ci/scripts/ci-verify.mjs not found. CI templates should call the shared verifier.');
   }
 
   // Check provider-specific files

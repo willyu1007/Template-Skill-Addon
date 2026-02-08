@@ -34,6 +34,7 @@ Provider skills (for workflow customization and troubleshooting):
 Controller script (feature-local):
 
 - `node .ai/skills/features/ci/scripts/ctl-ci.mjs`
+- `node .ai/skills/features/ci/scripts/ci-verify.mjs` (shared CI check entrypoint used by provider templates)
 
 ## How to enable
 
@@ -70,6 +71,7 @@ node .ai/skills/features/ci/scripts/ctl-ci.mjs add-delivery --provider gitlab --
 
 ```bash
 node .ai/skills/features/ci/scripts/ctl-ci.mjs --help
+node .ai/skills/features/ci/scripts/ci-verify.mjs --help
 
 # Dry-run install (no writes)
 node .ai/skills/features/ci/scripts/ctl-ci.mjs init --provider github --repo-root . --dry-run

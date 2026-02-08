@@ -36,7 +36,7 @@ governance-lint:
   image: node:${NODE_VERSION}
   timeout: 5 minutes
   script:
-    - node .ai/scripts/ctl-project-governance.mjs lint --check --project main
+    - node .ai/skills/features/ci/scripts/ci-verify.mjs --suite governance
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -48,7 +48,7 @@ api-newman:
   cache:
     <<: *cache-config
   script:
-    - pnpm test:api
+    - node .ai/skills/features/ci/scripts/ci-verify.mjs --suite api
   variables:
     BASE_URL: ${API_BASE_URL}
     API_TOKEN: ${API_TOKEN}
@@ -70,8 +70,7 @@ web-playwright:
   cache:
     <<: *cache-config
   script:
-    - pnpm exec playwright install --with-deps
-    - pnpm test:e2e:playwright
+    - node .ai/skills/features/ci/scripts/ci-verify.mjs --suite web-playwright
   variables:
     BASE_URL: ${WEB_BASE_URL}
   artifacts:
@@ -86,14 +85,14 @@ web-playwright:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 perf-k6-smoke:
+  <<: *node-setup
   stage: perf
-  image: grafana/k6:latest
   timeout: 20 minutes
   # Recommended: keep k6 smoke in MR; heavier perf suites should be scheduled.
-  before_script:
-    - mkdir -p artifacts/k6
+  cache:
+    <<: *cache-config
   script:
-    - k6 run tests/perf/k6/scripts/smoke.mjs --summary-export artifacts/k6/summary.json
+    - node .ai/skills/features/ci/scripts/ci-verify.mjs --suite perf-k6-smoke
   variables:
     BASE_URL: ${API_BASE_URL}
     API_TOKEN: ${API_TOKEN}
