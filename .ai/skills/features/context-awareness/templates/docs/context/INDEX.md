@@ -14,6 +14,7 @@
 Typical artifacts (not exhaustive):
 
 - API contract: `docs/context/api/openapi.yaml`
+- API index (LLM summary): `docs/context/api/api-index.json` (generated from openapi.yaml by `ctl-api-index.mjs`)
 - Database schema contract: `docs/context/db/schema.json`
 - Business processes: `docs/context/process/*.bpmn`
 
@@ -22,8 +23,9 @@ All artifacts MUST be registered in `docs/context/registry.json`.
 ## How to load context (for AI/LLM)
 
 1. Open `docs/context/registry.json`.
-2. Select only the artifacts needed for the current task.
-3. Open those files by path (do not scan folders).
+2. For API work: read `docs/context/api/api-index.json` first (compact overview of all endpoints).
+3. For full endpoint detail: read `docs/context/api/openapi.yaml` (complete schemas).
+4. Select only the artifacts needed for the current task. Open those files by path (do not scan folders).
 
 ## Database schema contract
 

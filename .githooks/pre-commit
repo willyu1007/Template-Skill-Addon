@@ -23,6 +23,22 @@ if git diff --cached --name-only | grep -qE '\.md$'; then
   fi
 fi
 
+# Auto-regenerate API Index when materialized OpenAPI contract changes
+if git diff --cached --name-only | grep -qE '^docs/context/api/openapi\.ya?ml$'; then
+  OPENAPI_FILE=""
+  if [ -f docs/context/api/openapi.yaml ]; then
+    OPENAPI_FILE="docs/context/api/openapi.yaml"
+  elif [ -f docs/context/api/openapi.yml ]; then
+    OPENAPI_FILE="docs/context/api/openapi.yml"
+  fi
+  if [ -n "$OPENAPI_FILE" ] && [ -f .ai/scripts/ctl-api-index.mjs ]; then
+    echo "[hook] Detected OpenAPI changes, regenerating API Index..."
+    node .ai/scripts/ctl-api-index.mjs generate --source "$OPENAPI_FILE" --touch --repo-root .
+    git add docs/context/api/api-index.json docs/context/api/API-INDEX.md docs/context/registry.json 2>/dev/null || true
+    echo "[hook] API Index regenerated."
+  fi
+fi
+
 # Check if any dev-docs files are staged (supports multi-root dev-docs)
 if git diff --cached --name-only | grep -qE '(^|/)dev-docs/'; then
   echo "[hook] Detected dev-docs changes, running ctl-project-governance sync..."

@@ -14,6 +14,7 @@ import * as dbSuite from './suites/database/index.mjs';
 import * as contextSuite from './suites/context-awareness/index.mjs';
 import * as deploySuite from './suites/deployment/index.mjs';
 import * as iacSuite from './suites/iac/index.mjs';
+import * as apiIndexSuite from './suites/api-index/index.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,13 +28,14 @@ const SUITES = {
   'context-awareness': contextSuite,
   deployment: deploySuite,
   iac: iacSuite,
+  'api-index': apiIndexSuite,
 };
 
 function usage(exitCode) {
   const msg = [
     'Usage:',
     '  node .ai/tests/run.mjs --list',
-    '  node .ai/tests/run.mjs --suite <ui|environment|database|context-awareness|deployment|iac>',
+    '  node .ai/tests/run.mjs --suite <ui|environment|database|context-awareness|deployment|iac|api-index>',
     '',
     'Options:',
     '  --keep-artifacts     Keep evidence even on PASS (default: false)',

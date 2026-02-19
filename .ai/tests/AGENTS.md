@@ -12,6 +12,7 @@ Centralized smoke tests for feature-pack `ctl-*.mjs` scripts. Validates init -> 
 | `environment` | `env_contractctl.py`, `env_localctl.py`, `env_cloudctl.py` | contract -> local -> cloud |
 | `database` | `db_connect_check.py`, `db_schema_snapshot.py` | connect -> snapshot |
 | `context-awareness` | `ctl-context.mjs` | init -> add-artifact -> touch -> verify |
+| `api-index` | `ctl-api-index.mjs` | generate -> verify -> diff (fixture OpenAPI) |
 | `deployment` | `ctl-deploy.mjs` | init -> add-service -> plan -> verify |
 
 ## Commands
@@ -25,6 +26,7 @@ node .ai/tests/run.mjs --suite ui
 node .ai/tests/run.mjs --suite environment
 node .ai/tests/run.mjs --suite database
 node .ai/tests/run.mjs --suite context-awareness
+node .ai/tests/run.mjs --suite api-index
 node .ai/tests/run.mjs --suite deployment
 
 # Keep evidence on PASS (debug)
@@ -56,6 +58,7 @@ Evidence includes: `run.json`, `runner.log`, per-test `*.stdout.log`, `*.stderr.
     |-- environment/
     |-- database/
     |-- context-awareness/
+    |-- api-index/
     `-- deployment/
 ```
 

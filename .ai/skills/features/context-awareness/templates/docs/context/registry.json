@@ -19,6 +19,23 @@
       }
     },
     {
+      "id": "api-index",
+      "type": "json",
+      "path": "docs/context/api/api-index.json",
+      "mode": "generated",
+      "format": "api-index-v1",
+      "tags": [
+        "api",
+        "index",
+        "llm"
+      ],
+      "source": {
+        "kind": "command",
+        "command": "node .ai/scripts/ctl-api-index.mjs generate --touch",
+        "notes": "Generated from openapi.yaml. Do NOT hand-edit."
+      }
+    },
+    {
       "id": "db-schema",
       "type": "db-schema",
       "path": "docs/context/db/schema.json",
@@ -30,8 +47,9 @@
       "checksumSha256": "a30eb6af3d0a1587408a849baa4f4ff6266c6a9b1d1eb75e6fa43a27ac48fc6e",
       "lastUpdated": "2026-01-16T23:27:36.431Z",
       "source": {
-        "kind": "generated",
-        "notes": "Generated via: node .ai/scripts/ctl-db-ssot.mjs sync-to-context (then ctl-context touch). Do NOT hand-edit."
+        "kind": "command",
+        "command": "node .ai/scripts/ctl-db-ssot.mjs sync-to-context",
+        "notes": "Generated via ctl-db-ssot sync-to-context (then ctl-context touch). Do NOT hand-edit."
       }
     },
     {
