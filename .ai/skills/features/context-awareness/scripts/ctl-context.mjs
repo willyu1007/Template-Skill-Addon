@@ -389,7 +389,7 @@ This directory contains structured context artifacts for AI/LLM consumption.
 ## Usage
 
 AI/LLM should:
-1. Read this INDEX.md first
+1. If \`docs/context/AGENTS.md\` exists, read it first; otherwise read this INDEX.md
 2. Check registry.json for available artifacts
 3. Load specific artifacts as needed
 

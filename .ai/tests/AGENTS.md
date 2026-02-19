@@ -14,6 +14,7 @@ Centralized smoke tests for feature-pack `ctl-*.mjs` scripts. Validates init -> 
 | `context-awareness` | `ctl-context.mjs` | init -> add-artifact -> touch -> verify |
 | `api-index` | `ctl-api-index.mjs`, `ctl-openapi-quality.mjs`, `ctl-context.mjs` | generate -> verify -> diff + quality gate + glossary verify |
 | `deployment` | `ctl-deploy.mjs` | init -> add-service -> plan -> verify |
+| `iac` | `ctl-iac.mjs` | init -> verify |
 
 ## Commands
 
@@ -28,6 +29,7 @@ node .ai/tests/run.mjs --suite database
 node .ai/tests/run.mjs --suite context-awareness
 node .ai/tests/run.mjs --suite api-index
 node .ai/tests/run.mjs --suite deployment
+node .ai/tests/run.mjs --suite iac
 
 # Keep evidence on PASS (debug)
 node .ai/tests/run.mjs --suite <name> --keep-artifacts
@@ -59,7 +61,8 @@ Evidence includes: `run.json`, `runner.log`, per-test `*.stdout.log`, `*.stderr.
     |-- database/
     |-- context-awareness/
     |-- api-index/
-    `-- deployment/
+    |-- deployment/
+    `-- iac/
 ```
 
 ## Adding a New Suite
