@@ -12,7 +12,7 @@ Centralized smoke tests for feature-pack `ctl-*.mjs` scripts. Validates init -> 
 | `environment` | `env_contractctl.py`, `env_localctl.py`, `env_cloudctl.py` | contract -> local -> cloud |
 | `database` | `db_connect_check.py`, `db_schema_snapshot.py` | connect -> snapshot |
 | `context-awareness` | `ctl-context.mjs` | init -> add-artifact -> touch -> verify |
-| `api-index` | `ctl-api-index.mjs` | generate -> verify -> diff (fixture OpenAPI) |
+| `api-index` | `ctl-api-index.mjs`, `ctl-openapi-quality.mjs`, `ctl-context.mjs` | generate -> verify -> diff + quality gate + glossary verify |
 | `deployment` | `ctl-deploy.mjs` | init -> add-service -> plan -> verify |
 
 ## Commands

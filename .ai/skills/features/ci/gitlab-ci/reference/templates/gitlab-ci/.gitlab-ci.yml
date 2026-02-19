@@ -41,6 +41,16 @@ governance-lint:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+api-context:
+  stage: governance
+  image: node:${NODE_VERSION}
+  timeout: 10 minutes
+  script:
+    - node .ai/skills/features/ci/scripts/ci-verify.mjs --suite api-context
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
 api-newman:
   <<: *node-setup
   stage: test

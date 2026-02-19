@@ -31,6 +31,22 @@ jobs:
       - name: Run governance lint
         run: node .ai/skills/features/ci/scripts/ci-verify.mjs --suite governance
 
+  api-context:
+    name: API Context Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run API context verification
+        run: node .ai/skills/features/ci/scripts/ci-verify.mjs --suite api-context
+
   api-newman:
     name: API (Newman)
     runs-on: ubuntu-latest

@@ -2,7 +2,7 @@
 
 ## Design goals
 
-- **Stable entry point**: `docs/context/INDEX.md` and `docs/context/registry.json` are the supported context entry points.
+- **Stable entry point**: `docs/context/AGENTS.md` is the authoritative LLM routing entrypoint; `docs/context/INDEX.md` and `docs/context/registry.json` serve as supplementary context entry points.
 - **Verifiable updates**: artifact checksums enable CI to detect edits that bypass the scripts.
 - **Tool-agnostic artifacts**: OpenAPI, BPMN 2.0, and a normalized DB schema mapping.
 
@@ -53,8 +53,37 @@ For generated mode artifacts, run your generators **before** the verify step.
 ## Common artifact types
 
 - `openapi`: API surface contract (`docs/context/api/openapi.yaml`)
+- `json` (api-index): LLM-friendly API overview (`docs/context/api/api-index.json`)
+- `json` (glossary): domain term definitions (`docs/context/glossary.json`)
+- `markdown` (architecture-principles): cross-cutting constraints (`docs/context/architecture-principles.md`)
 - `db-schema`: normalized DB structure mapping (`docs/context/db/schema.json`)
 - `bpmn`: BPMN 2.0 process file (`docs/context/process/*.bpmn`)
+
+## Glossary management
+
+After `docs/context/glossary.json` is materialized:
+
+```bash
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs add-term --term "tenant" --definition "An isolated customer organization" --scope global --aliases "organization,org" --see-also "workspace"
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs remove-term --term "tenant"
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs list-terms --format json
+```
+
+The `add-term` command performs case-insensitive dedup and auto-runs `touch`.
+
+## Architecture principles management
+
+Edit `docs/context/architecture-principles.md` directly. Mark superseded principles with `[SUPERSEDED by ...]` — do not delete them. After editing, run `ctl-context touch`.
+
+## Glossary schema validation
+
+Glossary validation automatically uses [Ajv](https://ajv.js.org/) for full JSON Schema draft-07 compliance when available. Without Ajv, a built-in subset validator runs as fallback. For full compliance:
+
+```bash
+pnpm add -D ajv ajv-formats
+```
+
+`--strict` means warnings are treated as errors — it does not require Ajv.
 
 ## Troubleshooting
 

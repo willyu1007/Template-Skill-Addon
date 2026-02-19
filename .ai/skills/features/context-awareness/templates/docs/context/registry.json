@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-01-16T23:27:36.435Z",
+  "updatedAt": "",
   "artifacts": [
     {
       "id": "api-openapi",
@@ -11,8 +11,6 @@
       "tags": [
         "api"
       ],
-      "checksumSha256": "52acc7009fb7b589902683847c529b985a6a855d7150a42364858e8209383316",
-      "lastUpdated": "2025-12-25T14:14:14Z",
       "source": {
         "kind": "manual",
         "notes": "Edit the contract file; then run ctl-context touch."
@@ -36,6 +34,36 @@
       }
     },
     {
+      "id": "glossary",
+      "type": "json",
+      "path": "docs/context/glossary.json",
+      "mode": "contract",
+      "format": "glossary-v1",
+      "tags": [
+        "glossary",
+        "llm"
+      ],
+      "source": {
+        "kind": "manual",
+        "notes": "Edit via ctl-context add-term/remove-term; then run ctl-context touch."
+      }
+    },
+    {
+      "id": "architecture-principles",
+      "type": "markdown",
+      "path": "docs/context/architecture-principles.md",
+      "mode": "contract",
+      "format": "architecture-principles-v1",
+      "tags": [
+        "architecture",
+        "llm"
+      ],
+      "source": {
+        "kind": "manual",
+        "notes": "Edit the Markdown file directly; then run ctl-context touch."
+      }
+    },
+    {
       "id": "db-schema",
       "type": "db-schema",
       "path": "docs/context/db/schema.json",
@@ -44,8 +72,6 @@
       "tags": [
         "db"
       ],
-      "checksumSha256": "a30eb6af3d0a1587408a849baa4f4ff6266c6a9b1d1eb75e6fa43a27ac48fc6e",
-      "lastUpdated": "2026-01-16T23:27:36.431Z",
       "source": {
         "kind": "command",
         "command": "node .ai/scripts/ctl-db-ssot.mjs sync-to-context",
@@ -62,8 +88,6 @@
         "bpmn",
         "process"
       ],
-      "checksumSha256": "1276230573853c3e20487671a11679169426ecd61bff59cb8f73e44b130d6f82",
-      "lastUpdated": "2025-12-25T14:14:14Z",
       "source": {
         "kind": "manual",
         "notes": "Replace with real processes or add more .bpmn files; then run ctl-context touch."

@@ -23,6 +23,10 @@ The main outcome is that the LLM can load a small number of canonical entry poin
 When enabled, the feature **materializes** these paths in the repo root:
 
 - `docs/context/**` (contracts + registry)
+- `docs/context/AGENTS.md` (LLM routing entrypoint with progressive loading protocol)
+- `docs/context/glossary.json` (domain glossary — structured term definitions)
+- `docs/context/glossary.schema.json` (glossary JSON Schema for verification)
+- `docs/context/architecture-principles.md` (cross-cutting constraints and rejected alternatives)
 - `config/environments/**` (environment config templates; no secrets)
 
 And it assumes these controller scripts exist (they are part of the template SSOT under `.ai/`):
@@ -33,15 +37,36 @@ And it assumes these controller scripts exist (they are part of the template SSO
 
 ## Canonical entry points for LLMs
 
-1. `docs/context/INDEX.md`
-2. `docs/context/registry.json`
-3. `docs/context/config/environment-registry.json`
+1. `docs/context/AGENTS.md` (authoritative LLM routing — progressive loading protocol)
+2. `docs/context/INDEX.md`
+3. `docs/context/registry.json`
+4. `docs/context/api/api-index.json` (API overview — read before openapi.yaml)
+5. `docs/context/glossary.json` (domain term definitions)
+6. `docs/context/config/environment-registry.json`
 
 If a DB schema exists, the canonical DB contract is:
 
 - `docs/context/db/schema.json`
 
 That DB contract is produced by the DB SSOT workflow (see `ctl-db-ssot`, and the database workflow skills).
+
+## Knowledge artifacts
+
+### Domain glossary (`docs/context/glossary.json`)
+
+Structured JSON for project-specific term definitions. Manage via CLI:
+
+```bash
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs add-term --term "tenant" --definition "An isolated customer organization" --scope global --aliases "organization,org"
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs remove-term --term "tenant"
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs list-terms
+```
+
+Verification: `ctl-context verify --strict` validates glossary structure when the file exists.
+
+### Architecture principles (`docs/context/architecture-principles.md`)
+
+Markdown file for cross-cutting rules. Edit directly, then run `ctl-context touch`.
 
 ## How to enable
 

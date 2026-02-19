@@ -870,6 +870,11 @@ function computeNextStepsForStartHere(lang, progress, repoRoot, docsRoot, bluepr
   }
 
   if (stage === 'COMPLETE') {
+    const glossaryTarget = path.join(repoRoot, 'docs', 'context', 'glossary.json');
+    const glossarySource = path.join(docsRoot, 'domain-glossary.md');
+    if (fs.existsSync(glossaryTarget) && fs.existsSync(glossarySource)) {
+      steps.push('Migrate glossary: transfer terms from `init/_work/stage-a-docs/domain-glossary.md` to `docs/context/glossary.json`, then run `ctl-context touch`.');
+    }
     steps.push('Initialization complete. Optional: run `cleanup-init --apply --i-understand` to remove init/.');
     return steps;
   }
@@ -2621,6 +2626,21 @@ function ensureContextAwarenessFeature(repoRoot, blueprint, apply, options = {})
 
   // Initialize docs/context skeleton and registry (idempotent)
   result.actions.push(runNodeScriptWithRepoRootFallback(repoRoot, contextctl, ['init', '--repo-root', repoRoot], apply));
+
+  // Generate api-index from openapi.yaml if it exists (ensures committed state matches CI-regenerated state)
+  // Use relative path so sourceOpenapi field matches CI's relative --source argument
+  if (apply) {
+    const apiIndexCtl = path.join(repoRoot, '.ai', 'scripts', 'ctl-api-index.mjs');
+    const openapiYamlAbs = path.join(repoRoot, 'docs', 'context', 'api', 'openapi.yaml');
+    const openapiYmlAbs = path.join(repoRoot, 'docs', 'context', 'api', 'openapi.yml');
+    if (fs.existsSync(apiIndexCtl) && (fs.existsSync(openapiYamlAbs) || fs.existsSync(openapiYmlAbs))) {
+      const srcRel = fs.existsSync(openapiYamlAbs) ? 'docs/context/api/openapi.yaml' : 'docs/context/api/openapi.yml';
+      result.actions.push(runNodeScriptWithRepoRootFallback(repoRoot, apiIndexCtl, ['generate', '--source', srcRel, '--touch'], true));
+    }
+  }
+
+  // Recalculate checksums so registry matches the just-copied/generated files
+  result.actions.push(runNodeScriptWithRepoRootFallback(repoRoot, contextctl, ['touch', '--repo-root', repoRoot], apply));
 
   // Optional verify
   if (verify && apply) {

@@ -17,12 +17,13 @@ import path from 'node:path';
 const SUPPORTED_SUITES = [
   'governance',
   'api',
+  'api-context',
   'web-playwright',
   'perf-k6-smoke'
 ];
 
 const PROFILE_SUITES = {
-  'pr-gate': ['governance', 'api', 'web-playwright', 'perf-k6-smoke']
+  'pr-gate': ['governance', 'api', 'api-context', 'web-playwright', 'perf-k6-smoke']
 };
 
 function usage(exitCode = 0) {
@@ -188,6 +189,42 @@ function resolveSuiteSteps(suite) {
       ];
     case 'api':
       return [{ label: 'API tests', cmd: 'pnpm', args: ['test:api'] }];
+    case 'api-context': {
+      if (!fs.existsSync('docs/context/api/openapi.yaml') && !fs.existsSync('docs/context/api/openapi.yml')) {
+        console.log('[skip] api-context: docs/context/api/openapi.yaml not found. Context Awareness may not be materialized.');
+        return [];
+      }
+      const openapiSrc = fs.existsSync('docs/context/api/openapi.yaml')
+        ? 'docs/context/api/openapi.yaml'
+        : 'docs/context/api/openapi.yml';
+      return [
+        {
+          label: 'OpenAPI semantic quality check',
+          cmd: 'node',
+          args: ['.ai/scripts/ctl-openapi-quality.mjs', 'verify', '--source', openapiSrc, '--strict']
+        },
+        {
+          label: 'Regenerate API Index',
+          cmd: 'node',
+          args: ['.ai/scripts/ctl-api-index.mjs', 'generate', '--source', openapiSrc, '--touch']
+        },
+        {
+          label: 'Verify API Index freshness',
+          cmd: 'node',
+          args: ['.ai/scripts/ctl-api-index.mjs', 'verify', '--strict']
+        },
+        {
+          label: 'Context layer consistency',
+          cmd: 'node',
+          args: ['.ai/skills/features/context-awareness/scripts/ctl-context.mjs', 'verify', '--strict']
+        },
+        {
+          label: 'Drift check (generated artifacts)',
+          cmd: 'git',
+          args: ['diff', '--exit-code', 'docs/context/api/api-index.json', 'docs/context/api/API-INDEX.md', 'docs/context/registry.json']
+        }
+      ];
+    }
     case 'web-playwright':
       return [
         {

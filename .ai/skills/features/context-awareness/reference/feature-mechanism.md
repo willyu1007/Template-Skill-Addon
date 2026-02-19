@@ -9,7 +9,7 @@
   - `node .ai/scripts/ctl-project-state.mjs` (project state/config)
   - `node .ai/skills/_meta/ctl-skill-packs.mjs` (skills pack switching + wrapper sync)
 - The goal is to make an LLM "context-aware" without relying on ad-hoc folder scans:
-  - The LLM reads `docs/context/INDEX.md` and `docs/context/registry.json` as the entry point.
+  - The LLM reads `docs/context/AGENTS.md` as the authoritative entry point, with `docs/context/INDEX.md` and `docs/context/registry.json` as supplementary references.
   - Environment constraints are in `docs/context/config/environment-registry.json`.
   - CI can run `ctl-context verify --strict` to enforce "changes go through scripts".
 
@@ -18,6 +18,9 @@
 New files/directories (created if missing):
 
 - `docs/context/**` (context artifacts and registry)
+- `docs/context/AGENTS.md` (LLM routing entrypoint — progressive loading protocol)
+- `docs/context/glossary.json` + `glossary.schema.json` (domain glossary)
+- `docs/context/architecture-principles.md` (cross-cutting constraints)
 - `docs/context/config/**` (environment registry)
 - `.ai/skills/features/context-awareness/**` (documentation for this feature)
 - `config/environments/**` (environment config templates)
@@ -91,6 +94,19 @@ node .ai/skills/features/context-awareness/scripts/ctl-context.mjs list-envs
 
 # Verify environment configuration
 node .ai/skills/features/context-awareness/scripts/ctl-context.mjs verify-config --env staging
+```
+
+## Glossary Commands
+
+```bash
+# Add a term
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs add-term --term "tenant" --definition "An isolated customer organization" --scope global --aliases "organization,org"
+
+# Remove a term
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs remove-term --term "tenant"
+
+# List all terms
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs list-terms --format json
 ```
 
 ## Artifact Commands

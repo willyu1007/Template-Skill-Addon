@@ -325,7 +325,40 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs update-root-docs --repo-root . --apply
 ```
 
-### 6) Optional: remove the init kit
+### 6) Post-init: migrate glossary to context layer (if context-awareness enabled)
+
+After Stage C approval, if `features.contextAwareness=true` and `init/_work/stage-a-docs/domain-glossary.md` contains substantive terms (not just placeholders):
+
+1. Read `init/_work/stage-a-docs/domain-glossary.md` and extract each defined term.
+2. For each term, write an entry into `docs/context/glossary.json` using this structure:
+
+```json
+{
+  "term": "<term name>",
+  "definition": "<concise definition, 1-3 sentences>",
+  "scope": "global",
+  "aliases": ["<synonym1>", "<synonym2>"],
+  "see_also": ["<related-term>"]
+}
+```
+
+- `term` and `definition` are required; `scope`, `aliases`, `see_also` are optional.
+- Skip terms that are placeholder text (e.g., `<Term>`, `- ...`).
+- Preserve the `version: 1` and update `updatedAt` to the current ISO timestamp.
+
+3. After writing, run:
+
+```bash
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch
+```
+
+Alternatively, use the CLI to add terms one by one:
+
+```bash
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs add-term --term "tenant" --definition "An isolated customer organization" --aliases "organization,org"
+```
+
+### 7) Optional: remove the init kit
 
 When the user confirms the bootstrap kit is no longer needed:
 

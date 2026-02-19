@@ -55,7 +55,14 @@ node .ai/scripts/ctl-project-state.mjs set-context-mode <contract|snapshot> --re
 node .ai/skills/features/context-awareness/scripts/ctl-context.mjs init --repo-root .
 ```
 
-4) Optional verification (when Stage C is run with `--verify-features`):
+4) Generates API index from openapi.yaml (if present) and recalculates checksums:
+
+```bash
+node .ai/scripts/ctl-api-index.mjs generate --source docs/context/api/openapi.yaml --touch
+node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch --repo-root .
+```
+
+5) Optional verification (when Stage C is run with `--verify-features`):
 
 ```bash
 node .ai/skills/features/context-awareness/scripts/ctl-context.mjs verify --repo-root .
@@ -64,4 +71,7 @@ node .ai/skills/features/context-awareness/scripts/ctl-context.mjs verify --repo
 ## Key outputs
 
 - `docs/context/**` (registries + contracts)
+- `docs/context/AGENTS.md` (LLM routing entrypoint — progressive loading protocol)
+- `docs/context/glossary.json` + `glossary.schema.json` (domain glossary for term resolution)
+- `docs/context/architecture-principles.md` (cross-cutting constraints)
 - `config/environments/**` (environment contract scaffolding, if present in templates)

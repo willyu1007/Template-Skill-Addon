@@ -13,19 +13,25 @@
 
 Typical artifacts (not exhaustive):
 
+- **LLM routing entrypoint**: `docs/context/AGENTS.md` (progressive loading protocol — start here)
 - API contract: `docs/context/api/openapi.yaml`
 - API index (LLM summary): `docs/context/api/api-index.json` (generated from openapi.yaml by `ctl-api-index.mjs`)
 - Database schema contract: `docs/context/db/schema.json`
 - Business processes: `docs/context/process/*.bpmn`
+- Domain glossary: `docs/context/glossary.json` (structured term definitions)
+- Architecture principles: `docs/context/architecture-principles.md` (cross-cutting constraints)
 
 All artifacts MUST be registered in `docs/context/registry.json`.
 
 ## How to load context (for AI/LLM)
 
-1. Open `docs/context/registry.json`.
-2. For API work: read `docs/context/api/api-index.json` first (compact overview of all endpoints).
-3. For full endpoint detail: read `docs/context/api/openapi.yaml` (complete schemas).
-4. Select only the artifacts needed for the current task. Open those files by path (do not scan folders).
+1. Open `docs/context/AGENTS.md` for the full progressive loading protocol.
+2. Open `docs/context/registry.json` to discover available artifacts.
+3. For API work: read `docs/context/api/api-index.json` first (compact overview of all endpoints).
+4. For full endpoint detail: read `docs/context/api/openapi.yaml` (complete schemas).
+5. For terminology/concept questions: read `docs/context/glossary.json`.
+6. For architecture constraints: read `docs/context/architecture-principles.md`.
+7. Select only the artifacts needed for the current task. Open those files by path (do not scan folders).
 
 ## Database schema contract
 
