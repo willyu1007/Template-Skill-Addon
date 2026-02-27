@@ -228,8 +228,7 @@ function getTemplatesDir(repoRoot) {
     'workflows',
     'planning',
     'project-sync-lint',
-    'templates',
-    'main'
+    'templates'
   );
 }
 

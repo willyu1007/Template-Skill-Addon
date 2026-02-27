@@ -143,6 +143,7 @@ Depending on `blueprint.features`, Stage C may also materialize:
 4. The manifest schema is the **flat schema** (do not use older nested shapes like `collections.current`).
 5. Config generation has a single SSOT: `scripts/scaffold-configs.mjs`.
 6. Do not create dev-docs task bundles during initialization; use dev-docs after init completes.
+7. Before deleting `init/`, the LLM MUST run a doc-path hygiene pass to remove initialization-only routes/instructions from active docs (root `AGENTS.md`, `README.md`, and other active routing docs as applicable).
 
 ---
 
@@ -267,6 +268,8 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
 
 Stage C `apply` does **not** auto-update the root `README.md` / `AGENTS.md`. Use `update-root-docs` to preview a diff and (after explicit approval) apply the updates; include those changes in the Stage C review if the command is run before approval.
 
+Avoid `apply --cleanup-init` in normal workflows. Run cleanup as a separate final step after the LLM doc-path hygiene gate.
+
 Troubleshooting: if Stage C `apply` fails with `EPERM` when writing `.codex/skills/` or `.claude/skills/`, re-run the same `apply` command in an elevated shell. Do not change the blueprint between attempts.
 
 After the user reviews the changes and explicitly approves, run:
@@ -358,7 +361,39 @@ Alternatively, use the CLI to add terms one by one:
 node .ai/skills/features/context-awareness/scripts/ctl-context.mjs add-term --term "tenant" --definition "An isolated customer organization" --aliases "organization,org"
 ```
 
-### 7) Optional: remove the init kit
+### 7) Post-init gate: LLM doc-path hygiene before init cleanup (required when removing init/)
+
+Goal: after initialization completes, remove stale initialization routes/instructions from active docs so agents no longer route to deleted `init/` paths.
+
+Scope (minimum):
+- Root `AGENTS.md`
+- Root `README.md` (if it contains init routing references)
+- Any active routing docs that still point to `init/` (for example top-level workflow/router docs)
+
+Required actions:
+1. LLM scans active docs for initialization-only references:
+
+```bash
+rg -n -uu "init/AGENTS\\.md|init/_tools|First time / Project setup|Project initialization|\\binit/" AGENTS.md README.md .ai dev-docs --glob "*.md"
+```
+
+2. LLM edits docs to remove or replace init-only routes/instructions:
+- Remove entries like `First time / Project setup -> init/AGENTS.md` once init is being retired.
+- Remove `Key Directories` rows that route active work to `init/` paths.
+- Replace with current long-term entry points (for example `.ai/AGENTS.md`, `.ai/project/AGENTS.md`, `dev-docs/AGENTS.md`) as appropriate.
+
+3. LLM verifies no active-doc routing still depends on `init/`:
+
+```bash
+rg -n -uu "init/AGENTS\\.md|init/_tools|First time / Project setup" AGENTS.md README.md .ai dev-docs --glob "*.md"
+```
+
+Acceptance criteria:
+- No active routing table/instructions point to `init/` paths.
+- No initialization-only wording remains in active docs once `init/` is planned for removal.
+- Archived historical snapshots under `docs/project/overview/**` MAY retain historical init references.
+
+### 8) Optional: remove the init kit
 
 When the user confirms the bootstrap kit is no longer needed:
 

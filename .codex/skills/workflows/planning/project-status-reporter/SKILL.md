@@ -1,6 +1,6 @@
 ---
 name: project-status-reporter
-description: Read-only progress reporter. Produces a structured status snapshot from existing project/task artifacts (project hub + dev-docs) and includes an actionable next command; never modifies repo files.
+description: Read-only progress reporter. Produces a structured status snapshot from existing project/task artifacts (project hub + dev-docs), can include semantic focus extracted from LLM-authored feature briefs, and includes an actionable next command; never modifies repo files.
 category: workflows/planning
 ssot_path: .ai/skills/workflows/planning/project-status-reporter
 ---

@@ -55,6 +55,8 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
 2. **Update root docs** (recommended): `update-root-docs` then `update-root-docs --apply`
 
 **Post-init cleanup**:
+Before removing `init/`, run the LLM doc-path hygiene pass defined in `init/_tools/skills/initialize-project-from-requirements/SKILL.md` to remove stale init routes from active docs.
+
 ```bash
 # Archive + remove init/
 node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeline.mjs cleanup-init \

@@ -1,6 +1,6 @@
 ---
 name: project-orchestrator
-description: Project-level orchestrator for intake and continuity. Turns a new/ongoing request into a governance decision (reuse vs new task, mapping to Milestone/Feature/Requirement) and keeps the project hub consistent (registry/changelog/derived views). Focuses on planning and coordination, not product code changes.
+description: Project-level orchestrator for intake and continuity. Turns a new/ongoing request into a governance decision (reuse vs new task, mapping to Milestone/Feature/Requirement), keeps the project hub consistent (registry/changelog/derived views), and ensures LLM-authored semantic extraction is captured in structured non-AUTO sections. Focuses on planning and coordination, not product code changes.
 category: workflows/planning
 ssot_path: .ai/skills/workflows/planning/project-orchestrator
 ---
