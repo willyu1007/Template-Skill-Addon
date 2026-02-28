@@ -1,10 +1,11 @@
-# AI-Friendly Repository Template (Basic)
+# AI-Friendly Repository Template (Addon)
 
 This repository is a starter template for building **LLM-first** codebases with:
 
 - **Single Source of Truth (SSOT)** skills under `.ai/skills/`
 - Generated provider wrappers under `.codex/skills/` and `.claude/skills/`
 - A **verifiable, 3-stage initialization pipeline** under `init/`
+- An **addon-style Feature system** that injects project lifecycle capabilities on demand during Stage C
 
 ## Quick start
 
@@ -50,13 +51,14 @@ node .ai/scripts/sync-skills.mjs --scope current --providers both --mode reset -
 - Documentation standard: `.ai/skills/standards/documentation-guidelines/SKILL.md`
 
 
-## Optional features (no-addon template)
+## Optional features (addon template)
 
-This template does **not** ship an `addons/` directory. Optional features are materialized during init **Stage C** based on `init/_work/project-blueprint.json`:
+This is the **addon** edition of the template. It does not use a top-level `addons/` directory; optional capabilities are materialized as Features during init **Stage C** based on `init/_work/project-blueprint.json`:
 
 - Feature toggles: `features.*` (see `init/_tools/feature-docs/README.md`)
 - Assets live under `.ai/skills/features/**/templates` and `.ai/scripts/ctl-*.mjs`
 - Stage C `apply` copies templates (copy-if-missing by default) and runs `ctl-*.mjs init`
+- Feature set covers project lifecycle domains such as context, database, UI, environment, IaC, packaging, deployment, release, CI, and observability
 
 Example:
 
