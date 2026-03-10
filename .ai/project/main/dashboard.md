@@ -25,11 +25,12 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 1 (planned: 0, in-progress: 0, blocked: 0, done: 1, archived: 0)
+- Tasks: 2 (planned: 0, in-progress: 0, blocked: 0, done: 2, archived: 0)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-002 convex-repair-hardening | done | F-000 | dev-docs/active/convex-repair-hardening |
 | T-001 convex-adaptation-mvp | done | F-000 | dev-docs/active/convex-adaptation-mvp |
 <!-- AUTO-GENERATED:END dashboard -->

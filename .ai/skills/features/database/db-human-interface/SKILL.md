@@ -46,11 +46,13 @@ The Database Docs feature only produces **human-facing artifacts** and **plans/r
 
 ## Canonical inputs (read order)
 
-The controller script reads from these sources (first hit wins):
+The controller script reads from these sources:
 
-1. `docs/context/db/schema.json` (preferred; normalized-db-schema-v2)
-2. `db/schema/tables.json` (DB mirror; normalized or legacy)
-3. `prisma/schema.prisma` (only if contract is missing)
+1. `docs/project/db-ssot.json` (preferred; determines the active DB SSOT mode)
+2. `docs/context/db/schema.json` (preferred normalized DB contract)
+3. `docs/context/convex/functions.json` (when `db.ssot=convex`)
+4. `db/schema/tables.json` (DB mirror; normalized or legacy)
+5. `prisma/schema.prisma` (only if the normalized DB contract is missing)
 
 Managed DB workflows in this repository are **contract-first**:
 
@@ -72,6 +74,8 @@ All artifacts are written under `.ai/.tmp/database/` (not intended for git):
   - `.ai/.tmp/database/structure_query/<object>__concept.md` (when `query ... --view concept`)
   - `.ai/.tmp/database/structure_query/<object>__graph.md` (when `query ... --view graph`)
   - `.ai/.tmp/database/structure_query/<table>__api.md` (when `query <table> --view api`)
+  - `.ai/.tmp/database/structure_query/<term>__functions.md` (when `query ... --view functions`)
+  - `.ai/.tmp/database/structure_query/<function>__surface.md` (when `query ... --view surface`)
 - Interactive change drafting:
   - `.ai/.tmp/database/structure_modify/<object>.md` (table scope)
   - `.ai/.tmp/database/structure_modify/<object>__concept.md` (concept scope)
@@ -89,12 +93,14 @@ Use the CLI tool:
 Supported commands:
 
 - `status` — print detected SSOT mode + input sources
-- `search <term>` — list best table/column/enum matches (stdout)
-- `query <object> [--view table|concept|graph|api]` — write a structure doc
+- `search <term>` — list best table/column/enum matches; in Convex mode also include function surface matches (stdout)
+- `query <object> [--view table|concept|graph|api|functions|surface]` — write a structure doc
   - `--view table` (default): best-match table/enum/column/search
   - `--view concept`: cluster of related tables around a term
   - `--view graph`: Mermaid relationship graph for the concept cluster
   - `--view api`: DTO-oriented view for a single table
+  - `--view functions`: list matching Convex functions (Convex mode only)
+  - `--view surface`: render one Convex function surface (Convex mode only)
 - `modify <object> [--scope table|concept]` — write a change-drafting doc with an editable `dbops` block
   - `--scope table` (default): single-table modify doc
   - `--scope concept`: multi-table concept modify doc (writes `__concept.md`)
@@ -107,9 +113,14 @@ When the user asks about “X”, use the following resolution order:
 1. Exact table match (case-insensitive)
 2. Exact enum match
 3. Exact column match (cross-table)
-4. Fuzzy match:
+4. In Convex mode, exact function match:
+   - exact `functionId`
+   - exact `exportName` (when unique)
+   - exact `modulePath` (when unique)
+5. Fuzzy match:
    - substring / token overlap on table names
    - substring / token overlap on column names
+   - in Convex mode, substring / token overlap on `functionId`, `exportName`, `modulePath`, `kind`, `visibility`, `auth.kind`, `tablesRead`, and `tablesWritten`
 
 If `X` matches multiple tables via column name:
 
@@ -129,6 +140,12 @@ If a user asks about a concept (e.g. “permissions”) and the concept maps to 
 
 - Use `query permissions --view concept`
 - If they need a diagram: `query permissions --view graph`
+
+If a user asks about a Convex function or which function reads/writes a table:
+
+- Use `query <term> --view functions` to list matches
+- Use `query <functionId> --view surface` for the detailed function view
+- Keep `modify` / `plan` for schema/table planning, not function editing
 
 ## Interactive change drafting protocol
 
@@ -188,6 +205,8 @@ Rule: `plan` looks for the corresponding modify doc by `<object>` first, then fa
   - Human+LLM apply the approved change in `convex/schema.ts` and related `convex/**/*.ts`
   - Run `npx convex codegen` (or `npx convex dev`)
   - Then run `node .ai/scripts/ctl-db-ssot.mjs sync-to-context` to refresh `docs/context/db/schema.json` and `docs/context/convex/functions.json`
+  - Then run `node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root . --strict`
+  - Only if other `docs/context/**` artifacts were hand-edited separately, run `node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch --repo-root .`
 
 ## Safety and review checklist
 
@@ -202,6 +221,8 @@ Before any SSOT change or DB execution:
 
 - [ ] `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs status` prints an SSOT mode and input sources
 - [ ] `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query <object>` writes a doc under `.ai/.tmp/database/structure_query/`
+- [ ] `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query <term> --view functions` writes a Convex function list when `db.ssot=convex`
+- [ ] `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query <functionId> --view surface` writes a Convex function surface when `db.ssot=convex`
 - [ ] `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs modify <object>` writes a doc under `.ai/.tmp/database/structure_modify/`
 - [ ] `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs plan <object>` writes `<base>.plan.md` (and `<base>.runbook.md` when `db.ssot=database`)
 - [ ] No secrets are written to repo files or evidence artifacts
@@ -211,6 +232,7 @@ Before any SSOT change or DB execution:
 - MUST NOT connect to databases or run SQL
 - MUST NOT run Prisma migrations
 - MUST NOT hand-edit `db/schema/tables.json` (generated snapshot)
+- MUST NOT use `db-human-interface` to plan or edit Convex function source directly
 - MUST route actual SSOT synchronization to:
   - `sync-db-schema-from-code` when `db.ssot=repo-prisma`
   - `sync-code-schema-from-db` when `db.ssot=database`

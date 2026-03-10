@@ -1059,6 +1059,9 @@ function validateBlueprint(blueprint) {
     if (!convexLanguages.has(repoLanguage)) {
       errors.push('db.ssot=convex is only supported when repo.language is "typescript", "javascript", or "react-native".');
     }
+    if (String(repo.layout || '').toLowerCase() !== 'single') {
+      errors.push('db.ssot=convex currently supports only repo.layout="single" (root-level convex/ plus root package.json).');
+    }
     if (db.kind !== 'convex') {
       errors.push('db.ssot=convex requires db.kind="convex".');
     }
@@ -2158,6 +2161,7 @@ function renderDbSsotAgentsBlock(mode, contextAwarenessEnabled) {
 
 Rules:
 - Treat \`convex/schema.ts\` as the persistence SSOT.
+- Convex v1 expects a root-level \`convex/\` directory and root \`package.json\`.
 - Treat \`docs/context/db/schema.json\` and \`docs/context/convex/functions.json\` as generated artifacts.
 - Database workflows in this repo require \`features.contextAwareness=true\`.
 - Refresh contracts via \`node .ai/scripts/ctl-db-ssot.mjs sync-to-context\`.

@@ -11,7 +11,7 @@
     ]
   },
   "repo": {
-    "layout": "monorepo",
+    "layout": "single",
     "language": "typescript",
     "packageManager": "pnpm"
   },

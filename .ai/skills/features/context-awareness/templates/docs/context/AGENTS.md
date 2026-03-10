@@ -36,13 +36,13 @@ Only if implementation detail is needed, follow `info.x-source-mapping` in `open
 
 Select artifacts from `registry.json` by tag or type. Open files by path. Do NOT scan folders.
 
-### Step 8: Optional Convex tasks
+### Step 8: Convex tasks
 
-If `registry.json` includes `docs/context/convex/functions.json`:
+When the project uses Convex and `registry.json` includes `docs/context/convex/functions.json`:
 
-1. Read that file before opening `convex/**/*.ts`.
-2. Use it to identify the relevant `query` / `mutation` / `action` surface first.
-3. Keep `docs/context/db/schema.json` as the canonical data-model contract.
+1. Read `docs/context/db/schema.json` first for the persistent data model.
+2. Read `docs/context/convex/functions.json` next for the function surface.
+3. Only then open `convex/schema.ts` or `convex/**/*.ts` for implementation detail.
 
 ## Rules
 

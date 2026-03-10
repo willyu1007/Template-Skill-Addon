@@ -23,6 +23,7 @@ Use `convex-as-ssot` only when one of the following is true:
 - `docs/project/db-ssot.json` already indicates Convex mode, or
 - the task is to bootstrap the repository so it can enter Convex mode
 - `features.contextAwareness=true` is enabled or will be enabled as part of initialization
+- the repo uses a root-level `convex/` directory and root `package.json` (Convex v1 is root-only)
 
 When the project uses:
 
@@ -55,7 +56,7 @@ The workflow manages these generated or initialized artifacts:
 node .ai/scripts/ctl-db-ssot.mjs status --repo-root .
 node .ai/scripts/ctl-db-ssot.mjs sync-to-context --repo-root .
 node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs init --repo-root .
-node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root .
+node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root . --strict
 ```
 
 `ctl-convex.mjs` is limited to implementation-layer scaffold/init/verify work. Contract refresh subcommands are internal-only and manual callers should use `ctl-db-ssot.mjs`.
@@ -88,16 +89,21 @@ The `npx convex dev` step creates or refreshes local Convex configuration and ge
 
 6. Apply persistence changes in `convex/schema.ts`.
 7. Apply behavioral changes in `convex/**/*.ts`.
+8. Refresh generated Convex types:
+
+```bash
+npx convex codegen
+```
 
 ### Phase C — Refresh contracts
 
-8. Generate the normalized DB contract and Convex function contract:
+9. Generate the normalized DB contract and Convex function contract:
 
 ```bash
 node .ai/scripts/ctl-db-ssot.mjs sync-to-context --repo-root .
 ```
 
-9. `ctl-db-ssot.mjs sync-to-context` refreshes context checksums best-effort. Re-run `ctl-context touch` only if you edited other context artifacts manually:
+10. `ctl-db-ssot.mjs sync-to-context` refreshes context checksums best-effort. Re-run `ctl-context touch` only if you edited other context artifacts manually:
 
 ```bash
 node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch --repo-root .
@@ -105,10 +111,10 @@ node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch --repo-
 
 ### Phase D — Verify
 
-10. Verify the feature state:
+11. Verify the feature state:
 
 ```bash
-node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root .
+node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root . --strict
 ```
 
 ## Parser-safe coding shape
@@ -132,6 +138,7 @@ Do NOT rely on v1 contract extraction for:
 - [ ] `docs/context/db/schema.json` was generated from `convex/schema.ts`
 - [ ] `docs/context/convex/functions.json` was generated from `convex/**/*.ts`
 - [ ] `package.json` includes the `convex` dependency when a package manifest exists
+- [ ] `ctl-convex verify --strict` reports no source-vs-contract drift
 - [ ] public functions are visible in the function contract
 - [ ] generated artifacts were not hand-edited after regeneration
 - [ ] `convex/_generated/**` is refreshed when signatures changed
@@ -149,5 +156,5 @@ Do NOT rely on v1 contract extraction for:
 
 - Do NOT treat `docs/context/db/schema.json` as the SSOT in Convex mode.
 - Do NOT bypass `convex/schema.ts` when stored data shape changes.
-- Do NOT assume `convex-as-ssot` rewires `init-pipeline.mjs` by itself; repository integration must still be implemented.
+- Repository-wide blueprint / Stage C / root-doc integration is owned by the init pipeline and `ctl-db-ssot`.
 - Do NOT hand-edit `convex/_generated/**`.

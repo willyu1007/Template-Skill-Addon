@@ -3,8 +3,16 @@
  * Database test suite
  */
 import * as sqliteSmoke from './sqlite-smoke.mjs';
+import * as convexInitContractSmoke from './convex-init-contract-smoke.mjs';
+import * as convexDriftVerifySmoke from './convex-drift-verify-smoke.mjs';
+import * as convexDbDocSurfaceSmoke from './convex-db-doc-surface-smoke.mjs';
 
-const TESTS = [sqliteSmoke];
+const TESTS = [
+  sqliteSmoke,
+  convexInitContractSmoke,
+  convexDriftVerifySmoke,
+  convexDbDocSurfaceSmoke,
+];
 
 export function run(ctx) {
   const results = [];

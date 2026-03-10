@@ -43,13 +43,19 @@ Avoid wrapper constructors, dynamic schema composition, or helper layers that hi
 
 A common anti-pattern is using an action for ordinary reads or writes when a query or mutation would be clearer and safer.
 
-## 4. Validators are not optional for public APIs
+## 4. Validation depends on function type
 
-For every public `query`, `mutation`, `action`, or `httpAction`:
+For every public `query`, `mutation`, or `action`:
 
 - define `args`
 - define `returns` when the returned shape matters to callers, docs, or typed integrations
 - prefer validator-driven inference over parallel handwritten types
+
+For every `httpAction`:
+
+- parse the incoming `Request`
+- validate request input explicitly
+- keep HTTP-specific auth/signature checks at the boundary
 
 ## 5. Access control is explicit
 
@@ -81,9 +87,10 @@ After changes affecting persistence or function interfaces:
 
 ```bash
 node .ai/scripts/ctl-db-ssot.mjs sync-to-context --repo-root .
+node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root . --strict
 ```
 
-If context-awareness is installed:
+If other `docs/context/**` artifacts were edited separately:
 
 ```bash
 node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch --repo-root .

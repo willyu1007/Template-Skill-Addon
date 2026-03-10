@@ -12,6 +12,7 @@ In Convex mode:
 - `docs/context/convex/functions.json` is the generated function contract
 - public contract refresh flows route through `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
 - low-level `ctl-convex` refresh subcommands are internal-only and should not be used as manual workflow commands
+- Convex v1 assumes a root-level `convex/` directory and root `package.json`
 
 ## Key invariants
 

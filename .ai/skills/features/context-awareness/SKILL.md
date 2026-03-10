@@ -50,6 +50,12 @@ If a DB schema exists, the canonical DB contract is:
 
 That DB contract is produced by the DB SSOT workflow (see `ctl-db-ssot`, and the database workflow skills).
 
+If `db.ssot=convex`, the canonical Convex function contract is also:
+
+- `docs/context/convex/functions.json`
+
+Load both contracts before falling back to `convex/schema.ts` or `convex/**/*.ts`.
+
 ## Knowledge artifacts
 
 ### Domain glossary (`docs/context/glossary.json`)
@@ -132,3 +138,4 @@ node .ai/scripts/ctl-project-state.mjs verify
 - Do NOT store credentials or secrets in `docs/context/` or `config/`.
 - Do NOT hand-edit generated context artifacts without re-running `ctl-context touch`.
 - Use DB SSOT workflows to update `docs/context/db/schema.json`.
+- When `db.ssot=convex`, use the generated `docs/context/convex/functions.json` as the first function-surface entrypoint.

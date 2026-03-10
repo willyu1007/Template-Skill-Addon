@@ -17,7 +17,8 @@ Use this checklist after any non-trivial Convex change.
 
 ## Validation and auth
 
-- [ ] Every public function has `args`.
+- [ ] Every public `query` / `mutation` / `action` has `args`.
+- [ ] Every `httpAction` parses and validates request input explicitly.
 - [ ] Stable return shapes have `returns`.
 - [ ] Privileged functions read identity on the server.
 - [ ] Authorization uses server-trusted data, not client-only claims.

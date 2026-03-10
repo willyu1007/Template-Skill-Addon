@@ -23,8 +23,9 @@ This feature provides a **stable, verifiable context contract** so an LLM can wo
 - Do NOT hand-edit it.
 - Update it via the SSOT-aware generator:
   - `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
+- When `db.ssot=convex`, also treat `docs/context/convex/functions.json` as a canonical generated contract.
 
-(Then run `ctl-context touch` if your workflow does not already do so.)
+`ctl-db-ssot sync-to-context` already runs `ctl-context touch` best-effort. Only run `ctl-context touch` separately if you also edited other context artifacts manually.
 
 ## Recommended enforcement
 

@@ -11,4 +11,5 @@ Project: `main`
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
 | T-001 convex-adaptation-mvp | done | F-000 | dev-docs/active/convex-adaptation-mvp |
+| T-002 convex-repair-hardening | done | F-000 | dev-docs/active/convex-repair-hardening |
 <!-- AUTO-GENERATED:END task-index -->

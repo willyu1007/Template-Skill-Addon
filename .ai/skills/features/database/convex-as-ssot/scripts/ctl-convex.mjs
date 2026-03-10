@@ -57,6 +57,84 @@ function withoutUpdatedAt(obj) {
   return copy;
 }
 
+function uniqueSorted(list) {
+  return [...new Set((Array.isArray(list) ? list : []).map((item) => String(item)))].sort((a, b) => a.localeCompare(b));
+}
+
+function diffNamedSet(before, after) {
+  const beforeSet = new Set(before);
+  const afterSet = new Set(after);
+  const added = after.filter((name) => !beforeSet.has(name));
+  const removed = before.filter((name) => !afterSet.has(name));
+  return { added, removed };
+}
+
+function summarizeDbContractDrift(expected, actual) {
+  const lines = [];
+  const expectedTables = uniqueSorted((expected?.tables || []).map((table) => table?.name).filter(Boolean));
+  const actualTables = uniqueSorted((actual?.tables || []).map((table) => table?.name).filter(Boolean));
+  if (expectedTables.length !== actualTables.length) {
+    lines.push(`DB tables changed: ${actualTables.length} -> ${expectedTables.length}`);
+  }
+  const tableDiff = diffNamedSet(actualTables, expectedTables);
+  if (tableDiff.added.length > 0) lines.push(`DB tables added: ${tableDiff.added.join(", ")}`);
+  if (tableDiff.removed.length > 0) lines.push(`DB tables removed: ${tableDiff.removed.join(", ")}`);
+  return lines;
+}
+
+function normalizeFunctionRecordForCompare(fn) {
+  return {
+    kind: String(fn?.kind || ""),
+    visibility: String(fn?.visibility || ""),
+    authKind: String(fn?.auth?.kind || ""),
+    tablesRead: uniqueSorted(fn?.tablesRead || []),
+    tablesWritten: uniqueSorted(fn?.tablesWritten || []),
+    argsValidator: fn?.argsValidator ?? null,
+    returnsValidator: fn?.returnsValidator ?? null,
+  };
+}
+
+function summarizeFunctionContractDrift(expected, actual) {
+  const lines = [];
+  const expectedFunctions = Array.isArray(expected?.functions) ? expected.functions : [];
+  const actualFunctions = Array.isArray(actual?.functions) ? actual.functions : [];
+  if (expectedFunctions.length !== actualFunctions.length) {
+    lines.push(`Convex functions changed: ${actualFunctions.length} -> ${expectedFunctions.length}`);
+  }
+
+  const expectedIds = uniqueSorted(expectedFunctions.map((fn) => fn?.functionId).filter(Boolean));
+  const actualIds = uniqueSorted(actualFunctions.map((fn) => fn?.functionId).filter(Boolean));
+  const functionDiff = diffNamedSet(actualIds, expectedIds);
+  if (functionDiff.added.length > 0) lines.push(`Functions added: ${functionDiff.added.join(", ")}`);
+  if (functionDiff.removed.length > 0) lines.push(`Functions removed: ${functionDiff.removed.join(", ")}`);
+
+  const actualById = new Map(actualFunctions.map((fn) => [String(fn?.functionId || ""), fn]));
+  for (const fn of expectedFunctions) {
+    const functionId = String(fn?.functionId || "");
+    if (!functionId || !actualById.has(functionId)) continue;
+    const before = normalizeFunctionRecordForCompare(actualById.get(functionId));
+    const after = normalizeFunctionRecordForCompare(fn);
+    if (before.kind !== after.kind) lines.push(`${functionId}: kind ${before.kind || "none"} -> ${after.kind || "none"}`);
+    if (before.visibility !== after.visibility) lines.push(`${functionId}: visibility ${before.visibility || "none"} -> ${after.visibility || "none"}`);
+    if (before.authKind !== after.authKind) lines.push(`${functionId}: auth.kind ${before.authKind || "none"} -> ${after.authKind || "none"}`);
+    if (stableStringifyForCompare(before.tablesRead) !== stableStringifyForCompare(after.tablesRead)) {
+      lines.push(`${functionId}: tablesRead ${before.tablesRead.join("|") || "none"} -> ${after.tablesRead.join("|") || "none"}`);
+    }
+    if (stableStringifyForCompare(before.tablesWritten) !== stableStringifyForCompare(after.tablesWritten)) {
+      lines.push(`${functionId}: tablesWritten ${before.tablesWritten.join("|") || "none"} -> ${after.tablesWritten.join("|") || "none"}`);
+    }
+    if (stableStringifyForCompare(before.argsValidator) !== stableStringifyForCompare(after.argsValidator)) {
+      lines.push(`${functionId}: argsValidator changed`);
+    }
+    if (stableStringifyForCompare(before.returnsValidator) !== stableStringifyForCompare(after.returnsValidator)) {
+      lines.push(`${functionId}: returnsValidator changed`);
+    }
+    if (lines.length >= 20) break;
+  }
+
+  return lines;
+}
+
 function writeGeneratedJsonStable(filePath, data) {
   const existing = readJsonIfExists(filePath);
   if (existing && typeof existing === "object") {
@@ -90,7 +168,7 @@ Commands:
   verify
     --repo-root <path>     Repo root (default: cwd)
     --strict               Treat warnings as errors
-    Verify Convex mode artifacts and contracts after the public DB refresh flow has run.
+    Verify Convex mode artifacts and source-vs-contract freshness after the public DB refresh flow has run.
 
 Notes:
   Public DB contract refresh is routed only through:
@@ -100,7 +178,7 @@ Notes:
 Examples:
   node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs init --repo-root .
   node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs status --repo-root .
-  node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root .
+  node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root . --strict
 `;
   console.log(msg.trim());
   process.exit(exitCode);
@@ -139,6 +217,27 @@ function templateFiles() {
 
 function packageJsonPath(repoRoot) {
   return path.join(repoRoot, "package.json");
+}
+
+function detectUnsupportedMonorepoMarkers(repoRoot, pkg) {
+  const markers = [];
+  if (pkg && typeof pkg === "object" && pkg.workspaces) {
+    markers.push("package.json#workspaces");
+  }
+
+  const workspaceFiles = [
+    "pnpm-workspace.yaml",
+    "lerna.json",
+    "nx.json",
+    "turbo.json",
+  ];
+  for (const file of workspaceFiles) {
+    if (fs.existsSync(path.join(repoRoot, file))) {
+      markers.push(file);
+    }
+  }
+
+  return uniqueSorted(markers);
 }
 
 function collectUnsupportedPathWarnings(raw, mode) {
@@ -543,6 +642,7 @@ function cmdStatus(repoRoot, format = "text") {
 function cmdVerify(repoRoot, strict = false) {
   const errors = [];
   const warnings = [];
+  const advisories = [];
 
   const mode = resolveMode(repoRoot);
   const loaded = loadDbSsotConfig(repoRoot);
@@ -553,7 +653,7 @@ function cmdVerify(repoRoot, strict = false) {
   const pkg = readJsonIfExists(pkgPath);
 
   if (mode.mode !== "convex") {
-    warnings.push(`Resolved DB SSOT mode is "${mode.mode}", not "convex".`);
+    errors.push(`Resolved DB SSOT mode is "${mode.mode}", not "convex".`);
   }
   if (loaded.warnings && loaded.warnings.length > 0) {
     errors.push(...loaded.warnings.map((warning) => `Unsupported db-ssot path override: ${warning}`));
@@ -567,14 +667,20 @@ function cmdVerify(repoRoot, strict = false) {
     if (!(pkg?.dependencies?.convex || pkg?.devDependencies?.convex)) {
       errors.push('package.json is present but does not declare the "convex" package.');
     }
+    const monorepoMarkers = detectUnsupportedMonorepoMarkers(repoRoot, pkg);
+    if (monorepoMarkers.length > 0) {
+      errors.push(
+        `Convex v1 does not support workspace/monorepo roots (${monorepoMarkers.join(", ")}); expected a single-package root.`
+      );
+    }
     if (pkg?.scripts?.["convex:dev"] !== "convex dev") {
-      warnings.push('package.json is present but script "convex:dev" is missing or customized.');
+      advisories.push('package.json script "convex:dev" is missing or customized.');
     }
     if (pkg?.scripts?.["convex:codegen"] !== "convex codegen") {
-      warnings.push('package.json is present but script "convex:codegen" is missing or customized.');
+      advisories.push('package.json script "convex:codegen" is missing or customized.');
     }
   } else {
-    warnings.push("package.json is missing; Convex dependency injection could not be verified.");
+    errors.push("Missing package.json; Convex v1 expects a root package.json.");
   }
 
   const dbContract = readJsonIfExists(dbContractPath);
@@ -598,10 +704,41 @@ function cmdVerify(repoRoot, strict = false) {
     warnings.push("convex/_generated/ is missing; run `npx convex dev` or `npx convex codegen` if typed surfaces changed.");
   }
 
+  if (errors.length === 0 && dbContract && fnContract && Array.isArray(fnContract.functions) && fs.existsSync(schemaPath)) {
+    const schemaText = readTextIfExists(schemaPath) || "";
+    const expectedDbContract = parseConvexSchema(schemaText, {
+      sourcePath: toPosixPath(path.relative(repoRoot, schemaPath)),
+    });
+    const expectedFnContract = extractConvexFunctions({ repoRoot });
+
+    const actualDbComparable = stableStringifyForCompare(withoutUpdatedAt(dbContract));
+    const expectedDbComparable = stableStringifyForCompare(withoutUpdatedAt(expectedDbContract));
+    if (actualDbComparable !== expectedDbComparable) {
+      const driftLines = summarizeDbContractDrift(expectedDbContract, dbContract);
+      warnings.push("docs/context/db/schema.json is out of date with current Convex schema.");
+      if (driftLines.length > 0) warnings.push(...driftLines.map((line) => `drift: ${line}`));
+      else warnings.push("drift: DB contract contents changed.");
+    }
+
+    const actualFnComparable = stableStringifyForCompare(withoutUpdatedAt(fnContract));
+    const expectedFnComparable = stableStringifyForCompare(withoutUpdatedAt(expectedFnContract));
+    if (actualFnComparable !== expectedFnComparable) {
+      const driftLines = summarizeFunctionContractDrift(expectedFnContract, fnContract);
+      warnings.push("docs/context/convex/functions.json is out of date with current Convex source.");
+      if (driftLines.length > 0) warnings.push(...driftLines.map((line) => `drift: ${line}`));
+      else warnings.push("drift: Convex function contract contents changed.");
+    }
+  }
+
   if (errors.length === 0 && (warnings.length === 0 || !strict)) {
     console.log("[ok] Convex verification passed.");
   }
 
+  if (advisories.length > 0) {
+    for (const advisory of advisories) {
+      console.log(`[info] ${advisory}`);
+    }
+  }
   if (warnings.length > 0) {
     for (const warning of warnings) {
       console.log(`[warn] ${warning}`);

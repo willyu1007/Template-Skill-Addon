@@ -1,6 +1,6 @@
 # Init / Stage C Integration Notes
 
-This file documents how this skill package should be wired into the template repository.
+This file documents the current Convex Stage C integration in the template repository.
 
 ## 1. Blueprint schema
 
@@ -12,6 +12,7 @@ Recommended changes:
 - `db.kind`: add `convex`
 - validation: `features.database=true` still required when `db.ssot=convex`
 - validation: `features.contextAwareness=true` is also required when `db.ssot=convex`
+- validation: `repo.layout=single` is required when `db.ssot=convex`
 
 ## 2. Stage C materialization
 
@@ -30,7 +31,7 @@ node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs init --r
 node .ai/scripts/ctl-db-ssot.mjs sync-to-context --repo-root .
 ```
 
-4. optionally verify:
+4. optionally verify after contract refresh (non-strict bootstrap verify):
 
 ```bash
 node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root .
@@ -60,12 +61,9 @@ Example shape:
 
 ## 4. Central DB SSOT controller
 
-Either:
+The repository delegates Convex-specific contract refresh logic from `.ai/scripts/ctl-db-ssot.mjs` into `ctl-convex.mjs`.
 
-- extend `.ai/scripts/ctl-db-ssot.mjs` to understand `convex`, or
-- delegate from it to `ctl-convex.mjs`
-
-The second option keeps Convex-specific parsing logic inside the Convex skill package.
+This keeps Convex parsing logic inside the Convex skill package while preserving one public refresh entrypoint.
 
 ## 5. Human interface and context-awareness
 

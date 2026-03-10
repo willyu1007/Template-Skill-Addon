@@ -14,6 +14,7 @@
 - `features.database` must be `true`
 - `features.contextAwareness` must be `true` whenever `db.ssot != none`
 - `db.ssot=convex` requires `repo.language` to be `typescript`, `javascript`, or `react-native`
+- `db.ssot=convex` currently requires `repo.layout=single` and a root-level `convex/` directory + root `package.json`
 - Managed DB contracts use fixed canonical paths in v1 (`docs/context/db/schema.json` and, for Convex, `docs/context/convex/functions.json`)
 
 ## How to enable
@@ -46,7 +47,7 @@ In `init/_work/project-blueprint.json`:
 
 ```json
 {
-  "repo": { "language": "typescript", "packageManager": "pnpm" },
+  "repo": { "layout": "single", "language": "typescript", "packageManager": "pnpm" },
   "capabilities": { "database": { "enabled": true, "kind": "convex" } },
   "db": { "enabled": true, "ssot": "convex", "kind": "convex", "environments": ["dev", "staging", "prod"] },
   "features": { "database": true, "contextAwareness": true }
@@ -75,6 +76,7 @@ node .ai/skills/features/database/sync-code-schema-from-db/scripts/ctl-db.mjs in
 
 - Copies templates from:
   - `.ai/skills/features/database/convex-as-ssot/templates/`
+- Assumes the target repo uses a root-level `convex/` directory and root `package.json`
 - Runs:
 
 ```bash

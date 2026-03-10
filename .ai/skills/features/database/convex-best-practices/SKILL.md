@@ -61,16 +61,19 @@ Follow the operating loop in order:
    - `action` for external I/O, orchestration, or non-database work
    - `httpAction` only for explicit HTTP endpoints or webhooks
    - internal functions for server-only building blocks
-5. Ensure public functions have argument validators and, where practical, return validators.
-6. Ensure every public function has explicit access-control logic if the capability is not intentionally public.
-7. Prefer indexes and explicit query plans over `.filter(...)` on database queries.
-8. Run Convex code generation:
+5. Ensure public `query` / `mutation` / `action` functions have argument validators and, where practical, return validators.
+6. Ensure every `httpAction` parses and validates request input explicitly instead of using normal Convex `args`.
+7. Ensure every public function has explicit access-control logic if the capability is not intentionally public.
+8. Prefer indexes and explicit query plans over `.filter(...)` on database queries.
+9. Run Convex code generation:
    - `npx convex dev` during interactive development, or
    - `npx convex codegen` when only regenerating types
-9. Regenerate context contracts:
+10. Regenerate context contracts:
    - `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
-10. `ctl-db-ssot.mjs sync-to-context` refreshes checksums best-effort. Re-run `node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch` only if you also edited other context artifacts manually.
-11. Run a self-review using the checklist in `reference/review-checklist.md`.
+11. Verify freshness and drift:
+   - `node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root . --strict`
+12. `ctl-db-ssot.mjs sync-to-context` refreshes checksums best-effort. Re-run `node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch` only if you also edited other context artifacts manually.
+13. Run a self-review using the checklist in `reference/review-checklist.md`.
 
 ## Rules
 
@@ -90,8 +93,11 @@ Follow the operating loop in order:
 
 ### Validation and typing
 
-- Public functions MUST define `args`.
-- Public functions SHOULD define `returns` when the result shape is stable and important.
+- Public `query`, `mutation`, and `action` functions MUST define `args`.
+- Public `query`, `mutation`, and `action` functions SHOULD define `returns` when the result shape is stable and important.
+- `httpAction` does not use normal Convex `args` validators.
+- `httpAction` MUST parse and validate request input explicitly.
+- Internal functions SHOULD define validators when practical, but may omit them in tightly controlled server-only flows.
 - The agent SHOULD rely on validator-driven inference instead of duplicating TypeScript types by hand.
 - The agent MUST update generated types after schema or function-signature changes.
 - The agent MUST keep to parser-safe coding shapes when `docs/context/convex/functions.json` needs to remain complete:
@@ -124,8 +130,9 @@ Run these checks when the repository supports them:
 
 ```bash
 npx convex codegen
-node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root .
 node .ai/scripts/ctl-db-ssot.mjs sync-to-context --repo-root .
+node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root . --strict
+# Only if other docs/context artifacts were edited manually:
 node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch --repo-root .
 ```
 

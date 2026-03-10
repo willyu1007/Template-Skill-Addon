@@ -47,12 +47,18 @@ Stay within the parser-safe v1 coding shape:
 
 ## Step 4 — Make the function safe
 
-For public functions:
+For public `query`, `mutation`, and `action` functions:
 
 - add `args`
 - add `returns` when appropriate
 - add auth checks
 - avoid client-trusted authorization
+
+For `httpAction`:
+
+- parse the `Request`
+- validate request input explicitly
+- add auth/signature checks at the HTTP boundary
 
 ## Step 5 — Regenerate typed surfaces
 
@@ -70,9 +76,10 @@ Run:
 
 ```bash
 node .ai/scripts/ctl-db-ssot.mjs sync-to-context --repo-root .
+node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root . --strict
 ```
 
-If available:
+Only if other context artifacts were edited manually:
 
 ```bash
 node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch --repo-root .

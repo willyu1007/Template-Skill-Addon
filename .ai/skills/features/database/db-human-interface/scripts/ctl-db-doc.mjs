@@ -35,7 +35,11 @@ function toIsoNow() {
   return new Date().toISOString();
 }
 
-function repoRootFromScript() {
+function repoRootFromScript(repoRootOpt = null) {
+  if (repoRootOpt) {
+    return path.resolve(String(repoRootOpt));
+  }
+
   // Resolve repo root by walking up until we find a ".ai/" directory.
   // This keeps the script runnable from its skill-local location.
   const starts = [path.resolve(__dirname), path.resolve(process.cwd())];
@@ -393,6 +397,51 @@ function loadNormalizedSchema(repoRoot, ssotCfg) {
   };
 }
 
+function loadConvexFunctionsContract(repoRoot, ssotCfg, priorGeneration = null) {
+  const contractPath = path.join(repoRoot, ssotCfg.paths.convexFunctionsContract);
+  const convexPath = path.join(repoRoot, ssotCfg.paths.convexSchema);
+
+  if (exists(contractPath)) {
+    const contract = readJson(contractPath);
+    return { contract, sourceKind: 'contract', sourcePath: contractPath, generation: priorGeneration };
+  }
+
+  const gen = priorGeneration && priorGeneration.ran ? priorGeneration : tryRunDbssotctl(repoRoot);
+  if (exists(contractPath)) {
+    const contract = readJson(contractPath);
+    return { contract, sourceKind: 'contract', sourcePath: contractPath, generation: gen };
+  }
+
+  if (exists(convexPath)) {
+    return {
+      contract: null,
+      sourceKind: 'missing',
+      sourcePath: null,
+      generation: gen,
+      error: `No Convex function contract found at ${ssotCfg.paths.convexFunctionsContract}.\n` +
+        `Found ${ssotCfg.paths.convexSchema} but could not generate the function surface.\n` +
+        `Run: node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
+    };
+  }
+
+  return {
+    contract: null,
+    sourceKind: 'missing',
+    sourcePath: null,
+    generation: gen,
+    error:
+      `No Convex function sources found. Expected one of:\n` +
+      `- ${ssotCfg.paths.convexFunctionsContract} (preferred)\n` +
+      `- ${ssotCfg.paths.convexSchema}`
+  };
+}
+
+function loadConvexSurface(repoRoot, ssotCfg) {
+  const db = loadNormalizedSchema(repoRoot, ssotCfg);
+  const functions = loadConvexFunctionsContract(repoRoot, ssotCfg, db.generation || null);
+  return { db, functions };
+}
+
 function buildIndex(schema) {
   const idx = {
     tables: Array.isArray(schema?.tables) ? schema.tables : [],
@@ -426,6 +475,129 @@ function buildIndex(schema) {
   }
 
   return idx;
+}
+
+function appendMapList(map, key, value) {
+  if (!key) return;
+  if (!map.has(key)) map.set(key, []);
+  map.get(key).push(value);
+}
+
+function buildFunctionIndex(contract) {
+  const functions = Array.isArray(contract?.functions)
+    ? contract.functions.filter((fn) => fn && typeof fn === 'object')
+    : [];
+  const idx = {
+    functions,
+    byFunctionId: new Map(),
+    byExportName: new Map(),
+    byModulePath: new Map()
+  };
+
+  for (const fn of functions) {
+    const functionIdKey = normalizeKey(fn.functionId || '');
+    const exportKey = normalizeKey(fn.exportName || '');
+    const moduleKey = normalizeKey(fn.modulePath || '');
+    if (functionIdKey) idx.byFunctionId.set(functionIdKey, fn);
+    appendMapList(idx.byExportName, exportKey, fn);
+    appendMapList(idx.byModulePath, moduleKey, fn);
+  }
+
+  return idx;
+}
+
+function hasConvexFunctionIndex(functionIndex) {
+  return !!(functionIndex && Array.isArray(functionIndex.functions));
+}
+
+function scoreFunctionCandidate(fn, term) {
+  const qNorm = normalizeKey(term);
+  const qCompact = compactKey(term);
+  if (!qNorm) return 0;
+
+  const functionId = String(fn.functionId || '');
+  const exportName = String(fn.exportName || '');
+  const modulePath = String(fn.modulePath || fn.file || '');
+  const kind = String(fn.kind || '');
+  const visibility = String(fn.visibility || '');
+  const authKind = String(fn?.auth?.kind || '');
+  const tablesRead = Array.isArray(fn.tablesRead) ? fn.tablesRead : [];
+  const tablesWritten = Array.isArray(fn.tablesWritten) ? fn.tablesWritten : [];
+
+  if (normalizeKey(functionId) === qNorm) return 1;
+  if (normalizeKey(exportName) === qNorm) return 0.98;
+  if (normalizeKey(modulePath) === qNorm || compactKey(modulePath) === qCompact) return 0.96;
+  if (tablesRead.some((name) => normalizeKey(name) === qNorm) || tablesWritten.some((name) => normalizeKey(name) === qNorm)) return 0.94;
+  if (normalizeKey(kind) === qNorm) return 0.9;
+  if (normalizeKey(visibility) === qNorm || normalizeKey(authKind) === qNorm) return 0.88;
+
+  let score = 0;
+  score = Math.max(score, scoreNameMatch(functionId, term));
+  score = Math.max(score, Math.max(0, scoreNameMatch(exportName, term) - 0.01));
+  score = Math.max(score, Math.max(0, scoreNameMatch(modulePath, term) - 0.03));
+  score = Math.max(score, Math.max(0, scoreNameMatch(kind, term) - 0.08));
+  score = Math.max(score, Math.max(0, scoreNameMatch(visibility, term) - 0.1));
+  score = Math.max(score, Math.max(0, scoreNameMatch(authKind, term) - 0.1));
+
+  for (const tableName of tablesRead) {
+    score = Math.max(score, Math.max(0, scoreNameMatch(tableName, term) - 0.04));
+  }
+  for (const tableName of tablesWritten) {
+    score = Math.max(score, Math.max(0, scoreNameMatch(tableName, term) - 0.04));
+  }
+
+  return Number(score.toFixed(2));
+}
+
+function searchFunctionCandidates(functionIndex, term, limit = 10) {
+  if (!hasConvexFunctionIndex(functionIndex)) return [];
+
+  const out = [];
+  for (const fn of functionIndex.functions) {
+    const score = scoreFunctionCandidate(fn, term);
+    if (score <= 0) continue;
+    out.push({
+      kind: 'function',
+      name: String(fn.functionId || fn.exportName || 'unknown'),
+      score,
+      fn
+    });
+  }
+
+  out.sort((a, b) => (b.score - a.score) || String(a.name).localeCompare(String(b.name)));
+  return out.slice(0, limit);
+}
+
+function resolveFunctionForQuery(functionIndex, term) {
+  const q = String(term || '').trim();
+  const qKey = normalizeKey(q);
+  if (!qKey || !hasConvexFunctionIndex(functionIndex)) {
+    return { kind: 'none', term: q, candidates: [] };
+  }
+
+  const exactById = functionIndex.byFunctionId.get(qKey);
+  if (exactById) return { kind: 'function', fn: exactById, term: q, candidates: [{ kind: 'function', name: exactById.functionId, score: 1, fn: exactById }] };
+
+  const exactByExport = functionIndex.byExportName.get(qKey) || [];
+  if (exactByExport.length === 1) {
+    return { kind: 'function', fn: exactByExport[0], term: q, candidates: [{ kind: 'function', name: exactByExport[0].functionId, score: 0.98, fn: exactByExport[0] }] };
+  }
+
+  const exactByModule = functionIndex.byModulePath.get(qKey) || [];
+  if (exactByModule.length === 1) {
+    return { kind: 'function', fn: exactByModule[0], term: q, candidates: [{ kind: 'function', name: exactByModule[0].functionId, score: 0.96, fn: exactByModule[0] }] };
+  }
+
+  const candidates = searchFunctionCandidates(functionIndex, q, 10);
+  if (!candidates.length) return { kind: 'search', term: q, candidates: [] };
+
+  const [top] = candidates;
+  const tied = candidates.filter((candidate) => candidate.score === top.score);
+  if (top.score >= 0.9 && tied.length === 1) {
+    return { kind: 'function', fn: top.fn, term: q, candidates };
+  }
+
+  return { kind: 'search', term: q, candidates };
 }
 
 function buildGraphIndex(idx) {
@@ -728,7 +900,7 @@ function scoreNameMatch(target, term) {
   return Math.min(Math.max(score, 0.35), 0.85);
 }
 
-function searchCandidates(idx, term, limit = 10) {
+function searchCandidates(idx, term, limit = 10, functionIndex = null) {
   const out = [];
 
   for (const t of idx.tables) {
@@ -748,11 +920,15 @@ function searchCandidates(idx, term, limit = 10) {
     if (s > 0) out.push({ kind: 'column', name: representative, score: Number(Math.min(s, 0.95).toFixed(2)), count: matches.length });
   }
 
+  for (const candidate of searchFunctionCandidates(functionIndex, term, limit)) {
+    out.push(candidate);
+  }
+
   out.sort((a, b) => (b.score - a.score) || String(a.kind).localeCompare(String(b.kind)) || String(a.name).localeCompare(String(b.name)));
   return out.slice(0, limit);
 }
 
-function resolveForQuery(idx, term) {
+function resolveForQuery(idx, term, functionIndex = null) {
   const q = String(term || '').trim();
   const qLower = normalizeKey(q);
   if (!qLower) return { kind: 'none', term: q };
@@ -767,7 +943,7 @@ function resolveForQuery(idx, term) {
   if (idx.columnsByLower.has(qLower)) return { kind: 'column', columnName: q, matches: idx.columnsByLower.get(qLower), term: q };
 
   // Fuzzy: prefer table if strong match
-  const candidates = searchCandidates(idx, q, 10);
+  const candidates = searchCandidates(idx, q, 10, functionIndex);
   if (!candidates.length) return { kind: 'search', term: q, candidates: [] };
 
   const top = candidates[0];
@@ -992,7 +1168,9 @@ function renderColumnCrossTableDoc({ schemaMeta, columnName, matches }) {
 }
 
 function renderSearchDoc({ schemaMeta, term, candidates }) {
-  const header = `# DB schema search: ${term}\n\n`;
+  const header = schemaMeta.convexFunctions?.available
+    ? `# DB / Convex surface search: ${term}\n\n`
+    : `# DB schema search: ${term}\n\n`;
   const metaLines = [
     `- Source: \`${schemaMeta.sourcePath || schemaMeta.sourceKind || 'unknown'}\``,
     `- SSOT mode: \`${schemaMeta.ssotMode}\``,
@@ -1003,9 +1181,114 @@ function renderSearchDoc({ schemaMeta, term, candidates }) {
   const rows = (candidates || []).map((c) => [c.kind, c.name, String(c.score), c.count ? String(c.count) : '']);
   const table = mdTable(['Kind', 'Name', 'Score', 'Count'], rows);
 
-  const guidance = `## How to proceed\n\n- If you meant a table: run \`node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query <TableName>\`\n- If you meant a column: run \`node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query <ColumnName>\`\n- If ambiguous, pick one of the results above and re-run \`query\`.\n`;
+  const guidanceLines = [
+    '## How to proceed',
+    '',
+    '- If you meant a table: run `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query <TableName>`',
+    '- If you meant a column: run `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query <ColumnName>`'
+  ];
+  if (schemaMeta.convexFunctions?.available) {
+    guidanceLines.push('- If you meant a Convex function: run `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query <functionId> --view surface`');
+    guidanceLines.push('- To list matching Convex functions: run `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query <term> --view functions`');
+  }
+  guidanceLines.push('- If ambiguous, pick one of the results above and re-run `query`.');
+  const guidance = guidanceLines.join('\n');
 
   return [header, metaLines, '', '## Candidates', '', table, '', guidance].filter(Boolean).join('\n');
+}
+
+function renderFunctionMatchesTable(candidates, { includeScore = true } = {}) {
+  const rows = (candidates || []).map((candidate) => {
+    const fn = candidate.fn || candidate;
+    return [
+      String(fn.functionId || ''),
+      String(fn.exportName || ''),
+      String(fn.kind || ''),
+      String(fn.visibility || ''),
+      String(fn.modulePath || fn.file || ''),
+      String(fn?.auth?.kind || ''),
+      Array.isArray(fn.tablesRead) && fn.tablesRead.length ? fn.tablesRead.join(', ') : '',
+      Array.isArray(fn.tablesWritten) && fn.tablesWritten.length ? fn.tablesWritten.join(', ') : '',
+      includeScore ? String(candidate.score ?? '') : undefined
+    ];
+  });
+
+  const headers = ['Function', 'Export', 'Kind', 'Visibility', 'Module', 'Auth', 'Reads', 'Writes'];
+  if (includeScore) headers.push('Score');
+  return mdTable(headers, rows.map((row) => includeScore ? row : row.slice(0, -1)));
+}
+
+function renderFunctionListDoc({ schemaMeta, term, candidates }) {
+  const header = `# Convex functions: ${term}\n\n`;
+  const metaLines = [
+    `- DB contract source: \`${schemaMeta.sourcePath || schemaMeta.sourceKind || 'unknown'}\``,
+    `- Function contract source: \`${schemaMeta.convexFunctions?.sourcePath || schemaMeta.convexFunctions?.sourceKind || 'unknown'}\``,
+    `- SSOT mode: \`${schemaMeta.ssotMode}\``,
+    `- Generated at: \`${toIsoNow()}\``
+  ].join('\n');
+
+  const table = candidates && candidates.length
+    ? renderFunctionMatchesTable(candidates, { includeScore: true })
+    : '_No Convex functions matched the query._';
+
+  const next = [
+    '## Next steps',
+    '',
+    '- To inspect one function in detail:',
+    '  - `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query <functionId> --view surface`',
+    '- To refresh both DB and function contracts:',
+    '  - `node .ai/scripts/ctl-db-ssot.mjs sync-to-context --repo-root .`'
+  ].join('\n');
+
+  return [header, metaLines, '', '## Matches', '', table, '', next].filter(Boolean).join('\n');
+}
+
+function renderFunctionSurfaceDoc({ schemaMeta, fn }) {
+  const header = `# Convex function surface: ${fn.functionId}\n\n`;
+  const metaLines = [
+    `- DB contract source: \`${schemaMeta.sourcePath || schemaMeta.sourceKind || 'unknown'}\``,
+    `- Function contract source: \`${schemaMeta.convexFunctions?.sourcePath || schemaMeta.convexFunctions?.sourceKind || 'unknown'}\``,
+    `- SSOT mode: \`${schemaMeta.ssotMode}\``,
+    `- Generated at: \`${toIsoNow()}\``
+  ].join('\n');
+
+  const summary = [
+    `- Export: \`${fn.exportName || 'unknown'}\``,
+    `- Kind: \`${fn.kind || 'unknown'}\``,
+    `- Visibility: \`${fn.visibility || 'unknown'}\``,
+    `- Module: \`${fn.modulePath || fn.file || 'unknown'}\``,
+    `- Runtime: \`${fn.runtime || 'unknown'}\``,
+    `- Auth: \`${fn?.auth?.kind || 'unknown'}\``,
+    `- Reads: ${Array.isArray(fn.tablesRead) && fn.tablesRead.length ? fn.tablesRead.map((name) => `\`${name}\``).join(', ') : 'none'}`,
+    `- Writes: ${Array.isArray(fn.tablesWritten) && fn.tablesWritten.length ? fn.tablesWritten.map((name) => `\`${name}\``).join(', ') : 'none'}`
+  ].join('\n');
+
+  const argsSection = fn.argsValidator
+    ? ['## Arguments validator', '', '```json', JSON.stringify(fn.argsValidator, null, 2), '```'].join('\n')
+    : '## Arguments validator\n\n_None detected._';
+
+  const returnsSection = fn.returnsValidator
+    ? ['## Returns validator', '', '```json', JSON.stringify(fn.returnsValidator, null, 2), '```'].join('\n')
+    : '## Returns validator\n\n_None detected._';
+
+  const uses = Object.entries(fn.uses || {})
+    .filter(([, value]) => value === true)
+    .map(([key]) => key)
+    .sort();
+  const usesSection = uses.length
+    ? `## Runtime hints\n\n- ${uses.join('\n- ')}`
+    : '## Runtime hints\n\n_None detected._';
+
+  const next = [
+    '## Next steps',
+    '',
+    '- To inspect the DB side of related tables:',
+    '  - `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query <TableName>`',
+    '- To refresh the generated contracts after source changes:',
+    '  - `node .ai/scripts/ctl-db-ssot.mjs sync-to-context --repo-root .`'
+  ].join('\n');
+
+  return [header, metaLines, '', '## Summary', '', summary, '', argsSection, '', returnsSection, '', usesSection, '', next].filter(Boolean).join('\n');
 }
 
 function renderConceptDoc({ schemaMeta, idx, cluster }) {
@@ -1969,7 +2252,9 @@ function renderPlanDoc({ schemaMeta, idx, objectLabel, dbops, problems, knownEnu
     '2. Update related functions under `convex/**/*.ts`.',
     '3. Run `npx convex codegen` (or `npx convex dev` when working interactively).',
     '4. Run `node .ai/scripts/ctl-db-ssot.mjs sync-to-context` to refresh `docs/context/db/schema.json` and `docs/context/convex/functions.json`.',
-    '5. Use `convex-best-practices` for implementation and review guardrails.'
+    '5. Run `node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root . --strict`.',
+    '6. Only if other context artifacts were edited manually, run `node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch --repo-root .`.',
+    '7. Use `convex-best-practices` for implementation and review guardrails.'
   ].join('\n');
 
   const ssotRouting = schemaMeta.ssotMode === 'database'
@@ -2138,13 +2423,15 @@ function renderRunbookDoc({ schemaMeta, idx, objectLabel, dbops }) {
 function printHelp() {
   const msg = `ctl-db-doc.mjs — Human-friendly DB structure and change drafting\n\n` +
     `Usage:\n` +
-    `  node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs status\n` +
-    `  node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs search <term>\n` +
-    `  node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query <object> [--view table|concept|graph|api] [--depth <n>] [--max-tables <n>]\n` +
-    `  node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs modify <object> [--scope table|concept] [--depth <n>] [--max-tables <n>]\n` +
-    `  node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs plan <object>\n\n` +
+    `  node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs status [--repo-root <path>]\n` +
+    `  node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs search <term> [--repo-root <path>]\n` +
+    `  node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs query <object> [--view table|concept|graph|api|functions|surface] [--depth <n>] [--max-tables <n>] [--repo-root <path>]\n` +
+    `  node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs modify <object> [--scope table|concept] [--depth <n>] [--max-tables <n>] [--repo-root <path>]\n` +
+    `  node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs plan <object> [--repo-root <path>]\n\n` +
     `Artifacts:\n` +
     `  .ai/.tmp/database/structure_query/<object>.md\n` +
+    `  .ai/.tmp/database/structure_query/<object>__functions.md\n` +
+    `  .ai/.tmp/database/structure_query/<object>__surface.md\n` +
     `  .ai/.tmp/database/structure_modify/<object>.md\n` +
     `  .ai/.tmp/database/structure_modify/<object>.plan.md\n` +
     `  .ai/.tmp/database/structure_modify/<object>.runbook.md (db.ssot=database)\n`;
@@ -2153,10 +2440,10 @@ function printHelp() {
 }
 
 async function main() {
-  const repoRoot = repoRootFromScript();
-
   const argv = process.argv.slice(2);
   const cmd = String(argv[0] || '').trim();
+  const globalOpts = parseTermAndOpts(argv.slice(1)).opts;
+  const repoRoot = repoRootFromScript(globalOpts.repoRoot || null);
 
   if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
     printHelp();
@@ -2167,7 +2454,11 @@ async function main() {
   if (ssotCfg.warnings && ssotCfg.warnings.length > 0) {
     for (const warning of ssotCfg.warnings) console.warn(`[warn] ${warning}`);
   }
-  const loaded = loadNormalizedSchema(repoRoot, ssotCfg);
+  const convexConfigured = ssotCfg.mode === 'convex' || exists(path.join(repoRoot, ssotCfg.paths.convexSchema));
+  const surfaceLoaded = convexConfigured
+    ? loadConvexSurface(repoRoot, ssotCfg)
+    : { db: loadNormalizedSchema(repoRoot, ssotCfg), functions: null };
+  const loaded = surfaceLoaded.db;
 
   if (!loaded.schema) {
     const err = loaded.error || 'Failed to load DB schema.';
@@ -2184,6 +2475,9 @@ async function main() {
 
   const ssotMode = inferSsotMode({ cfgMode: ssotCfg.mode, schema, mirrorExists, prismaExists, convexExists });
   const dialect = (schema.database && schema.database.dialect) ? String(schema.database.dialect) : 'generic';
+  const convexFunctionIndex = ssotMode === 'convex'
+    ? buildFunctionIndex(surfaceLoaded.functions && surfaceLoaded.functions.contract ? surfaceLoaded.functions.contract : null)
+    : null;
 
   const schemaMeta = {
     repoRoot,
@@ -2193,7 +2487,16 @@ async function main() {
     sourcePath: loaded.sourcePath ? path.relative(repoRoot, loaded.sourcePath) : loaded.sourceKind,
     modifyDocRel: '',
     runbookRel: '',
-    graph: buildGraphIndex(idx)
+    graph: buildGraphIndex(idx),
+    convexFunctions: ssotMode === 'convex'
+      ? {
+          available: hasConvexFunctionIndex(convexFunctionIndex),
+          sourceKind: surfaceLoaded.functions?.sourceKind || 'missing',
+          sourcePath: surfaceLoaded.functions?.sourcePath ? path.relative(repoRoot, surfaceLoaded.functions.sourcePath) : null,
+          total: convexFunctionIndex?.functions?.length || 0,
+          error: surfaceLoaded.functions?.error || null
+        }
+      : null
   };
 
   if (cmd === 'status') {
@@ -2214,7 +2517,16 @@ async function main() {
         dialect,
         tables: idx.tables.length,
         enums: idx.enums.length
-      }
+      },
+      convexFunctions: ssotMode === 'convex'
+        ? {
+            sourceKind: schemaMeta.convexFunctions?.sourceKind || 'missing',
+            sourcePath: schemaMeta.convexFunctions?.sourcePath,
+            available: !!schemaMeta.convexFunctions?.available,
+            functions: schemaMeta.convexFunctions?.total || 0,
+            error: schemaMeta.convexFunctions?.error || null
+          }
+        : null
     }, null, 2));
     return EXIT.OK;
   }
@@ -2226,7 +2538,7 @@ async function main() {
       return EXIT.USAGE;
     }
 
-    const candidates = searchCandidates(idx, term, 15);
+    const candidates = searchCandidates(idx, term, 15, convexFunctionIndex);
     if (!candidates.length) {
       console.log(`No matches found for '${term}'.`);
       return EXIT.OK;
@@ -2252,6 +2564,9 @@ async function main() {
     const outDir = path.join(repoRoot, '.ai', '.tmp', 'database', 'structure_query');
     let outName = safeSlug(term);
     let doc = '';
+    const resolvedFunction = hasConvexFunctionIndex(convexFunctionIndex)
+      ? resolveFunctionForQuery(convexFunctionIndex, term)
+      : { kind: 'none', term, candidates: [] };
 
     if (view === 'concept' || view === 'graph') {
       const cluster = buildConceptCluster({
@@ -2274,7 +2589,7 @@ async function main() {
     } else if (view === 'api') {
       const table = resolveTable(idx, term);
       if (!table) {
-        const candidates = searchCandidates(idx, term, 10);
+        const candidates = searchCandidates(idx, term, 10, convexFunctionIndex);
         outName = safeSlug(term) + '__api';
         doc = [
           `# API view (table not resolved): ${term}`,
@@ -2298,10 +2613,33 @@ async function main() {
         outName = safeSlug(table.name) + '__api';
         doc = renderApiDoc({ schemaMeta, table });
       }
+    } else if (view === 'functions') {
+      if (!hasConvexFunctionIndex(convexFunctionIndex)) {
+        console.error(schemaMeta.convexFunctions?.error || 'Convex function contract is not available. Run `node .ai/scripts/ctl-db-ssot.mjs sync-to-context --repo-root .` first.');
+        return EXIT.FAILED;
+      }
+      const candidates = searchFunctionCandidates(convexFunctionIndex, term, 20);
+      outName = safeSlug(term) + '__functions';
+      doc = renderFunctionListDoc({ schemaMeta, term, candidates });
+    } else if (view === 'surface') {
+      if (!hasConvexFunctionIndex(convexFunctionIndex)) {
+        console.error(schemaMeta.convexFunctions?.error || 'Convex function contract is not available. Run `node .ai/scripts/ctl-db-ssot.mjs sync-to-context --repo-root .` first.');
+        return EXIT.FAILED;
+      }
+      outName = safeSlug(term) + '__surface';
+      if (resolvedFunction.kind === 'function') {
+        outName = safeSlug(resolvedFunction.fn.functionId || term) + '__surface';
+        doc = renderFunctionSurfaceDoc({ schemaMeta, fn: resolvedFunction.fn });
+      } else {
+        doc = renderFunctionListDoc({ schemaMeta, term, candidates: resolvedFunction.candidates || [] });
+      }
     } else {
-      // Default / legacy behavior: render the best match (table/enum/column/search).
-      const resolved = resolveForQuery(idx, term);
-      if (resolved.kind === 'table') {
+      // Default / legacy behavior: render the best match (function/table/enum/column/search).
+      const resolved = resolveForQuery(idx, term, convexFunctionIndex);
+      if (resolvedFunction.kind === 'function') {
+        outName = safeSlug(resolvedFunction.fn.functionId || term) + '__surface';
+        doc = renderFunctionSurfaceDoc({ schemaMeta, fn: resolvedFunction.fn });
+      } else if (resolved.kind === 'table') {
         outName = safeSlug(resolved.table.name);
         doc = renderTableDoc({ schemaMeta, idx, table: resolved.table });
       } else if (resolved.kind === 'enum') {

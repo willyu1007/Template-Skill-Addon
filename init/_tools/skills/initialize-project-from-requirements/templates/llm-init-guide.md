@@ -70,6 +70,7 @@ All paths above are relative to `init/_work/stage-a-docs/`.
 - **SSOT mode (MUST choose)**: `none` / `repo-prisma` / `database` / `convex`
 - If the project uses `convex/schema.ts` and Convex `query` / `mutation` / `action`, choose `convex`.
 - If `db.ssot != none`, enable both `features.database` and `features.contextAwareness`.
+- `db.ssot=convex` currently only supports `repo.layout=single` with root-level `convex/` and root `package.json`.
 - Consistency, migration strategy, backup?
 - Write to: `non-functional-requirements.md` + `db.*`
 
@@ -163,6 +164,8 @@ Generate `init/_work/project-blueprint.json`:
   "features": {}
 }
 ```
+
+Rule: if `db.ssot` is `convex`, choose `"layout": "single"`.
 
 **Packs auto-recommendation**:
 - Always: `workflows`
