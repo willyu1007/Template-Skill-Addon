@@ -4,7 +4,7 @@ This directory contains human-facing docs for optional **features** that can be 
 
 This is the **addon** edition of the template. It does not use a top-level `addons/` directory; Feature assets are integrated under `.ai/`:
 
-- Templates: usually `.ai/skills/features/<feature-id>/templates/` (some features source templates from nested skills; for database: `.ai/skills/features/database/sync-code-schema-from-db/templates/`)
+- Templates: usually `.ai/skills/features/<feature-id>/templates/` (some features source templates from nested skills; for database modes, see `.ai/skills/features/database/**/templates/`)
 - Control scripts:
   - Repo-level Node controllers: `.ai/scripts/ctl-*.mjs` (and other repo controllers like `sync-skills.mjs`)
   - Feature-local tools: `.ai/skills/features/**/scripts/*` (Node `.mjs` and/or Python `.py`)
@@ -15,7 +15,7 @@ This is the **addon** edition of the template. It does not use a top-level `addo
 | Feature ID | Blueprint toggle | Control script | Documentation |
 |------------|------------------|----------------|---------------|
 | `context-awareness` | `features.contextAwareness` | `.ai/skills/features/context-awareness/scripts/ctl-context.mjs` | [context-awareness.md](context-awareness.md) |
-| `database` | `features.database` (requires `db.ssot != none`) | `.ai/skills/features/database/sync-code-schema-from-db/scripts/ctl-db.mjs` (when `db.ssot=database`) | [database.md](database.md) |
+| `database` | `features.database` (requires `db.ssot != none` and `features.contextAwareness=true`) | `.ai/scripts/ctl-db-ssot.mjs` (public status/sync; Stage C also runs mode-specific init tools) | [database.md](database.md) |
 | `ui` | `features.ui` | `.ai/skills/features/ui/ui-system-bootstrap/scripts/ui_specctl.py` | [ui.md](ui.md) |
 | `environment` | `features.environment` | `.ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py` | [environment.md](environment.md) |
 | `iac` | `iac.tool` (or `features.iac`) | `.ai/skills/features/iac/scripts/ctl-iac.mjs` | [iac.md](iac.md) |
@@ -38,7 +38,7 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
 
 Common dependency checks (enforced by `validate`):
 
-- `features.database=true` requires `db.ssot != none`.
+- `features.database=true` requires `db.ssot != none` and `features.contextAwareness=true`.
 - `features.observability=true` requires `features.contextAwareness=true`.
 
 ## Enabling features

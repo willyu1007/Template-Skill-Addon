@@ -36,12 +36,21 @@ Only if implementation detail is needed, follow `info.x-source-mapping` in `open
 
 Select artifacts from `registry.json` by tag or type. Open files by path. Do NOT scan folders.
 
+### Step 8: Optional Convex tasks
+
+If `registry.json` includes `docs/context/convex/functions.json`:
+
+1. Read that file before opening `convex/**/*.ts`.
+2. Use it to identify the relevant `query` / `mutation` / `action` surface first.
+3. Keep `docs/context/db/schema.json` as the canonical data-model contract.
+
 ## Rules
 
 - **MUST** check context artifacts before reading source code for any context-available topic (API, DB, terms, architecture).
 - **SHOULD** prefer `api-index.json` over `openapi.yaml` when only endpoint discovery or overview is needed.
 - **SHOULD** prefer `glossary.json` over code/doc scanning when resolving domain terms.
 - **MUST NOT** infer API contracts from source code if `openapi.yaml` exists — it is the authoritative source.
+- **SHOULD** prefer `docs/context/convex/functions.json` over scanning `convex/**/*.ts` when the project uses Convex and that artifact is registered.
 
 ## Canonical Task Recipes
 

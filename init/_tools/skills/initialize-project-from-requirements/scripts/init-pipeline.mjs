@@ -1009,8 +1009,12 @@ function validateBlueprint(blueprint) {
 
   // Capabilities sanity checks (warn-only unless obviously inconsistent)
   const caps = blueprint.capabilities || {};
+  const validCapabilityDbKinds = ['none', 'postgres', 'mysql', 'sqlite', 'mssql', 'mongodb', 'dynamodb', 'convex', 'other'];
   if (caps.database && caps.database.enabled) {
     if (!caps.database.kind || typeof caps.database.kind !== 'string') warnings.push('capabilities.database.enabled=true but capabilities.database.kind is missing.');
+    else if (!validCapabilityDbKinds.includes(String(caps.database.kind))) {
+      errors.push(`capabilities.database.kind must be one of: ${validCapabilityDbKinds.join(', ')}`);
+    }
   }
   if (caps.api && caps.api.style && typeof caps.api.style !== 'string') warnings.push('capabilities.api.style should be a string.');
   if (caps.bpmn && typeof caps.bpmn.enabled !== 'boolean') warnings.push('capabilities.bpmn.enabled should be boolean when present.');
@@ -1019,9 +1023,13 @@ function validateBlueprint(blueprint) {
 
   // DB SSOT mode checks (mutually exclusive DB schema workflows)
   const db = blueprint.db || {};
-  const validSsot = ['none', 'repo-prisma', 'database'];
+  const validDbKinds = ['postgres', 'mysql', 'sqlite', 'mssql', 'mongodb', 'dynamodb', 'convex', 'other'];
+  const validSsot = ['none', 'repo-prisma', 'database', 'convex'];
   if (typeof db.enabled !== 'boolean') {
     errors.push('db.enabled is required (boolean).');
+  }
+  if (db.kind && (typeof db.kind !== 'string' || !validDbKinds.includes(db.kind))) {
+    errors.push(`db.kind must be one of: ${validDbKinds.join(', ')}`);
   }
   if (!db.ssot || typeof db.ssot !== 'string' || !validSsot.includes(db.ssot)) {
     errors.push(`db.ssot is required and must be one of: ${validSsot.join(', ')}`);
@@ -1033,12 +1041,33 @@ function validateBlueprint(blueprint) {
   }
 
   const databaseEnabled = isDatabaseEnabled(blueprint);
+  const contextAwarenessEnabled = isContextAwarenessEnabled(blueprint);
 
   if (db.ssot !== 'none' && !databaseEnabled) {
     errors.push('db.ssot != none requires features.database=true (Database feature).');
   }
   if (db.ssot === 'none' && databaseEnabled) {
     errors.push('features.database=true is only valid when db.ssot != none.');
+  }
+  if (db.ssot !== 'none' && !contextAwarenessEnabled) {
+    errors.push('db.ssot != none requires features.contextAwareness=true (database workflows are contract-first under docs/context/).');
+  }
+
+  if (db.ssot === 'convex') {
+    const repoLanguage = String(repo.language || '').toLowerCase();
+    const convexLanguages = new Set(['typescript', 'javascript', 'react-native']);
+    if (!convexLanguages.has(repoLanguage)) {
+      errors.push('db.ssot=convex is only supported when repo.language is "typescript", "javascript", or "react-native".');
+    }
+    if (db.kind !== 'convex') {
+      errors.push('db.ssot=convex requires db.kind="convex".');
+    }
+    if (caps.database && caps.database.enabled && caps.database.kind && caps.database.kind !== 'convex') {
+      warnings.push('db.ssot=convex usually expects capabilities.database.kind="convex".');
+    }
+    if (db.migrationTool && String(db.migrationTool).trim()) {
+      warnings.push('db.ssot=convex ignores db.migrationTool; Convex schema changes originate in convex/schema.ts.');
+    }
   }
 
   // IaC tool checks
@@ -1136,7 +1165,7 @@ function recommendedFeaturesFromBlueprint(blueprint) {
     (caps.bpmn && caps.bpmn.enabled);
   if (needsContext) rec.push('contextAwareness');
 
-  // database: enable when DB SSOT is managed (repo-prisma or database)
+  // database: enable when DB SSOT is managed (repo-prisma, database, or convex)
   const db = blueprint.db || {};
   if (db.ssot && db.ssot !== 'none') rec.push('database');
 
@@ -1985,26 +2014,64 @@ function dbSsotMode(blueprint) {
 
 function dbSsotExclusionsForMode(mode) {
   const m = String(mode || 'none');
-  if (m === 'repo-prisma') return ['sync-code-schema-from-db'];
-  if (m === 'database') return ['sync-db-schema-from-code'];
-  // 'none' (opt-out) => exclude both DB sync skills
-  return ['sync-db-schema-from-code', 'sync-code-schema-from-db'];
+  if (m === 'repo-prisma') return ['sync-code-schema-from-db', 'convex-as-ssot', 'convex-best-practices'];
+  if (m === 'database') return ['sync-db-schema-from-code', 'convex-as-ssot', 'convex-best-practices'];
+  if (m === 'convex') return ['sync-db-schema-from-code', 'sync-code-schema-from-db'];
+  // 'none' (opt-out) => exclude all DB sync skills
+  return ['sync-db-schema-from-code', 'sync-code-schema-from-db', 'convex-as-ssot', 'convex-best-practices'];
 }
 
 function writeDbSsotConfig(repoRoot, blueprint, apply) {
   const mode = dbSsotMode(blueprint);
   const outPath = path.join(repoRoot, 'docs', 'project', 'db-ssot.json');
+  const db = blueprint && blueprint.db && typeof blueprint.db === 'object' ? blueprint.db : {};
+  const kind = String(db.kind || (mode === 'convex' ? 'convex' : 'other'));
+
+  let source;
+  if (mode === 'repo-prisma') {
+    source = { kind: 'prisma-schema', path: 'prisma/schema.prisma' };
+  } else if (mode === 'database') {
+    source = { kind: 'db-mirror', path: 'db/schema/tables.json' };
+  } else if (mode === 'convex') {
+    source = { kind: 'convex-schema', path: 'convex/schema.ts' };
+  } else {
+    source = { kind: 'none', path: '' };
+  }
 
   const cfg = {
     version: 1,
     updatedAt: new Date().toISOString(),
     mode,
+    policy: {
+      managedPaths: 'fixed-defaults-v1'
+    },
     paths: {
       prismaSchema: 'prisma/schema.prisma',
       dbSchemaTables: 'db/schema/tables.json',
-      dbContextContract: 'docs/context/db/schema.json'
+      dbContextContract: 'docs/context/db/schema.json',
+      convexSchema: 'convex/schema.ts',
+      convexFunctionsContract: 'docs/context/convex/functions.json'
+    },
+    db: {
+      ssot: mode,
+      kind,
+      source,
+      contracts: {
+        dbSchema: 'docs/context/db/schema.json',
+        convexFunctions: mode === 'convex' ? 'docs/context/convex/functions.json' : null
+      },
+      generated: {
+        typesDir: mode === 'convex' ? 'convex/_generated' : null
+      }
     }
   };
+
+  if (mode === 'convex') {
+    cfg.db.runtime = {
+      deploymentEnvVar: 'CONVEX_DEPLOYMENT',
+      urlEnvVarCandidates: ['NEXT_PUBLIC_CONVEX_URL', 'VITE_CONVEX_URL', 'CONVEX_URL']
+    };
+  }
 
   if (!apply) {
     return { op: 'write', path: outPath, mode: 'dry-run', note: `db.ssot=${mode}` };
@@ -2030,7 +2097,7 @@ function renderDbSsotAgentsBlock(mode, contextAwarenessEnabled) {
 
   const common = [
     `- SSOT selection file: \`docs/project/db-ssot.json\``,
-    `- DB context contract (LLM-first): \`docs/context/db/schema.json\`${hasContext ? '' : ' (requires `features.contextAwareness=true`)'}`
+    `- DB context contract (generated, LLM-first): \`docs/context/db/schema.json\`${hasContext ? '' : ' (requires `features.contextAwareness=true`)'}`
   ];
 
   if (m === 'repo-prisma') {
@@ -2048,7 +2115,8 @@ function renderDbSsotAgentsBlock(mode, contextAwarenessEnabled) {
 ` +
       `Rules:
 - Business layer MUST NOT import Prisma (repositories return domain entities).
-- If \`features.contextAwareness=true\`: refresh context via \`node .ai/scripts/ctl-db-ssot.mjs sync-to-context\`.
+- Database workflows in this repo require \`features.contextAwareness=true\`.
+- Refresh generated DB context via \`node .ai/scripts/ctl-db-ssot.mjs sync-to-context\`.
 `
     );
   }
@@ -2069,7 +2137,30 @@ function renderDbSsotAgentsBlock(mode, contextAwarenessEnabled) {
       `Rules:
 - Human runs \`prisma db pull\` against the correct environment.
 - Mirror update: \`node .ai/skills/features/database/sync-code-schema-from-db/scripts/ctl-db.mjs import-prisma\`.
-- If \`features.contextAwareness=true\`: refresh context via \`node .ai/scripts/ctl-db-ssot.mjs sync-to-context\`.
+- Database workflows in this repo require \`features.contextAwareness=true\`.
+- Refresh generated DB context via \`node .ai/scripts/ctl-db-ssot.mjs sync-to-context\`.
+`
+    );
+  }
+
+  if (m === 'convex') {
+    return (
+      header +
+      `**Mode: convex** (SSOT = \`convex/schema.ts\`; function surface = \`convex/**/*.ts\`)
+
+` +
+      common.join('\n') +
+      `
+- Convex function contract: \`docs/context/convex/functions.json\`
+- If you need to change persisted fields / indexes: use skill \`convex-as-ssot\`.
+- If you need to add or review Convex functions: use skill \`convex-best-practices\`.
+- Human-friendly DB queries and change drafting still route through \`db-human-interface\`.
+
+Rules:
+- Treat \`convex/schema.ts\` as the persistence SSOT.
+- Treat \`docs/context/db/schema.json\` and \`docs/context/convex/functions.json\` as generated artifacts.
+- Database workflows in this repo require \`features.contextAwareness=true\`.
+- Refresh contracts via \`node .ai/scripts/ctl-db-ssot.mjs sync-to-context\`.
 `
     );
   }
@@ -2124,7 +2215,7 @@ function applyDbSsotSkillExclusions(repoRoot, blueprint, apply) {
 
   const manifest = readJson(manifestPath);
   const existing = Array.isArray(manifest.excludeSkills) ? manifest.excludeSkills.map(String) : [];
-  const cleaned = existing.filter((s) => s !== 'sync-db-schema-from-code' && s !== 'sync-code-schema-from-db');
+  const cleaned = existing.filter((s) => !['sync-db-schema-from-code', 'sync-code-schema-from-db', 'convex-as-ssot', 'convex-best-practices'].includes(s));
   const desired = dbSsotExclusionsForMode(mode);
   manifest.excludeSkills = uniq([...cleaned, ...desired]);
 
@@ -2136,10 +2227,10 @@ function applyDbSsotSkillExclusions(repoRoot, blueprint, apply) {
   return { op: 'edit', path: manifestPath, mode: 'applied', note: `excludeSkills += ${desired.join(', ')}` };
 }
 
-function refreshDbContextContract(repoRoot, blueprint, apply, verifyFeatures) {
+function refreshDbContextContract(repoRoot, blueprint, apply) {
   const outPath = path.join(repoRoot, 'docs', 'context', 'db', 'schema.json');
 
-  // Only meaningful when context-awareness exists (contract directory + registry).
+  // DB workflows require context-awareness; keep this guard for defensive use.
   if (!isContextAwarenessEnabled(blueprint)) {
     return {
       op: 'skip',
@@ -2160,16 +2251,51 @@ function refreshDbContextContract(repoRoot, blueprint, apply, verifyFeatures) {
   }
 
   const run1 = runNodeScript(repoRoot, dbSsotCtl, ['sync-to-context', '--repo-root', repoRoot], apply);
-  const actions = [run1];
+  return { op: 'db-context-refresh', path: outPath, mode: apply ? 'applied' : 'dry-run', actions: [run1] };
+}
 
-  if (verifyFeatures && apply) {
-    const contextCtl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'ctl-context.mjs');
-    if (fs.existsSync(contextCtl)) {
-      actions.push(runNodeScriptWithRepoRootFallback(repoRoot, contextCtl, ['verify', '--repo-root', repoRoot], apply));
-    }
+function verifyDatabaseFeatureAfterContext(repoRoot, blueprint, apply) {
+  const mode = dbSsotMode(blueprint);
+  const result = { op: 'verify-db-feature', mode: apply ? 'skipped' : 'dry-run', actions: [], warnings: [], errors: [] };
+  let scriptPath = null;
+
+  if (mode === 'database') {
+    scriptPath = path.join(
+      repoRoot,
+      '.ai',
+      'skills',
+      'features',
+      'database',
+      'sync-code-schema-from-db',
+      'scripts',
+      'ctl-db.mjs'
+    );
+  } else if (mode === 'convex') {
+    scriptPath = path.join(
+      repoRoot,
+      '.ai',
+      'skills',
+      'features',
+      'database',
+      'convex-as-ssot',
+      'scripts',
+      'ctl-convex.mjs'
+    );
+  } else {
+    result.reason = `no post-context verify for db.ssot=${mode}`;
+    return result;
   }
 
-  return { op: 'db-context-refresh', path: outPath, mode: apply ? 'applied' : 'dry-run', actions };
+  if (!fs.existsSync(scriptPath)) {
+    result.mode = apply ? 'failed' : 'dry-run';
+    result.errors.push(`Database feature control script not found: ${path.relative(repoRoot, scriptPath)}`);
+    return result;
+  }
+
+  const verifyRes = runNodeScriptWithRepoRootFallback(repoRoot, scriptPath, ['verify', '--repo-root', repoRoot], apply);
+  result.actions.push(verifyRes);
+  result.mode = verifyRes.mode === 'failed' ? 'failed' : (apply ? 'applied' : 'dry-run');
+  return result;
 }
 
 
@@ -2410,14 +2536,6 @@ function ensureDatabaseFeature(repoRoot, blueprint, apply, options = {}) {
 
     if (fs.existsSync(dbctlPath)) {
       result.actions.push(runNodeScriptWithRepoRootFallback(repoRoot, dbctlPath, ['init', '--repo-root', repoRoot], apply));
-      if (verify && apply) {
-        const verifyRes = runNodeScriptWithRepoRootFallback(repoRoot, dbctlPath, ['verify', '--repo-root', repoRoot], apply);
-        result.actions.push(verifyRes);
-        if (verifyRes.mode === 'failed') {
-          result.verifyFailed = true;
-          result.verifyError = 'Database feature verify failed';
-        }
-      }
     } else if (apply) {
       result.errors.push(`Feature "database" control script not found: ${path.relative(repoRoot, dbctlPath)}`);
     }
@@ -2428,6 +2546,56 @@ function ensureDatabaseFeature(repoRoot, blueprint, apply, options = {}) {
   if (mode === 'repo-prisma') {
     // In repo-prisma mode, do not install db/ mirrors; ensure prisma/ exists as a convention anchor.
     result.actions.push(ensureDir(path.join(repoRoot, 'prisma'), apply));
+    return result;
+  }
+
+  if (mode === 'convex') {
+    const templatesDir = path.join(
+      repoRoot,
+      '.ai',
+      'skills',
+      'features',
+      'database',
+      'convex-as-ssot',
+      'templates'
+    );
+    if (!fs.existsSync(templatesDir)) {
+      result.errors.push(`Feature "database" Convex templates not found: ${path.relative(repoRoot, templatesDir)}`);
+      return result;
+    }
+
+    const copyRes = copyDirIfMissing(templatesDir, repoRoot, apply, force);
+    if (!copyRes.ok) {
+      result.errors.push(copyRes.error || 'Failed to copy Convex templates.');
+      return result;
+    }
+
+    result.actions.push({
+      op: force ? 'reinstall-feature' : 'install-feature',
+      featureId: 'database-convex',
+      from: templatesDir,
+      to: repoRoot,
+      mode: apply ? 'applied' : 'dry-run'
+    });
+    result.actions.push(...copyRes.actions);
+
+    const ctlPath = path.join(
+      repoRoot,
+      '.ai',
+      'skills',
+      'features',
+      'database',
+      'convex-as-ssot',
+      'scripts',
+      'ctl-convex.mjs'
+    );
+
+    if (fs.existsSync(ctlPath)) {
+      result.actions.push(runNodeScriptWithRepoRootFallback(repoRoot, ctlPath, ['init', '--repo-root', repoRoot], apply));
+    } else if (apply) {
+      result.errors.push(`Feature "database" control script not found: ${path.relative(repoRoot, ctlPath)}`);
+    }
+
     return result;
   }
 
@@ -3888,7 +4056,7 @@ if (command === 'validate') {
       }
     }
 
-    // Optional: Context Awareness feature (recommended when you want LLM-stable contracts)
+    // Optional in general, but required when DB SSOT workflows are enabled.
     const contextFeature = ensureContextAwarenessFeature(repoRoot, blueprint, true, contextFeatureOptions);
     if (contextFeature.errors && contextFeature.errors.length > 0) {
       for (const e of contextFeature.errors) console.error(`[error] ${e}`);
@@ -3999,11 +4167,28 @@ if (command === 'validate') {
 	    } else if (dbSsotAgentsBlockResult.reason) {
 	      console.log(`[info] Root AGENTS DB-SSOT block update skipped: ${dbSsotAgentsBlockResult.reason}`);
 	    }
-	    const dbContextRefreshResult = refreshDbContextContract(repoRoot, blueprint, true, verifyFeatures);
+	    const dbContextRefreshResult = refreshDbContextContract(repoRoot, blueprint, true);
 	    if (dbContextRefreshResult.mode === 'applied') {
 	      console.log(`[ok] DB context refreshed: ${path.relative(repoRoot, dbContextRefreshResult.path)}`);
 	    } else if (dbContextRefreshResult.reason) {
       console.log(`[info] DB context refresh skipped: ${dbContextRefreshResult.reason}`);
+    }
+
+    if (verifyFeatures && isDatabaseEnabled(blueprint)) {
+      const dbVerifyResult = verifyDatabaseFeatureAfterContext(repoRoot, blueprint, true);
+      if (dbVerifyResult.errors && dbVerifyResult.errors.length > 0) {
+        for (const e of dbVerifyResult.errors) console.error(`[error] ${e}`);
+      }
+      if (dbVerifyResult.mode === 'failed') {
+        verifyFailures.push('database');
+        if (!nonBlockingFeatures) {
+          die('[error] Database feature verify failed after DB context refresh. Use --non-blocking-features to continue despite errors.');
+        }
+      } else if (dbVerifyResult.mode === 'applied') {
+        console.log('[ok] Database feature verified after DB context refresh.');
+      } else if (dbVerifyResult.reason) {
+        console.log(`[info] Database post-context verify skipped: ${dbVerifyResult.reason}`);
+      }
     }
 
     // Verify context awareness after DB context refresh (prevents transient mismatches).

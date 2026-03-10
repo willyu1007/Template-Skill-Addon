@@ -66,8 +66,10 @@ All paths above are relative to `init/_work/stage-a-docs/`.
 - Write to: `requirements.md` + `capabilities.api.*`
 
 **B2. Database module** (if persistent data):
-- DB kind: postgres / mysql / sqlite / document?
-- **SSOT mode (MUST choose)**: `none` / `repo-prisma` / `database`
+- DB kind: postgres / mysql / sqlite / mssql / mongodb / dynamodb / convex / other?
+- **SSOT mode (MUST choose)**: `none` / `repo-prisma` / `database` / `convex`
+- If the project uses `convex/schema.ts` and Convex `query` / `mutation` / `action`, choose `convex`.
+- If `db.ssot != none`, enable both `features.database` and `features.contextAwareness`.
 - Consistency, migration strategy, backup?
 - Write to: `non-functional-requirements.md` + `db.*`
 
@@ -149,10 +151,11 @@ Generate `init/_work/project-blueprint.json`:
     "frontend": { "enabled": false },
     "backend": { "enabled": false },
     "api": { "style": "none" },
-    "database": { "enabled": false }
+    "database": { "enabled": false, "kind": "<none|postgres|mysql|sqlite|mssql|mongodb|dynamodb|convex|other>" }
   },
   "db": {
-    "ssot": "<none|repo-prisma|database>"
+    "kind": "<postgres|mysql|sqlite|mssql|mongodb|dynamodb|convex|other>",
+    "ssot": "<none|repo-prisma|database|convex>"
   },
   "skills": {
     "packs": ["workflows"]
@@ -181,7 +184,7 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
 | Condition | Feature to enable |
 |-----------|-------------------|
 | API/DB/BPMN contracts needed | `contextAwareness` |
-| `db.ssot != "none"` | `database` |
+| `db.ssot != "none"` | `database` + `contextAwareness` |
 | Frontend with UI SSOT | `ui` |
 | Strict env var contract | `environment` |
 | Containerization | `packaging` |
@@ -191,8 +194,8 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
 
 **Feature decision prompts**:
 
-- **contextAwareness**: "Do you have API contracts, DB schemas, or BPMN workflows to track?"
-- **database**: "Does DB schema need SSOT management?" (requires `db.ssot != none`)
+- **contextAwareness**: "Do you have API contracts, DB schemas, or BPMN workflows to track?" (`db.ssot != none` requires this to be enabled)
+- **database**: "Does DB schema need SSOT management?" (requires `db.ssot != none`; also requires `contextAwareness`; use `convex` when Convex owns schema + functions)
 - **packaging**: "Will you produce container images?"
 - **deployment**: "Deploy to multiple environments (dev/staging/prod)?"
 - **release**: "Need automated changelog/versioning?"
@@ -297,7 +300,8 @@ Language selection
 
 Capabilities -> Features
 - API/DB/BPMN -> contextAwareness
-- db.ssot != none -> database
+- db.ssot != none -> database + contextAwareness
+- db.ssot == convex -> prefer repo.language in typescript/javascript/react-native
 - frontend -> ui
 - containerization -> packaging
 - multi-env -> deployment

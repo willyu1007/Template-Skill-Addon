@@ -169,14 +169,45 @@ function compactKey(s) {
   return splitTokens(s).join('');
 }
 
+const CANONICAL_SSOT_PATHS = Object.freeze({
+  prismaSchema: 'prisma/schema.prisma',
+  dbSchemaTables: 'db/schema/tables.json',
+  dbContextContract: 'docs/context/db/schema.json',
+  convexSchema: 'convex/schema.ts',
+  convexFunctionsContract: 'docs/context/convex/functions.json'
+});
+
+function collectUnsupportedSsotPathWarnings(cfg, mode) {
+  if (!cfg || typeof cfg !== 'object') return [];
+
+  const warnings = [];
+  const compare = (label, value, expected) => {
+    const actual = typeof value === 'string' ? value.trim() : '';
+    if (actual && expected && actual !== expected) {
+      warnings.push(`${label}=${actual} is ignored in v1; database contracts use canonical path ${expected}.`);
+    }
+  };
+
+  compare('paths.prismaSchema', cfg?.paths?.prismaSchema, CANONICAL_SSOT_PATHS.prismaSchema);
+  compare('paths.dbSchemaTables', cfg?.paths?.dbSchemaTables, CANONICAL_SSOT_PATHS.dbSchemaTables);
+  compare('paths.dbContextContract', cfg?.paths?.dbContextContract, CANONICAL_SSOT_PATHS.dbContextContract);
+  compare('paths.convexSchema', cfg?.paths?.convexSchema, CANONICAL_SSOT_PATHS.convexSchema);
+  compare('paths.convexFunctionsContract', cfg?.paths?.convexFunctionsContract, CANONICAL_SSOT_PATHS.convexFunctionsContract);
+  compare('db.contracts.dbSchema', cfg?.db?.contracts?.dbSchema, CANONICAL_SSOT_PATHS.dbContextContract);
+  compare('db.contracts.convexFunctions', cfg?.db?.contracts?.convexFunctions, CANONICAL_SSOT_PATHS.convexFunctionsContract);
+
+  if (mode === 'repo-prisma') compare('db.source.path', cfg?.db?.source?.path, CANONICAL_SSOT_PATHS.prismaSchema);
+  if (mode === 'database') compare('db.source.path', cfg?.db?.source?.path, CANONICAL_SSOT_PATHS.dbSchemaTables);
+  if (mode === 'convex') compare('db.source.path', cfg?.db?.source?.path, CANONICAL_SSOT_PATHS.convexSchema);
+
+  return warnings;
+}
+
 function loadSsotConfig(repoRoot) {
   const defaultCfg = {
     mode: 'none',
-    paths: {
-      prismaSchema: 'prisma/schema.prisma',
-      dbSchemaTables: 'db/schema/tables.json',
-      dbContextContract: 'docs/context/db/schema.json'
-    },
+    paths: { ...CANONICAL_SSOT_PATHS },
+    warnings: [],
     sourcePath: null
   };
 
@@ -185,15 +216,11 @@ function loadSsotConfig(repoRoot) {
 
   try {
     const cfg = readJson(cfgPath);
-    const mode = String(cfg.mode || cfg.ssot || cfg.dbSsot || 'none');
-    const paths = cfg.paths && typeof cfg.paths === 'object' ? cfg.paths : defaultCfg.paths;
+    const mode = String(cfg.mode || cfg?.db?.ssot || cfg.ssot || cfg.dbSsot || 'none');
     return {
       mode,
-      paths: {
-        prismaSchema: String(paths.prismaSchema || defaultCfg.paths.prismaSchema),
-        dbSchemaTables: String(paths.dbSchemaTables || defaultCfg.paths.dbSchemaTables),
-        dbContextContract: String(paths.dbContextContract || defaultCfg.paths.dbContextContract)
-      },
+      paths: { ...CANONICAL_SSOT_PATHS },
+      warnings: collectUnsupportedSsotPathWarnings(cfg, mode),
       sourcePath: cfgPath
     };
   } catch {
@@ -201,13 +228,14 @@ function loadSsotConfig(repoRoot) {
   }
 }
 
-function inferSsotMode({ cfgMode, schema, mirrorExists, prismaExists }) {
+function inferSsotMode({ cfgMode, schema, mirrorExists, prismaExists, convexExists }) {
   const m = String(cfgMode || '').trim();
-  if (m === 'repo-prisma' || m === 'database' || m === 'none') return m;
+  if (m === 'repo-prisma' || m === 'database' || m === 'convex' || m === 'none') return m;
 
   const fromSchema = schema && schema.ssot && schema.ssot.mode ? String(schema.ssot.mode) : '';
-  if (fromSchema === 'repo-prisma' || fromSchema === 'database' || fromSchema === 'none') return fromSchema;
+  if (fromSchema === 'repo-prisma' || fromSchema === 'database' || fromSchema === 'convex' || fromSchema === 'none') return fromSchema;
 
+  if (convexExists) return 'convex';
   if (mirrorExists) return 'database';
   if (prismaExists) return 'repo-prisma';
   return 'none';
@@ -296,6 +324,7 @@ function loadNormalizedSchema(repoRoot, ssotCfg) {
   const contractPath = path.join(repoRoot, ssotCfg.paths.dbContextContract);
   const mirrorPath = path.join(repoRoot, ssotCfg.paths.dbSchemaTables);
   const prismaPath = path.join(repoRoot, ssotCfg.paths.prismaSchema);
+  const convexPath = path.join(repoRoot, ssotCfg.paths.convexSchema);
 
   // 1) Preferred: contract
   if (exists(contractPath)) {
@@ -318,7 +347,22 @@ function loadNormalizedSchema(repoRoot, ssotCfg) {
     return { schema, sourceKind: 'mirror', sourcePath: mirrorPath, mirrorPath, prismaPath, generation: gen };
   }
 
-  // 4) Last resort: prisma schema exists but no generator/contract.
+  // 4) Last resort: Convex schema exists but no generator/contract.
+  if (exists(convexPath)) {
+    return {
+      schema: null,
+      sourceKind: 'missing',
+      sourcePath: null,
+      mirrorPath,
+      prismaPath,
+      generation: gen,
+      error: `No normalized contract found at ${ssotCfg.paths.dbContextContract}.\n` +
+        `Found ${ssotCfg.paths.convexSchema} but could not generate contract.\n` +
+        `Run: node .ai/scripts/ctl-db-ssot.mjs sync-to-context (delegates to Convex tooling when configured).`
+    };
+  }
+
+  // 5) Last resort: prisma schema exists but no generator/contract.
   if (exists(prismaPath)) {
     return {
       schema: null,
@@ -344,7 +388,8 @@ function loadNormalizedSchema(repoRoot, ssotCfg) {
       `No DB schema sources found. Expected one of:\n` +
       `- ${ssotCfg.paths.dbContextContract} (preferred)\n` +
       `- ${ssotCfg.paths.dbSchemaTables}\n` +
-      `- ${ssotCfg.paths.prismaSchema}`
+      `- ${ssotCfg.paths.prismaSchema}\n` +
+      `- ${ssotCfg.paths.convexSchema}`
   };
 }
 
@@ -802,11 +847,33 @@ function renderIndexesTable(table) {
   const idxs = Array.isArray(table.indexes) ? table.indexes : [];
   const rows = idxs.map((i) => [
     i.type || '',
-    Array.isArray(i.fields) ? i.fields.join(', ') : '',
+    i.type === 'search'
+      ? (i.searchField || '')
+      : i.type === 'vector'
+        ? (i.vectorField || '')
+        : Array.isArray(i.fields)
+          ? i.fields.join(', ')
+          : '',
     i.name || '',
-    i.map || ''
+    i.type === 'search'
+      ? [
+          i.searchField ? `searchField=${i.searchField}` : '',
+          Array.isArray(i.filterFields) && i.filterFields.length ? `filterFields=${i.filterFields.join(', ')}` : '',
+          i.staged === true ? 'staged=true' : ''
+        ].filter(Boolean).join('; ')
+      : i.type === 'vector'
+        ? [
+            i.vectorField ? `vectorField=${i.vectorField}` : '',
+            Number.isFinite(i.dimensions) ? `dimensions=${i.dimensions}` : '',
+            Array.isArray(i.filterFields) && i.filterFields.length ? `filterFields=${i.filterFields.join(', ')}` : '',
+            i.staged === true ? 'staged=true' : ''
+          ].filter(Boolean).join('; ')
+        : [
+            i.map || '',
+            i.staged === true ? 'staged=true' : ''
+          ].filter(Boolean).join('; ')
   ]);
-  return mdTable(['Type', 'Fields', 'Name', 'Map'], rows);
+  return mdTable(['Type', 'Fields / Target', 'Name', 'Details'], rows);
 }
 
 function renderRelationsTable(table) {
@@ -1084,16 +1151,29 @@ function renderGraphDoc({ schemaMeta, cluster }) {
 
 function tsTypeFromPrismaType(type) {
   const t = String(type || 'String');
+  if (/^array<(.+)>$/i.test(t)) {
+    const inner = t.match(/^array<(.+)>$/i);
+    return `${tsTypeFromPrismaType(inner && inner[1] ? inner[1] : 'unknown')}[]`;
+  }
+  if (/^id<.+>$/i.test(t)) return 'string';
   const map = {
     String: 'string',
+    string: 'string',
     Boolean: 'boolean',
+    boolean: 'boolean',
     Int: 'number',
     BigInt: 'bigint',
     Float: 'number',
     Decimal: 'string',
     DateTime: 'string',
     Json: 'unknown',
-    Bytes: 'string'
+    Bytes: 'string',
+    number: 'number',
+    float64: 'number',
+    int64: 'number',
+    object: 'Record<string, unknown>',
+    bytes: 'string',
+    null: 'null'
   };
   return map[t] || 'unknown';
 }
@@ -1880,7 +1960,23 @@ function renderPlanDoc({ schemaMeta, idx, objectLabel, dbops, problems, knownEnu
     `- Runbook path: \`${schemaMeta.runbookRel}\``
   ].join('\n');
 
-  const ssotRouting = schemaMeta.ssotMode === 'database' ? handoffDatabase : handoffRepoPrisma;
+  const handoffConvex = [
+    '## Handoff (convex SSOT)',
+    '',
+    'This tool does **not** edit Convex files directly. After human review:',
+    '',
+    '1. Apply the change in `convex/schema.ts` for persisted fields, relations, and indexes.',
+    '2. Update related functions under `convex/**/*.ts`.',
+    '3. Run `npx convex codegen` (or `npx convex dev` when working interactively).',
+    '4. Run `node .ai/scripts/ctl-db-ssot.mjs sync-to-context` to refresh `docs/context/db/schema.json` and `docs/context/convex/functions.json`.',
+    '5. Use `convex-best-practices` for implementation and review guardrails.'
+  ].join('\n');
+
+  const ssotRouting = schemaMeta.ssotMode === 'database'
+    ? handoffDatabase
+    : schemaMeta.ssotMode === 'convex'
+      ? handoffConvex
+      : handoffRepoPrisma;
 
   // Prisma snippets are only actionable when repo-prisma is SSOT.
   // In database-as-SSOT mode, Prisma is a mirror and must not be edited as desired-state.
@@ -2068,6 +2164,9 @@ async function main() {
   }
 
   const ssotCfg = loadSsotConfig(repoRoot);
+  if (ssotCfg.warnings && ssotCfg.warnings.length > 0) {
+    for (const warning of ssotCfg.warnings) console.warn(`[warn] ${warning}`);
+  }
   const loaded = loadNormalizedSchema(repoRoot, ssotCfg);
 
   if (!loaded.schema) {
@@ -2081,8 +2180,9 @@ async function main() {
 
   const mirrorExists = exists(loaded.mirrorPath);
   const prismaExists = exists(loaded.prismaPath);
+  const convexExists = exists(path.join(repoRoot, ssotCfg.paths.convexSchema));
 
-  const ssotMode = inferSsotMode({ cfgMode: ssotCfg.mode, schema, mirrorExists, prismaExists });
+  const ssotMode = inferSsotMode({ cfgMode: ssotCfg.mode, schema, mirrorExists, prismaExists, convexExists });
   const dialect = (schema.database && schema.database.dialect) ? String(schema.database.dialect) : 'generic';
 
   const schemaMeta = {
@@ -2104,7 +2204,8 @@ async function main() {
       ssot: {
         mode: ssotMode,
         config: cfgNote,
-        paths: ssotCfg.paths
+        paths: ssotCfg.paths,
+        warnings: ssotCfg.warnings || []
       },
       schema: {
         sourceKind: loaded.sourceKind,

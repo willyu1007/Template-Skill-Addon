@@ -55,7 +55,7 @@ Template repository. Users clone the repository to start new AI-friendly project
 
 The section is **managed by the init pipeline**. After project initialization it will contain:
 
-- The selected DB schema SSOT mode (`none` / `repo-prisma` / `database`)
+- The selected DB schema SSOT mode (`none` / `repo-prisma` / `database` / `convex`)
 - The correct routing for DB schema change requests
 - The canonical LLM-readable DB schema contract location
 

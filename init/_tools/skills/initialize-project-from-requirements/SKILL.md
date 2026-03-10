@@ -76,7 +76,7 @@ Exception: IaC is enabled by `iac.tool` (`none | ros | terraform`); `features.ia
 
 **No external payload directory is required.** Feature templates are integrated in the template repository under:
 
-- `.ai/skills/features/<feature-id>/templates/` (some features source templates from nested skills; for database: `.ai/skills/features/database/sync-code-schema-from-db/templates/`)
+- `.ai/skills/features/<feature-id>/templates/` (some features source templates from nested skills; for database: `.ai/skills/features/database/sync-code-schema-from-db/templates/` or `.ai/skills/features/database/convex-as-ssot/templates/`, depending on `db.ssot`)
 
 Stage C `apply` materializes enabled features by copying templates into the repo (copy-if-missing by default) and then running the corresponding control scripts (Node under `.ai/scripts/` and/or Python under `.ai/skills/features/**/scripts/`, depending on the feature).
 
@@ -120,7 +120,7 @@ Stage C `apply` materializes enabled features by copying templates into the repo
 Depending on `blueprint.features`, Stage C may also materialize:
 
 - Context Awareness: `docs/context/**` + `config/environments/**` (and related context contracts)
-- Database: `db/**` (when `db.ssot=database`) or `prisma/**` (when `db.ssot=repo-prisma`)
+- Database: `db/**` (when `db.ssot=database`), `prisma/**` (when `db.ssot=repo-prisma`), or `convex/**` + `docs/context/convex/**` (when `db.ssot=convex`)
 - UI: `ui/**` + `docs/context/ui/**`
 - Environment: `env/**` + `docs/project/env-ssot.json` + `docs/project/policy.yaml` (and optionally generated `env/.env.example` + `docs/env.md`)
 - IaC: `ops/iac/<tool>/` + `docs/context/iac/overview.json` (enabled via `iac.tool`)
@@ -245,8 +245,8 @@ Set `features.<id>: true` in the blueprint to install a feature during Stage C:
 
 | Feature | When to enable |
 |---------|----------------|
-| `contextAwareness` | API contracts, DB schema, or BPMN tracking needed |
-| `database` | `db.ssot != "none"` (schema SSOT scaffolding) |
+| `contextAwareness` | API contracts, DB schema, or BPMN tracking needed; required when `db.ssot != "none"` |
+| `database` | `db.ssot != "none"` (schema SSOT scaffolding; requires `contextAwareness`) |
 | `ui` | Frontend with stable UI/UX foundation |
 | `environment` | Strict env var contract needed |
 | `packaging` | Containerization / artifact packaging |
@@ -302,6 +302,7 @@ The template repository ships:
 Initialization does **not** auto-delete these. If the user explicitly does not need the corresponding feature packs, you MAY remove the related paths (after confirmation), for example:
 
 - DB mirror tooling: `.ai/skills/features/database/sync-code-schema-from-db/scripts/ctl-db.mjs`, `.ai/skills/features/database/sync-code-schema-from-db/scripts/migrate.mjs`
+- Convex SSOT tooling: `.ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs`
 - CI tooling: `.ai/skills/features/ci/scripts/ctl-ci.mjs`
 - Deployment tooling: `.ai/skills/features/deployment/scripts/ctl-deploy.mjs`, `.ai/skills/features/deployment/scripts/rollback.mjs`
 - Packaging tooling: `.ai/skills/features/packaging/scripts/ctl-packaging.mjs`

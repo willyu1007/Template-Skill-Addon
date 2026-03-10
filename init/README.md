@@ -130,7 +130,7 @@ Schema: `init/_tools/skills/initialize-project-from-requirements/templates/proje
 | `project.*` | Name, description |
 | `repo.*` | Language, package manager, layout |
 | `capabilities.*` | Frontend, backend, database, API |
-| `db.ssot` | Database SSOT mode: `none` / `repo-prisma` / `database` |
+| `db.ssot` | Database SSOT mode: `none` / `repo-prisma` / `database` / `convex` |
 | `features.*` | Optional features to enable in Stage C |
 
 ---

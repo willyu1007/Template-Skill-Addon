@@ -6,11 +6,15 @@
 - Provides a human interface tool (query + change drafting): `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs`
 - If `db.ssot=database`: materializes a repo-local DB mirror under `db/` and initializes DB tooling
 - If `db.ssot=repo-prisma`: keeps `prisma/` as the schema SSOT convention anchor (no `db/` mirror)
+- If `db.ssot=convex`: materializes a Convex skeleton, treats `convex/schema.ts` as SSOT, and generates both DB and function contracts
 
 ## Requirements
 
-- `db.ssot` must be `repo-prisma` or `database` (not `none`)
+- `db.ssot` must be `repo-prisma`, `database`, or `convex` (not `none`)
 - `features.database` must be `true`
+- `features.contextAwareness` must be `true` whenever `db.ssot != none`
+- `db.ssot=convex` requires `repo.language` to be `typescript`, `javascript`, or `react-native`
+- Managed DB contracts use fixed canonical paths in v1 (`docs/context/db/schema.json` and, for Convex, `docs/context/convex/functions.json`)
 
 ## How to enable
 
@@ -21,7 +25,7 @@ In `init/_work/project-blueprint.json`:
 ```json
 {
   "db": { "enabled": true, "ssot": "repo-prisma", "kind": "postgres", "environments": ["dev", "staging", "prod"] },
-  "features": { "database": true }
+  "features": { "database": true, "contextAwareness": true }
 }
 ```
 
@@ -32,7 +36,20 @@ In `init/_work/project-blueprint.json`:
 ```json
 {
   "db": { "enabled": true, "ssot": "database", "kind": "postgres", "environments": ["dev", "staging", "prod"] },
-  "features": { "database": true }
+  "features": { "database": true, "contextAwareness": true }
+}
+```
+
+### Mode: convex (schema SSOT = `convex/schema.ts`)
+
+In `init/_work/project-blueprint.json`:
+
+```json
+{
+  "repo": { "language": "typescript", "packageManager": "pnpm" },
+  "capabilities": { "database": { "enabled": true, "kind": "convex" } },
+  "db": { "enabled": true, "ssot": "convex", "kind": "convex", "environments": ["dev", "staging", "prod"] },
+  "features": { "database": true, "contextAwareness": true }
 }
 ```
 
@@ -50,15 +67,31 @@ When enabled, Stage C:
 node .ai/skills/features/database/sync-code-schema-from-db/scripts/ctl-db.mjs init --repo-root .
 ```
 
-- Optional verification (when Stage C is run with `--verify-features`):
-
-```bash
-node .ai/skills/features/database/sync-code-schema-from-db/scripts/ctl-db.mjs verify --repo-root .
-```
-
 2) If `db.ssot=repo-prisma`:
 
 - Ensures the `prisma/` directory exists (convention anchor; non-destructive)
+
+3) If `db.ssot=convex`:
+
+- Copies templates from:
+  - `.ai/skills/features/database/convex-as-ssot/templates/`
+- Runs:
+
+```bash
+node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs init --repo-root .
+```
+
+4) For every managed DB mode (`repo-prisma` / `database` / `convex`), Stage C then:
+
+- Writes `docs/project/db-ssot.json`
+- Updates the root `AGENTS.md` DB-SSOT block
+- Refreshes generated contracts through the public entrypoint:
+
+```bash
+node .ai/scripts/ctl-db-ssot.mjs sync-to-context --repo-root .
+```
+
+- Optional verification (when Stage C is run with `--verify-features`) happens **after** contract refresh.
 
 ## Key outputs
 
@@ -66,11 +99,18 @@ node .ai/skills/features/database/sync-code-schema-from-db/scripts/ctl-db.mjs ve
 - `node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs` (human interface)
 - `db/**` (only when `db.ssot=database`)
 - `prisma/**` (only when `db.ssot=repo-prisma`)
+- `convex/**` + `docs/context/convex/**` (only when `db.ssot=convex`)
 
 ## Common commands
 
 ```bash
-# Inspect SSOT mode + input sources
+# Inspect SSOT mode + canonical managed paths
+node .ai/scripts/ctl-db-ssot.mjs status
+
+# Refresh generated DB contracts from the active SSOT
+node .ai/scripts/ctl-db-ssot.mjs sync-to-context
+
+# Inspect SSOT mode + human-interface input sources
 node .ai/skills/features/database/db-human-interface/scripts/ctl-db-doc.mjs status
 
 # Query tables/columns/enums and write a human doc

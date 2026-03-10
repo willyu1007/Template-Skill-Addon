@@ -171,6 +171,7 @@
                 "mssql",
                 "mongodb",
                 "dynamodb",
+                "convex",
                 "other"
               ]
             },
@@ -330,7 +331,7 @@
     },
     "db": {
       "type": "object",
-      "description": "Database configuration. Always include db.enabled and db.ssot; other fields apply depending on ssot (none/repo-prisma/database).",
+      "description": "Database configuration. Always include db.enabled and db.ssot; when db.ssot is not none, enable both features.database and features.contextAwareness. Other fields apply depending on ssot (none/repo-prisma/database/convex).",
       "properties": {
         "enabled": {
           "type": "boolean"
@@ -343,6 +344,8 @@
             "sqlite",
             "mssql",
             "mongodb",
+            "dynamodb",
+            "convex",
             "other"
           ]
         },
@@ -362,9 +365,10 @@
           "enum": [
             "none",
             "repo-prisma",
-            "database"
+            "database",
+            "convex"
           ],
-          "description": "Database schema SSOT mode. none: unmanaged; repo-prisma: prisma/schema.prisma; database: real DB with repo mirrors."
+          "description": "Database schema SSOT mode. none: unmanaged; repo-prisma: prisma/schema.prisma; database: real DB with repo mirrors; convex: convex/schema.ts + convex function surface."
         }
       },
       "additionalProperties": true,

@@ -16,7 +16,8 @@ Typical artifacts (not exhaustive):
 - **LLM routing entrypoint**: `docs/context/AGENTS.md` (progressive loading protocol — start here)
 - API contract: `docs/context/api/openapi.yaml`
 - API index (LLM summary): `docs/context/api/api-index.json` (generated from openapi.yaml by `ctl-api-index.mjs`)
-- Database schema contract: `docs/context/db/schema.json`
+- Database schema contract: `docs/context/db/schema.json` (generated; do not hand-edit)
+- Convex function contract: `docs/context/convex/functions.json` (optional; only when Convex is the DB SSOT)
 - Business processes: `docs/context/process/*.bpmn`
 - Domain glossary: `docs/context/glossary.json` (structured term definitions)
 - Architecture principles: `docs/context/architecture-principles.md` (cross-cutting constraints)
@@ -50,9 +51,16 @@ The generator chooses the source based on SSOT mode:
 
 - `repo-prisma`: reads `prisma/schema.prisma` (SSOT) and emits the contract.
 - `database`: reads `db/schema/tables.json` (mirror of real DB) and emits the contract.
+- `convex`: delegates to `convex-as-ssot` to emit both the DB contract and the Convex function contract.
 - `none`: emits an empty contract.
 
 After generation, `ctl-db-ssot` runs `ctl-context touch` (best effort) to keep checksums consistent.
+
+## Optional Convex function contract
+
+- When `db.ssot=convex`, the repository may also register `docs/context/convex/functions.json`.
+- That artifact summarizes the public/internal Convex function surface, validators, auth signals, and usage hints.
+- Use it as a compact routing layer before opening `convex/**/*.ts`.
 
 ## How to update context (script-only)
 

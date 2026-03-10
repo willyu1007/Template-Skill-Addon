@@ -9,9 +9,9 @@ description: Read-only progress reporter. Produces a structured status snapshot 
 Answer short user questions about current progress with an actionable, read-only report, including semantic focus when requested.
 
 ## Scope
-Use this skill when the user wants a snapshot of project/task progress (overall or for a specific task) and the answer can be produced by reading existing tracking artifacts.
-Use this skill when the user asks for semantic focus, cross-feature risk, or decision context already documented in `feature-map.md` semantic briefs.
-Do not use this skill for requests that ask to create/update tasks, change mappings, or repair metadata drift.
+Use `project-status-reporter` when the user wants a snapshot of project/task progress (overall or for a specific task) and the answer can be produced by reading existing tracking artifacts.
+Use `project-status-reporter` when the user asks for semantic focus, cross-feature risk, or decision context already documented in `feature-map.md` semantic briefs.
+Do not use `project-status-reporter` for requests that ask to create/update tasks, change mappings, or repair metadata drift.
 
 ## Response templates
 

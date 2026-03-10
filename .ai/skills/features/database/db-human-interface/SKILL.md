@@ -42,6 +42,7 @@ The Database Docs feature only produces **human-facing artifacts** and **plans/r
 
 - `sync-db-schema-from-code` when `db.ssot = repo-prisma`
 - `sync-code-schema-from-db` when `db.ssot = database`
+- `convex-as-ssot` + `convex-best-practices` when `db.ssot = convex`
 
 ## Canonical inputs (read order)
 
@@ -50,6 +51,11 @@ The controller script reads from these sources (first hit wins):
 1. `docs/context/db/schema.json` (preferred; normalized-db-schema-v2)
 2. `db/schema/tables.json` (DB mirror; normalized or legacy)
 3. `prisma/schema.prisma` (only if contract is missing)
+
+Managed DB workflows in this repository are **contract-first**:
+
+- if `db.ssot != none`, `features.contextAwareness=true` is required
+- `docs/context/db/schema.json` is the canonical generated DB contract
 
 SSOT mode is read from:
 
@@ -178,6 +184,11 @@ Rule: `plan` looks for the corresponding modify doc by `<object>` first, then fa
   - Human executes the runbook against the real DB
   - Then use `sync-code-schema-from-db` to refresh Prisma mirror and the context contract
 
+- If `db.ssot=convex`:
+  - Human+LLM apply the approved change in `convex/schema.ts` and related `convex/**/*.ts`
+  - Run `npx convex codegen` (or `npx convex dev`)
+  - Then run `node .ai/scripts/ctl-db-ssot.mjs sync-to-context` to refresh `docs/context/db/schema.json` and `docs/context/convex/functions.json`
+
 ## Safety and review checklist
 
 Before any SSOT change or DB execution:
@@ -203,3 +214,4 @@ Before any SSOT change or DB execution:
 - MUST route actual SSOT synchronization to:
   - `sync-db-schema-from-code` when `db.ssot=repo-prisma`
   - `sync-code-schema-from-db` when `db.ssot=database`
+  - `convex-as-ssot` when `db.ssot=convex`

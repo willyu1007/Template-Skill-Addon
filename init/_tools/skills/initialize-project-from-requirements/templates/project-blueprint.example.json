@@ -30,8 +30,7 @@
     },
     "database": {
       "enabled": true,
-      "kind": "postgres",
-      "orm": "prisma"
+      "kind": "convex"
     },
     "bpmn": {
       "enabled": true,
@@ -68,14 +67,13 @@
   },
   "db": {
     "enabled": true,
-    "kind": "postgres",
+    "kind": "convex",
     "environments": [
       "dev",
       "staging",
       "prod"
     ],
-    "migrationTool": "prisma",
-    "ssot": "database"
+    "ssot": "convex"
   },
   "ci": {
     "enabled": true,

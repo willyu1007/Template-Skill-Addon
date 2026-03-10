@@ -11,6 +11,7 @@
  *   - none         : no managed SSOT in repo
  *   - repo-prisma  : prisma/schema.prisma is SSOT (code -> db)
  *   - database     : real DB is SSOT (db -> code); repo holds mirrors
+ *   - convex       : convex/schema.ts + convex function surface are SSOT
  *
  * Config (created by init pipeline):
  *   docs/project/db-ssot.json
@@ -72,13 +73,14 @@ Commands:
 
   sync-to-context
     --repo-root <path>          Repo root (default: cwd)
-    --out <path>                Output path (default: docs/context/db/schema.json)
+    --out <path>                Output path (fixed to docs/context/db/schema.json in v1)
     --format <text|json>        Output format (default: text)
     Generate/update the normalized DB schema contract for LLMs.
 
 Notes:
 - This script is safe to run in CI.
 - It never requires DB credentials. For DB SSOT mode it reads repo mirrors.
+- Managed DB contract paths are fixed in v1; custom output paths are not part of the public interface.
 `;
   console.log(msg.trim());
   process.exit(exitCode);
@@ -134,6 +136,40 @@ function exists(p) {
   }
 }
 
+const CANONICAL_PATHS = Object.freeze({
+  prismaSchema: 'prisma/schema.prisma',
+  dbMirror: 'db/schema/tables.json',
+  contextContract: 'docs/context/db/schema.json',
+  convexSchema: 'convex/schema.ts',
+  convexFunctions: 'docs/context/convex/functions.json'
+});
+
+function collectUnsupportedPathWarnings(raw, mode) {
+  if (!raw || typeof raw !== 'object') return [];
+
+  const warnings = [];
+  const compare = (label, value, expected) => {
+    const actual = typeof value === 'string' ? value.trim() : '';
+    if (actual && expected && actual !== expected) {
+      warnings.push(`${label}=${actual} is ignored in v1; managed DB paths are fixed to ${expected}.`);
+    }
+  };
+
+  compare('paths.prismaSchema', raw?.paths?.prismaSchema, CANONICAL_PATHS.prismaSchema);
+  compare('paths.dbSchemaTables', raw?.paths?.dbSchemaTables, CANONICAL_PATHS.dbMirror);
+  compare('paths.dbContextContract', raw?.paths?.dbContextContract, CANONICAL_PATHS.contextContract);
+  compare('paths.convexSchema', raw?.paths?.convexSchema, CANONICAL_PATHS.convexSchema);
+  compare('paths.convexFunctionsContract', raw?.paths?.convexFunctionsContract, CANONICAL_PATHS.convexFunctions);
+  compare('db.contracts.dbSchema', raw?.db?.contracts?.dbSchema, CANONICAL_PATHS.contextContract);
+  compare('db.contracts.convexFunctions', raw?.db?.contracts?.convexFunctions, CANONICAL_PATHS.convexFunctions);
+
+  if (mode === 'repo-prisma') compare('db.source.path', raw?.db?.source?.path, CANONICAL_PATHS.prismaSchema);
+  if (mode === 'database') compare('db.source.path', raw?.db?.source?.path, CANONICAL_PATHS.dbMirror);
+  if (mode === 'convex') compare('db.source.path', raw?.db?.source?.path, CANONICAL_PATHS.convexSchema);
+
+  return warnings;
+}
+
 function loadDbSsotConfig(repoRoot) {
   const configPath = path.join(repoRoot, 'docs', 'project', 'db-ssot.json');
   const raw = readJsonIfExists(configPath);
@@ -146,14 +182,21 @@ function loadDbSsotConfig(repoRoot) {
       : ssot && typeof ssot === 'object' && typeof ssot.mode === 'string'
         ? ssot.mode.trim()
         : '';
-
-  return { path: configPath, config: raw, mode };
+  return {
+    path: configPath,
+    config: raw,
+    mode,
+    paths: { ...CANONICAL_PATHS },
+    warnings: collectUnsupportedPathWarnings(raw, mode)
+  };
 }
 
 function inferMode(repoRoot) {
+  const convexSchema = path.join(repoRoot, 'convex', 'schema.ts');
   const prismaSchema = path.join(repoRoot, 'prisma', 'schema.prisma');
   const dbMirror = path.join(repoRoot, 'db', 'schema', 'tables.json');
 
+  if (exists(convexSchema)) return 'convex';
   if (exists(prismaSchema)) return 'repo-prisma';
   if (exists(dbMirror)) return 'database';
   return 'none';
@@ -162,7 +205,7 @@ function inferMode(repoRoot) {
 function resolveMode(repoRoot) {
   const { path: configPath, config, mode: configuredMode } = loadDbSsotConfig(repoRoot);
 
-  const supported = new Set(['none', 'repo-prisma', 'database']);
+  const supported = new Set(['none', 'repo-prisma', 'database', 'convex']);
 
   if (configuredMode && supported.has(configuredMode)) {
     return {
@@ -260,6 +303,34 @@ function buildContractNone({ repoRoot }) {
   };
 }
 
+function getConvexCtlPath(repoRoot) {
+  return path.join(repoRoot, '.ai', 'skills', 'features', 'database', 'convex-as-ssot', 'scripts', 'ctl-convex.mjs');
+}
+
+function runConvexCtl(repoRoot, args) {
+  const ctlPath = getConvexCtlPath(repoRoot);
+  if (!exists(ctlPath)) {
+    die(`[error] Convex DB SSOT controller not found: ${toPosix(path.relative(repoRoot, ctlPath))}`);
+  }
+
+  const res = spawnSync('node', [ctlPath, ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8'
+  });
+
+  if (res.status !== 0) {
+    const stderr = String(res.stderr || '').trim();
+    const stdout = String(res.stdout || '').trim();
+    const details = [stderr, stdout].filter(Boolean).join('\n');
+    die(`[error] Convex DB SSOT delegation failed.${details ? `\n${details}` : ''}`);
+  }
+
+  return {
+    stdout: String(res.stdout || ''),
+    stderr: String(res.stderr || '')
+  };
+}
+
 function runContextTouch(repoRoot) {
   const contextctl = path.join(repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'ctl-context.mjs');
   if (!exists(contextctl)) return { ran: false, reason: 'ctl-context.mjs not found' };
@@ -278,9 +349,13 @@ function runContextTouch(repoRoot) {
 
 function cmdStatus(repoRoot, format) {
   const resolved = resolveMode(repoRoot);
-  const prismaPath = path.join(repoRoot, 'prisma', 'schema.prisma');
-  const mirrorPath = path.join(repoRoot, 'db', 'schema', 'tables.json');
-  const outPath = path.join(repoRoot, 'docs', 'context', 'db', 'schema.json');
+  const cfg = loadDbSsotConfig(repoRoot);
+  const paths = cfg.paths || { ...CANONICAL_PATHS };
+  const prismaPath = path.join(repoRoot, paths.prismaSchema);
+  const mirrorPath = path.join(repoRoot, paths.dbMirror);
+  const outPath = path.join(repoRoot, paths.contextContract);
+  const convexSchemaPath = path.join(repoRoot, paths.convexSchema);
+  const convexFunctionsPath = path.join(repoRoot, paths.convexFunctions);
 
   const status = {
     mode: resolved.mode,
@@ -289,13 +364,18 @@ function cmdStatus(repoRoot, format) {
     paths: {
       prismaSchema: toPosix(path.relative(repoRoot, prismaPath)),
       dbMirror: toPosix(path.relative(repoRoot, mirrorPath)),
-      contextContract: toPosix(path.relative(repoRoot, outPath))
+      contextContract: toPosix(path.relative(repoRoot, outPath)),
+      convexSchema: toPosix(path.relative(repoRoot, convexSchemaPath)),
+      convexFunctions: toPosix(path.relative(repoRoot, convexFunctionsPath))
     },
     exists: {
       prismaSchema: exists(prismaPath),
       dbMirror: exists(mirrorPath),
-      contextContract: exists(outPath)
-    }
+      contextContract: exists(outPath),
+      convexSchema: exists(convexSchemaPath),
+      convexFunctions: exists(convexFunctionsPath)
+    },
+    warnings: cfg.warnings || []
   };
 
   if (format === 'json') {
@@ -313,42 +393,71 @@ function cmdStatus(repoRoot, format) {
   console.log(`    - Prisma schema:   ${status.paths.prismaSchema} (${status.exists.prismaSchema ? 'present' : 'missing'})`);
   console.log(`    - DB mirror:       ${status.paths.dbMirror} (${status.exists.dbMirror ? 'present' : 'missing'})`);
   console.log(`    - Context contract:${status.paths.contextContract} (${status.exists.contextContract ? 'present' : 'missing'})`);
+  console.log(`    - Convex schema:   ${status.paths.convexSchema} (${status.exists.convexSchema ? 'present' : 'missing'})`);
+  console.log(`    - Convex functions:${status.paths.convexFunctions} (${status.exists.convexFunctions ? 'present' : 'missing'})`);
+  if (status.warnings.length > 0) {
+    for (const warning of status.warnings) console.warn(`[warn] ${warning}`);
+  }
 }
 
 function cmdSyncToContext(repoRoot, outPath, format) {
   const resolved = resolveMode(repoRoot);
+  const cfg = loadDbSsotConfig(repoRoot);
+  const paths = cfg.paths || { ...CANONICAL_PATHS };
+  if (outPath) {
+    const requestedOut = resolvePath(repoRoot, outPath);
+    const requestedRel = toPosix(path.relative(repoRoot, requestedOut));
+    if (requestedRel !== CANONICAL_PATHS.contextContract) {
+      die(`[error] ctl-db-ssot v1 uses fixed output path ${CANONICAL_PATHS.contextContract}; custom --out is not supported.`);
+    }
+  }
+  const outputPath = resolvePath(repoRoot, CANONICAL_PATHS.contextContract);
+  if (!outputPath) die('[error] Failed to resolve canonical output path');
 
-  let built;
+  let built = null;
+  let delegatedConvex = null;
   if (resolved.mode === 'repo-prisma') {
     built = buildContractFromPrisma({ repoRoot, mode: 'repo-prisma' });
   } else if (resolved.mode === 'database') {
     built = buildContractFromDbMirror({ repoRoot, mode: 'database' });
+  } else if (resolved.mode === 'convex') {
+    const fnOut = resolvePath(repoRoot, CANONICAL_PATHS.convexFunctions);
+    delegatedConvex = {
+      fnOut: toPosix(path.relative(repoRoot, fnOut))
+    };
+    runConvexCtl(repoRoot, [
+      'sync-to-context',
+      '--repo-root',
+      repoRoot,
+      '--db-out',
+      outputPath,
+      '--fn-out',
+      fnOut,
+      '--internal-caller',
+      'ctl-db-ssot'
+    ]);
   } else {
     built = buildContractNone({ repoRoot });
   }
 
-  const outputPath = resolvePath(repoRoot, outPath || path.join('docs', 'context', 'db', 'schema.json'));
-  if (!outputPath) die('[error] Failed to resolve output path');
+  if (built) {
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 
-  // Ensure target dir exists
-  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-
-  // Sanity: enforce expected version
-  if (built.contract.version !== NORMALIZED_DB_SCHEMA_VERSION) {
-    built.contract.version = NORMALIZED_DB_SCHEMA_VERSION;
-  }
-
-  // Preserve updatedAt when the generated contract is structurally identical.
-  const existing = readJsonIfExists(outputPath);
-  if (existing && typeof existing === 'object') {
-    const a = stableStringifyForCompare(withoutUpdatedAt(existing));
-    const b = stableStringifyForCompare(withoutUpdatedAt(built.contract));
-    if (a === b && typeof existing.updatedAt === 'string' && existing.updatedAt) {
-      built.contract.updatedAt = existing.updatedAt;
+    if (built.contract.version !== NORMALIZED_DB_SCHEMA_VERSION) {
+      built.contract.version = NORMALIZED_DB_SCHEMA_VERSION;
     }
-  }
 
-  writeJson(outputPath, built.contract);
+    const existing = readJsonIfExists(outputPath);
+    if (existing && typeof existing === 'object') {
+      const a = stableStringifyForCompare(withoutUpdatedAt(existing));
+      const b = stableStringifyForCompare(withoutUpdatedAt(built.contract));
+      if (a === b && typeof existing.updatedAt === 'string' && existing.updatedAt) {
+        built.contract.updatedAt = existing.updatedAt;
+      }
+    }
+
+    writeJson(outputPath, built.contract);
+  }
 
   const touchRes = runContextTouch(repoRoot);
 
@@ -356,7 +465,8 @@ function cmdSyncToContext(repoRoot, outPath, format) {
     ok: true,
     mode: resolved.mode,
     out: toPosix(path.relative(repoRoot, outputPath)),
-    warnings: built.warnings,
+    ...(delegatedConvex ? { convexFunctions: delegatedConvex.fnOut } : {}),
+    warnings: [...(cfg.warnings || []), ...(built ? built.warnings : [])],
     contextTouch: touchRes
   };
 
@@ -368,8 +478,11 @@ function cmdSyncToContext(repoRoot, outPath, format) {
   console.log('[ok] Context DB contract updated.');
   console.log(`  - Mode: ${resolved.mode}`);
   console.log(`  - Out:  ${result.out}`);
-  if (built.warnings && built.warnings.length > 0) {
-    for (const w of built.warnings) console.warn(`[warn] ${w}`);
+  if (result.convexFunctions) {
+    console.log(`  - Convex functions: ${result.convexFunctions}`);
+  }
+  if (result.warnings && result.warnings.length > 0) {
+    for (const w of result.warnings) console.warn(`[warn] ${w}`);
   }
   if (touchRes.ran) {
     console.log(`  - ctl-context touch: ${touchRes.ok ? 'ok' : `failed (exit ${touchRes.exitCode})`}`);

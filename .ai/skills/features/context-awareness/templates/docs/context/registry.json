@@ -67,7 +67,7 @@
       "id": "db-schema",
       "type": "db-schema",
       "path": "docs/context/db/schema.json",
-      "mode": "contract",
+      "mode": "generated",
       "format": "normalized-db-schema-v2",
       "tags": [
         "db"
