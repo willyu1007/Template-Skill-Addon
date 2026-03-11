@@ -23,7 +23,7 @@ Use `convex-as-ssot` only when one of the following is true:
 - `docs/project/db-ssot.json` already indicates Convex mode, or
 - the task is to bootstrap the repository so it can enter Convex mode
 - `features.contextAwareness=true` is enabled or will be enabled as part of initialization
-- the repo uses a root-level `convex/` directory and root `package.json` (Convex v1 is root-only)
+- the repo can identify its Convex schema source via `docs/project/db-ssot.json` (`db.source.path`) or the default `convex/schema.ts`
 
 When the project uses:
 
@@ -37,8 +37,8 @@ Read these inputs in order:
 1. `docs/project/db-ssot.json`
 2. `docs/context/db/schema.json`
 3. `docs/context/convex/functions.json`
-4. `convex/schema.ts`
-5. `convex/**/*.ts` (excluding `convex/_generated/**`)
+4. the configured Convex schema source (default: `convex/schema.ts`)
+5. the configured Convex source directory (excluding `_generated/**`)
 
 ## Outputs
 
@@ -67,7 +67,7 @@ node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify -
 
 1. Read `docs/project/db-ssot.json`.
 2. Confirm the project is in Convex mode or is being migrated there.
-3. Confirm `convex/schema.ts` is the intended persistence SSOT.
+3. Confirm the configured Convex schema path (default `convex/schema.ts`) is the intended persistence SSOT.
 
 ### Phase A — Initialize scaffold
 
@@ -87,8 +87,8 @@ The `npx convex dev` step creates or refreshes local Convex configuration and ge
 
 ### Phase B — Change the SSOT
 
-6. Apply persistence changes in `convex/schema.ts`.
-7. Apply behavioral changes in `convex/**/*.ts`.
+6. Apply persistence changes in the configured Convex schema source.
+7. Apply behavioral changes in the configured Convex source directory.
 8. Refresh generated Convex types:
 
 ```bash
@@ -122,26 +122,28 @@ node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify -
 The current contract generator is intentionally lightweight. To keep extraction deterministic in v1:
 
 - define schema as `export default defineSchema({ ... })`
+- one-level schema indirection like `const tables = { ... }; export default defineSchema(tables)` is supported
 - define functions as `export const name = query|mutation|action|httpAction|internalQuery|internalMutation|internalAction({ ... })`
+- explicit aliases of those constructors are supported when the alias chain originates from a Convex constructor import in the same file
 - define indexes directly on `defineTable(...)` via chained `.index(...)`, `.searchIndex(...)`, `.vectorIndex(...)`
 
 Do NOT rely on v1 contract extraction for:
 
-- wrapper constructors around `query(...)` / `mutation(...)` / `action(...)`
+- higher-order wrapper factories around `query(...)` / `mutation(...)` / `action(...)`
 - dynamic schema composition or helper-generated table definitions
 - heavily abstracted validator builders where the final literal shape is not directly visible
 
 ## Verification
 
 - [ ] `docs/project/db-ssot.json` resolves to Convex mode
-- [ ] `convex/schema.ts` exists
-- [ ] `docs/context/db/schema.json` was generated from `convex/schema.ts`
-- [ ] `docs/context/convex/functions.json` was generated from `convex/**/*.ts`
-- [ ] `package.json` includes the `convex` dependency when a package manifest exists
+- [ ] the configured Convex schema source exists
+- [ ] `docs/context/db/schema.json` was generated from the configured Convex schema source
+- [ ] `docs/context/convex/functions.json` was generated from the configured Convex source directory
+- [ ] the package manifest nearest the configured schema source includes the `convex` dependency when it exists
 - [ ] `ctl-convex verify --strict` reports no source-vs-contract drift
 - [ ] public functions are visible in the function contract
 - [ ] generated artifacts were not hand-edited after regeneration
-- [ ] `convex/_generated/**` is refreshed when signatures changed
+- [ ] the configured Convex `_generated/**` directory is refreshed when signatures changed
 
 ## References
 
@@ -155,6 +157,6 @@ Do NOT rely on v1 contract extraction for:
 ## Boundaries
 
 - Do NOT treat `docs/context/db/schema.json` as the SSOT in Convex mode.
-- Do NOT bypass `convex/schema.ts` when stored data shape changes.
+- Do NOT bypass the configured Convex schema source when stored data shape changes.
 - Repository-wide blueprint / Stage C / root-doc integration is owned by the init pipeline and `ctl-db-ssot`.
 - Do NOT hand-edit `convex/_generated/**`.

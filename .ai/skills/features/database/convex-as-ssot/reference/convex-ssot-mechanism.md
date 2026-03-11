@@ -4,8 +4,8 @@
 
 Convex mode defines two primary source files:
 
-1. `convex/schema.ts` for the persistent data model
-2. `convex/**/*.ts` for the callable backend function surface
+1. the configured schema source (default: `convex/schema.ts`) for the persistent data model
+2. the sibling Convex source directory (default: `convex/**/*.ts`) for the callable backend function surface
 
 These are transformed into two LLM-friendly contracts:
 
@@ -16,7 +16,7 @@ These are transformed into two LLM-friendly contracts:
 
 ### 1. Schema contract
 
-`convex/schema.ts` is parsed into a normalized JSON structure that records:
+The configured Convex schema source is parsed into a normalized JSON structure that records:
 
 - tables
 - fields
@@ -29,7 +29,7 @@ These are transformed into two LLM-friendly contracts:
 
 ### 2. Function contract
 
-`convex/**/*.ts` is scanned for exported Convex functions:
+The configured Convex source directory is scanned for exported Convex functions:
 
 - `query`
 - `mutation`

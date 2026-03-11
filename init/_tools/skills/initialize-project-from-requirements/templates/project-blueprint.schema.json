@@ -331,7 +331,7 @@
     },
     "db": {
       "type": "object",
-      "description": "Database configuration. Always include db.enabled and db.ssot; when db.ssot is not none, enable both features.database and features.contextAwareness. Other fields apply depending on ssot (none/repo-prisma/database/convex). Convex v1 also requires repo.layout=single and a root-level convex/ directory with a root package.json.",
+      "description": "Database configuration. Always include db.enabled and db.ssot; when db.ssot is not none, enable both features.database and features.contextAwareness. Other fields apply depending on ssot (none/repo-prisma/database/convex). Convex bootstraps a repo-root convex/ scaffold by default, or the configured db.source.path location when provided; init/sync/verify all follow that resolved path.",
       "properties": {
         "enabled": {
           "type": "boolean"
@@ -368,7 +368,7 @@
             "database",
             "convex"
           ],
-          "description": "Database schema SSOT mode. none: unmanaged; repo-prisma: prisma/schema.prisma; database: real DB with repo mirrors; convex: convex/schema.ts + convex function surface (v1 requires repo.layout=single)."
+          "description": "Database schema SSOT mode. none: unmanaged; repo-prisma: prisma/schema.prisma; database: real DB with repo mirrors; convex: configured Convex schema source + Convex function surface (default scaffold: convex/schema.ts)."
         }
       },
       "additionalProperties": true,

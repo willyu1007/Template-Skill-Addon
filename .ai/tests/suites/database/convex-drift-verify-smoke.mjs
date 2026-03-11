@@ -21,6 +21,33 @@ function writeJson(filePath, value) {
 export function run(ctx) {
   const fixture = materializeConvexFixture(ctx, name);
 
+  fs.writeFileSync(
+    path.join(fixture.paths.convexDir, 'helpers.ts'),
+    `export const localHelper = createQueryOptions({
+  queryKey: ["messages"],
+});
+
+export const alsoNotAFunction = actionBuilder({
+  name: "noop",
+});
+`,
+    'utf8'
+  );
+
+  const syncAfterHelpers = runNodeScript({
+    script: fixture.scripts.dbSsotCtl,
+    args: ['sync-to-context', '--repo-root', fixture.rootDir],
+    cwd: fixture.rootDir,
+    evidenceDir: fixture.testDir,
+    label: `${name}.sync-after-helper-noise`,
+  });
+  expectOk(syncAfterHelpers, `${name} sync after helper noise`);
+  const helperNoiseContract = JSON.parse(fs.readFileSync(fixture.paths.functionsContract, 'utf8'));
+  const helperNoiseIds = (helperNoiseContract.functions || []).map((fn) => fn.functionId);
+  if (helperNoiseIds.includes('helpers:localHelper') || helperNoiseIds.includes('helpers:alsoNotAFunction')) {
+    return { name, status: 'FAIL', error: 'Expected helper builder calls to be ignored by Convex function extraction' };
+  }
+
   fs.rmSync(fixture.paths.generatedDir, { recursive: true, force: true });
 
   const verifyMissingGenerated = runNodeScript({
@@ -33,7 +60,7 @@ export function run(ctx) {
   expectOk(verifyMissingGenerated, `${name} verify missing generated`);
   assertIncludes(
     verifyMissingGenerated.stdout,
-    'convex/_generated/ is missing',
+    'convex/_generated is missing',
     'Expected missing _generated warning during non-strict verify'
   );
 
@@ -52,7 +79,7 @@ export function run(ctx) {
   }
   assertIncludes(
     verifyMissingGeneratedStrict.stdout,
-    'convex/_generated/ is missing',
+    'convex/_generated is missing',
     'Expected strict verify output to retain missing _generated warning'
   );
 
@@ -150,30 +177,81 @@ export const latest = query({
     'Expected strict verify to print function drift summary'
   );
 
-  const monorepoRoot = path.join(fixture.testDir, 'monorepo-fixture');
-  fs.mkdirSync(monorepoRoot, { recursive: true });
-  fs.cpSync(fixture.rootDir, monorepoRoot, { recursive: true });
-  const pkgPath = path.join(monorepoRoot, 'package.json');
-  const monorepoPkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-  monorepoPkg.workspaces = ['apps/*', 'packages/*'];
-  writeJson(pkgPath, monorepoPkg);
-
-  const verifyMonorepo = runNodeScript({
-    script: fixture.scripts.convexCtl,
-    args: ['verify', '--repo-root', monorepoRoot],
-    cwd: monorepoRoot,
-    evidenceDir: fixture.testDir,
-    label: `${name}.verify-monorepo`,
+  const guardedRoot = path.join(fixture.testDir, 'guarded-fixture');
+  fs.mkdirSync(path.join(guardedRoot, 'docs', 'project'), { recursive: true });
+  writeJson(path.join(guardedRoot, 'package.json'), {
+    name: `${name}-guarded`,
+    private: true,
+    version: '0.0.0',
   });
-  if (verifyMonorepo.error || verifyMonorepo.code === 0) {
-    const detail = verifyMonorepo.error ? String(verifyMonorepo.error) : verifyMonorepo.stderr || verifyMonorepo.stdout;
-    return { name, status: 'FAIL', error: `Expected monorepo verify to fail: ${detail}` };
+  writeJson(path.join(guardedRoot, 'docs', 'project', 'db-ssot.json'), {
+    version: 1,
+    updatedAt: '2026-03-11T00:00:00.000Z',
+    mode: 'convex',
+    paths: {
+      convexSchema: '../outside/convex/schema.ts',
+      convexFunctionsContract: 'docs/context/convex/functions.json',
+      dbContextContract: 'docs/context/db/schema.json',
+    },
+    db: {
+      ssot: 'convex',
+      kind: 'convex',
+      source: {
+        kind: 'convex-schema',
+        path: '../outside/convex/schema.ts',
+      },
+      contracts: {
+        dbSchema: 'docs/context/db/schema.json',
+        convexFunctions: 'docs/context/convex/functions.json',
+      },
+      generated: {
+        typesDir: '../outside/convex/_generated',
+      },
+    },
+  });
+
+  const guardedInit = runNodeScript({
+    script: fixture.scripts.convexCtl,
+    args: ['init', '--repo-root', guardedRoot],
+    cwd: guardedRoot,
+    evidenceDir: fixture.testDir,
+    label: `${name}.guarded-init`,
+  });
+  if (guardedInit.error || guardedInit.code === 0) {
+    const detail = guardedInit.error ? String(guardedInit.error) : guardedInit.stderr || guardedInit.stdout;
+    return { name, status: 'FAIL', error: `Expected guarded init to reject out-of-repo path: ${detail}` };
   }
-  assertIncludes(
-    `${verifyMonorepo.stdout}\n${verifyMonorepo.stderr}`,
-    'workspace/monorepo roots',
-    'Expected monorepo verify error'
-  );
+  assertIncludes(`${guardedInit.stdout}\n${guardedInit.stderr}`, 'outside repo root', 'Expected guarded init error');
+
+  const guardedSync = runNodeScript({
+    script: fixture.scripts.dbSsotCtl,
+    args: ['sync-to-context', '--repo-root', guardedRoot],
+    cwd: guardedRoot,
+    evidenceDir: fixture.testDir,
+    label: `${name}.guarded-sync`,
+  });
+  if (guardedSync.error || guardedSync.code === 0) {
+    const detail = guardedSync.error ? String(guardedSync.error) : guardedSync.stderr || guardedSync.stdout;
+    return { name, status: 'FAIL', error: `Expected guarded sync to reject out-of-repo path: ${detail}` };
+  }
+  assertIncludes(`${guardedSync.stdout}\n${guardedSync.stderr}`, 'outside repo root', 'Expected guarded sync error');
+
+  const guardedVerify = runNodeScript({
+    script: fixture.scripts.convexCtl,
+    args: ['verify', '--repo-root', guardedRoot, '--strict'],
+    cwd: guardedRoot,
+    evidenceDir: fixture.testDir,
+    label: `${name}.guarded-verify`,
+  });
+  if (guardedVerify.error || guardedVerify.code === 0) {
+    const detail = guardedVerify.error ? String(guardedVerify.error) : guardedVerify.stderr || guardedVerify.stdout;
+    return { name, status: 'FAIL', error: `Expected guarded strict verify to fail for out-of-repo path: ${detail}` };
+  }
+  assertIncludes(`${guardedVerify.stdout}\n${guardedVerify.stderr}`, 'outside repo root', 'Expected guarded verify error');
+
+  if (fs.existsSync(path.join(fixture.testDir, 'outside'))) {
+    return { name, status: 'FAIL', error: 'Expected repo-boundary guardrails to prevent writes outside the guarded repo root' };
+  }
 
   ctx.log(`[${name}] PASS`);
   return { name, status: 'PASS' };

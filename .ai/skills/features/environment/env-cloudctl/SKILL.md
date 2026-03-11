@@ -243,7 +243,8 @@ python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.
 - [ ] Explicit approval gate respected
 - [ ] Verify passes after apply
 - [ ] No secret values in evidence
-- [ ] Central test suite passes: `node .ai/tests/run.mjs --suite environment`
+- [ ] Maintainer cloud lifecycle regression passes when `env-cloudctl` or mockcloud behavior changes: `node .ai/tests/run-maintainer.mjs --suite environment`
+- [ ] Shared public environment smoke passes when common contract/local scaffolding changed: `node .ai/tests/run.mjs --suite environment`
 
 ## Boundaries
 

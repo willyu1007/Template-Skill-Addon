@@ -215,29 +215,19 @@ function templateFiles() {
   ];
 }
 
-function packageJsonPath(repoRoot) {
-  return path.join(repoRoot, "package.json");
-}
-
-function detectUnsupportedMonorepoMarkers(repoRoot, pkg) {
-  const markers = [];
-  if (pkg && typeof pkg === "object" && pkg.workspaces) {
-    markers.push("package.json#workspaces");
-  }
-
-  const workspaceFiles = [
-    "pnpm-workspace.yaml",
-    "lerna.json",
-    "nx.json",
-    "turbo.json",
-  ];
-  for (const file of workspaceFiles) {
-    if (fs.existsSync(path.join(repoRoot, file))) {
-      markers.push(file);
+function firstConfiguredPath(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return toPosixPath(value.trim());
     }
   }
+  return "";
+}
 
-  return uniqueSorted(markers);
+function isPathWithinRepo(repoRoot, targetPath) {
+  const rel = path.relative(path.resolve(repoRoot), path.resolve(targetPath));
+  if (!rel) return true;
+  return rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
 }
 
 function collectUnsupportedPathWarnings(raw, mode) {
@@ -252,19 +242,39 @@ function collectUnsupportedPathWarnings(raw, mode) {
   };
 
   compare("paths.dbContextContract", raw?.paths?.dbContextContract, CANONICAL_PATHS.dbContract);
-  compare("paths.convexSchema", raw?.paths?.convexSchema, CANONICAL_PATHS.schema);
   compare("paths.convexFunctionsContract", raw?.paths?.convexFunctionsContract, CANONICAL_PATHS.functionContract);
   compare("db.contracts.dbSchema", raw?.db?.contracts?.dbSchema, CANONICAL_PATHS.dbContract);
   compare("db.contracts.convexFunctions", raw?.db?.contracts?.convexFunctions, CANONICAL_PATHS.functionContract);
-  if (mode === "convex") compare("db.source.path", raw?.db?.source?.path, CANONICAL_PATHS.schema);
 
   return warnings;
 }
 
+function findNearestAncestorPath(startDir, filename, stopDir) {
+  let current = path.resolve(startDir);
+  const stop = path.resolve(stopDir);
+
+  if (!isPathWithinRepo(stop, current) && current !== stop) {
+    return null;
+  }
+
+  while (true) {
+    const candidate = path.join(current, filename);
+    if (fs.existsSync(candidate)) return candidate;
+    if (current === stop) break;
+
+    const parent = path.dirname(current);
+    if (parent === current || !parent.startsWith(stop)) break;
+    current = parent;
+  }
+
+  return null;
+}
+
 function copyTemplates(repoRoot, dryRun = false) {
+  const layout = resolveConvexLayout(repoRoot);
   const actions = [];
   const dirs = [
-    path.join(repoRoot, "convex"),
+    layout.convexDir,
     path.join(repoRoot, "docs", "context", "db"),
     path.join(repoRoot, "docs", "context", "convex"),
   ];
@@ -278,7 +288,9 @@ function copyTemplates(repoRoot, dryRun = false) {
 
   for (const [fromRel, toRel] of templateFiles()) {
     const src = path.join(templatesDir, fromRel);
-    const dest = path.join(repoRoot, toRel);
+    const dest = toRel.startsWith("convex/")
+      ? path.join(layout.convexDir, path.relative("convex", toRel))
+      : path.join(repoRoot, toRel);
     const content = readTextIfExists(src);
     if (content == null) {
       actions.push({ op: "warn", path: src, reason: "missing-template" });
@@ -295,11 +307,12 @@ function copyTemplates(repoRoot, dryRun = false) {
 }
 
 function ensureConvexPackageManifest(repoRoot, dryRun = false) {
-  const pkgPath = packageJsonPath(repoRoot);
+  const layout = resolveConvexLayout(repoRoot);
+  const pkgPath = layout.packageJsonPath;
   if (!fs.existsSync(pkgPath)) {
     return {
       actions: [{ op: "skip", path: pkgPath, reason: "package.json missing" }],
-      warnings: ["package.json is missing; skipping Convex dependency and script injection."],
+      warnings: [`${layout.packageJsonRel} is missing; skipping Convex dependency and script injection.`],
     };
   }
 
@@ -307,7 +320,7 @@ function ensureConvexPackageManifest(repoRoot, dryRun = false) {
   if (!pkg || typeof pkg !== "object" || Array.isArray(pkg)) {
     return {
       actions: [{ op: "warn", path: pkgPath, reason: "invalid-package-json" }],
-      warnings: ["package.json could not be parsed; skipping Convex dependency and script injection."],
+      warnings: [`${layout.packageJsonRel} could not be parsed; skipping Convex dependency and script injection.`],
     };
   }
 
@@ -400,11 +413,12 @@ function loadDbSsotConfig(repoRoot) {
     : typeof raw.ssot === "string"
       ? raw.ssot
       : null;
+  const sourcePath = firstConfiguredPath(db?.source?.path, raw?.paths?.convexSchema, CANONICAL_PATHS.schema) || CANONICAL_PATHS.schema;
   return {
     path: configPath,
     config: raw,
     mode,
-    sourcePath: CANONICAL_PATHS.schema,
+    sourcePath,
     dbContractPath: CANONICAL_PATHS.dbContract,
     fnContractPath: CANONICAL_PATHS.functionContract,
     warnings: collectUnsupportedPathWarnings(raw, mode),
@@ -431,13 +445,53 @@ function resolveMode(repoRoot) {
   };
 }
 
+function resolveConvexLayout(repoRoot) {
+  const loaded = loadDbSsotConfig(repoRoot);
+  const sourcePath = loaded.sourcePath || CANONICAL_PATHS.schema;
+  const schemaPath = resolvePath(repoRoot, sourcePath);
+  const convexDir = path.dirname(schemaPath);
+  const packageJsonPath =
+    findNearestAncestorPath(convexDir, "package.json", repoRoot) ||
+    path.join(repoRoot, "package.json");
+  const errors = [];
+
+  if (!isPathWithinRepo(repoRoot, schemaPath)) {
+    errors.push(`Configured Convex schema path resolves outside repo root: ${sourcePath}`);
+  }
+  if (!isPathWithinRepo(repoRoot, convexDir)) {
+    errors.push(`Configured Convex source directory resolves outside repo root: ${toPosixPath(path.relative(repoRoot, convexDir))}`);
+  }
+  if (!isPathWithinRepo(repoRoot, packageJsonPath)) {
+    errors.push(`Resolved package manifest path escapes repo root: ${toPosixPath(path.relative(repoRoot, packageJsonPath))}`);
+  }
+
+  return {
+    sourcePath,
+    schemaPath,
+    schemaRel: toPosixPath(path.relative(repoRoot, schemaPath)),
+    convexDir,
+    convexDirRel: toPosixPath(path.relative(repoRoot, convexDir)),
+    packageJsonPath,
+    packageJsonRel: toPosixPath(path.relative(repoRoot, packageJsonPath)),
+    dbContractPath: path.join(repoRoot, loaded.dbContractPath || CANONICAL_PATHS.dbContract),
+    fnContractPath: path.join(repoRoot, loaded.fnContractPath || CANONICAL_PATHS.functionContract),
+    errors,
+    warnings: loaded.warnings || [],
+  };
+}
+
+function assertValidConvexLayout(layout) {
+  if (!layout.errors || layout.errors.length === 0) return;
+  die(`[error] Invalid Convex layout.\n${layout.errors.map((error) => `- ${error}`).join("\n")}`);
+}
+
 function buildStatus(repoRoot) {
   const mode = resolveMode(repoRoot);
-  const loaded = loadDbSsotConfig(repoRoot);
-  const schemaPath = path.join(repoRoot, mode.sourcePath || "convex/schema.ts");
-  const dbContractPath = path.join(repoRoot, loaded.dbContractPath || "docs/context/db/schema.json");
-  const fnContractPath = path.join(repoRoot, loaded.fnContractPath || "docs/context/convex/functions.json");
-  const pkgPath = packageJsonPath(repoRoot);
+  const layout = resolveConvexLayout(repoRoot);
+  const schemaPath = layout.schemaPath;
+  const dbContractPath = layout.dbContractPath;
+  const fnContractPath = layout.fnContractPath;
+  const pkgPath = layout.packageJsonPath;
   const pkg = readJsonIfExists(pkgPath);
   const dbContract = readJsonIfExists(dbContractPath);
   const fnContract = readJsonIfExists(fnContractPath);
@@ -446,11 +500,11 @@ function buildStatus(repoRoot) {
     mode: mode.mode,
     modeSource: mode.source,
     dbSsotConfig: toPosixPath(path.relative(repoRoot, mode.configPath)),
-    sourcePath: mode.sourcePath,
+    sourcePath: layout.schemaRel,
     artifacts: {
       schema: {
         exists: fs.existsSync(schemaPath),
-        path: toPosixPath(path.relative(repoRoot, schemaPath)),
+        path: layout.schemaRel,
       },
       dbContract: {
         exists: fs.existsSync(dbContractPath),
@@ -464,21 +518,23 @@ function buildStatus(repoRoot) {
       },
       packageJson: {
         exists: fs.existsSync(pkgPath),
-        path: "package.json",
+        path: layout.packageJsonRel,
         hasConvexDependency: !!(pkg?.dependencies?.convex || pkg?.devDependencies?.convex),
         hasConvexDevScript: pkg?.scripts?.["convex:dev"] === "convex dev",
         hasConvexCodegenScript: pkg?.scripts?.["convex:codegen"] === "convex codegen",
       },
       generated: {
-        exists: fs.existsSync(path.join(repoRoot, "convex", "_generated")),
-        path: "convex/_generated",
+        exists: fs.existsSync(path.join(layout.convexDir, "_generated")),
+        path: toPosixPath(path.relative(repoRoot, path.join(layout.convexDir, "_generated"))),
       },
     },
-    warnings: loaded.warnings || [],
+    errors: layout.errors,
+    warnings: layout.warnings,
   };
 }
 
 function cmdInit(repoRoot, dryRun) {
+  assertValidConvexLayout(resolveConvexLayout(repoRoot));
   const actions = copyTemplates(repoRoot, dryRun);
   const pkg = ensureConvexPackageManifest(repoRoot, dryRun);
   actions.push(...pkg.actions);
@@ -548,8 +604,9 @@ function maybeRegisterConvexFunctionsArtifact(repoRoot, fnOutPath) {
 }
 
 function cmdSyncToContext(repoRoot, schemaPathOpt, dbOutOpt, fnOutOpt) {
-  const loaded = loadDbSsotConfig(repoRoot);
-  const schemaPath = resolvePath(repoRoot, schemaPathOpt || CANONICAL_PATHS.schema);
+  const layout = resolveConvexLayout(repoRoot);
+  assertValidConvexLayout(layout);
+  const schemaPath = resolvePath(repoRoot, schemaPathOpt || layout.sourcePath);
   if (!fs.existsSync(schemaPath)) {
     die(`[error] Convex schema not found: ${toPosixPath(path.relative(repoRoot, schemaPath))}`);
   }
@@ -572,11 +629,12 @@ function cmdSyncToContext(repoRoot, schemaPathOpt, dbOutOpt, fnOutOpt) {
   const dbOut = resolvePath(repoRoot, CANONICAL_PATHS.dbContract);
   const fnOut = resolvePath(repoRoot, CANONICAL_PATHS.functionContract);
   const schemaText = readTextIfExists(schemaPath) || "";
+  const convexDir = path.dirname(schemaPath);
 
   const dbContract = parseConvexSchema(schemaText, {
     sourcePath: toPosixPath(path.relative(repoRoot, schemaPath)),
   });
-  const functionContract = extractConvexFunctions({ repoRoot });
+  const functionContract = extractConvexFunctions({ repoRoot, convexDir });
 
   writeGeneratedJsonStable(dbOut, dbContract);
   writeGeneratedJsonStable(fnOut, functionContract);
@@ -585,7 +643,8 @@ function cmdSyncToContext(repoRoot, schemaPathOpt, dbOutOpt, fnOutOpt) {
   console.log("[ok] Convex context contracts refreshed.");
   console.log(`  db: ${toPosixPath(path.relative(repoRoot, dbOut))} (tables: ${dbContract.tables.length})`);
   console.log(`  functions: ${toPosixPath(path.relative(repoRoot, fnOut))} (functions: ${functionContract.functions.length})`);
-  for (const warning of loaded.warnings || []) {
+  console.log(`  schema source: ${toPosixPath(path.relative(repoRoot, schemaPath))}`);
+  for (const warning of layout.warnings || []) {
     console.log(`[warn] ${warning}`);
   }
   if (registryResult.status === "registered") {
@@ -596,7 +655,8 @@ function cmdSyncToContext(repoRoot, schemaPathOpt, dbOutOpt, fnOutOpt) {
 }
 
 function cmdExtractFunctions(repoRoot, outOpt) {
-  const loaded = loadDbSsotConfig(repoRoot);
+  const layout = resolveConvexLayout(repoRoot);
+  assertValidConvexLayout(layout);
   if (outOpt) {
     const requestedOut = resolvePath(repoRoot, outOpt);
     const requestedRel = toPosixPath(path.relative(repoRoot, requestedOut));
@@ -605,12 +665,13 @@ function cmdExtractFunctions(repoRoot, outOpt) {
     }
   }
   const out = resolvePath(repoRoot, CANONICAL_PATHS.functionContract);
-  const functionContract = extractConvexFunctions({ repoRoot });
+  const functionContract = extractConvexFunctions({ repoRoot, convexDir: layout.convexDir });
   writeGeneratedJsonStable(out, functionContract);
   console.log("[ok] Convex function contract refreshed.");
   console.log(`  path: ${toPosixPath(path.relative(repoRoot, out))}`);
   console.log(`  functions: ${functionContract.functions.length}`);
-  for (const warning of loaded.warnings || []) {
+  console.log(`  source: ${layout.convexDirRel}/`);
+  for (const warning of layout.warnings || []) {
     console.log(`[warn] ${warning}`);
   }
 }
@@ -627,11 +688,17 @@ function cmdStatus(repoRoot, format = "text") {
   console.log(`  mode: ${status.mode} (${status.modeSource})`);
   console.log(`  db-ssot: ${status.dbSsotConfig}`);
   console.log(`  sourcePath: ${status.sourcePath}`);
+  console.log(`  package.json path: ${status.artifacts.packageJson.path}`);
   console.log(`  schema: ${status.artifacts.schema.exists ? "yes" : "no"} (${status.artifacts.schema.path})`);
   console.log(`  db contract: ${status.artifacts.dbContract.exists ? "yes" : "no"} (${status.artifacts.dbContract.path})`);
   console.log(`  function contract: ${status.artifacts.functionContract.exists ? "yes" : "no"} (${status.artifacts.functionContract.path})`);
   console.log(`  package.json: ${status.artifacts.packageJson.exists ? "yes" : "no"} (${status.artifacts.packageJson.path})`);
   console.log(`  generated: ${status.artifacts.generated.exists ? "yes" : "no"} (${status.artifacts.generated.path})`);
+  if (status.errors && status.errors.length > 0) {
+    for (const error of status.errors) {
+      console.log(`[error] ${error}`);
+    }
+  }
   if (status.warnings.length > 0) {
     for (const warning of status.warnings) {
       console.log(`[warn] ${warning}`);
@@ -645,42 +712,39 @@ function cmdVerify(repoRoot, strict = false) {
   const advisories = [];
 
   const mode = resolveMode(repoRoot);
-  const loaded = loadDbSsotConfig(repoRoot);
-  const schemaPath = path.join(repoRoot, mode.sourcePath || "convex/schema.ts");
-  const dbContractPath = path.join(repoRoot, loaded.dbContractPath || "docs/context/db/schema.json");
-  const fnContractPath = path.join(repoRoot, loaded.fnContractPath || "docs/context/convex/functions.json");
-  const pkgPath = packageJsonPath(repoRoot);
+  const layout = resolveConvexLayout(repoRoot);
+  const schemaPath = layout.schemaPath;
+  const dbContractPath = layout.dbContractPath;
+  const fnContractPath = layout.fnContractPath;
+  const pkgPath = layout.packageJsonPath;
   const pkg = readJsonIfExists(pkgPath);
 
   if (mode.mode !== "convex") {
     errors.push(`Resolved DB SSOT mode is "${mode.mode}", not "convex".`);
   }
-  if (loaded.warnings && loaded.warnings.length > 0) {
-    errors.push(...loaded.warnings.map((warning) => `Unsupported db-ssot path override: ${warning}`));
+  if (layout.errors && layout.errors.length > 0) {
+    errors.push(...layout.errors);
+  }
+  if (layout.warnings && layout.warnings.length > 0) {
+    errors.push(...layout.warnings.map((warning) => `Unsupported db-ssot path override: ${warning}`));
   }
 
   if (!fs.existsSync(schemaPath)) {
-    errors.push("Missing convex/schema.ts");
+    errors.push(`Missing ${layout.schemaRel}`);
   }
 
   if (fs.existsSync(pkgPath)) {
     if (!(pkg?.dependencies?.convex || pkg?.devDependencies?.convex)) {
-      errors.push('package.json is present but does not declare the "convex" package.');
-    }
-    const monorepoMarkers = detectUnsupportedMonorepoMarkers(repoRoot, pkg);
-    if (monorepoMarkers.length > 0) {
-      errors.push(
-        `Convex v1 does not support workspace/monorepo roots (${monorepoMarkers.join(", ")}); expected a single-package root.`
-      );
+      errors.push(`${layout.packageJsonRel} is present but does not declare the "convex" package.`);
     }
     if (pkg?.scripts?.["convex:dev"] !== "convex dev") {
-      advisories.push('package.json script "convex:dev" is missing or customized.');
+      advisories.push(`${layout.packageJsonRel} script "convex:dev" is missing or customized.`);
     }
     if (pkg?.scripts?.["convex:codegen"] !== "convex codegen") {
-      advisories.push('package.json script "convex:codegen" is missing or customized.');
+      advisories.push(`${layout.packageJsonRel} script "convex:codegen" is missing or customized.`);
     }
   } else {
-    errors.push("Missing package.json; Convex v1 expects a root package.json.");
+    errors.push(`Missing ${layout.packageJsonRel}; Convex expects a package.json near the configured schema source.`);
   }
 
   const dbContract = readJsonIfExists(dbContractPath);
@@ -700,8 +764,8 @@ function cmdVerify(repoRoot, strict = false) {
     errors.push("docs/context/convex/functions.json does not contain a top-level functions[] array");
   }
 
-  if (!fs.existsSync(path.join(repoRoot, "convex", "_generated"))) {
-    warnings.push("convex/_generated/ is missing; run `npx convex dev` or `npx convex codegen` if typed surfaces changed.");
+  if (!fs.existsSync(path.join(layout.convexDir, "_generated"))) {
+    warnings.push(`${layout.convexDirRel}/_generated is missing; run \`npx convex dev\` or \`npx convex codegen\` if typed surfaces changed.`);
   }
 
   if (errors.length === 0 && dbContract && fnContract && Array.isArray(fnContract.functions) && fs.existsSync(schemaPath)) {
@@ -709,7 +773,7 @@ function cmdVerify(repoRoot, strict = false) {
     const expectedDbContract = parseConvexSchema(schemaText, {
       sourcePath: toPosixPath(path.relative(repoRoot, schemaPath)),
     });
-    const expectedFnContract = extractConvexFunctions({ repoRoot });
+    const expectedFnContract = extractConvexFunctions({ repoRoot, convexDir: layout.convexDir });
 
     const actualDbComparable = stableStringifyForCompare(withoutUpdatedAt(dbContract));
     const expectedDbComparable = stableStringifyForCompare(withoutUpdatedAt(expectedDbContract));

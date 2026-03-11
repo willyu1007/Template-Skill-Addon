@@ -3,8 +3,9 @@
  * Context-awareness test suite
  */
 import * as contextctlSmoke from './contextctl-smoke.mjs';
+import * as glossaryVerifyRegressions from './glossary-verify-regressions.mjs';
 
-const TESTS = [contextctlSmoke];
+const TESTS = [contextctlSmoke, glossaryVerifyRegressions];
 
 export function run(ctx) {
   const results = [];

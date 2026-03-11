@@ -6,17 +6,6 @@
 
 Template repository. Users clone the repository to start new AI-friendly projects.
 
-## Key Directories
-
-| Directory | Purpose | Entry Point |
-|-----------|---------|-------------|
-| `init/` | Project initialization | `init/AGENTS.md` |
-| `init/_tools/feature-docs/` | Optional feature documentation | `init/_tools/feature-docs/README.md` |
-| `.ai/` | Skills, scripts, LLM governance | `.ai/AGENTS.md` |
-| `dev-docs/` | Complex task documentation | `dev-docs/AGENTS.md` |
-| `.codex/` | Codex skill stubs (generated) | - |
-| `.claude/` | Claude skill stubs (generated) | - |
-
 ## Routing
 
 | Task Type | Entry Point |

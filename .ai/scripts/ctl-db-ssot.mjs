@@ -81,6 +81,7 @@ Notes:
 - This script is safe to run in CI.
 - It never requires DB credentials. For DB SSOT mode it reads repo mirrors.
 - Managed DB contract paths are fixed in v1; custom output paths are not part of the public interface.
+- Convex mode may repoint the schema source via \`docs/project/db-ssot.json\` (\`db.source.path\`).
 `;
   console.log(msg.trim());
   process.exit(exitCode);
@@ -136,6 +137,12 @@ function exists(p) {
   }
 }
 
+function isPathWithinRepo(repoRoot, targetPath) {
+  const rel = path.relative(path.resolve(repoRoot), path.resolve(targetPath));
+  if (!rel) return true;
+  return rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
+}
+
 const CANONICAL_PATHS = Object.freeze({
   prismaSchema: 'prisma/schema.prisma',
   dbMirror: 'db/schema/tables.json',
@@ -143,6 +150,43 @@ const CANONICAL_PATHS = Object.freeze({
   convexSchema: 'convex/schema.ts',
   convexFunctions: 'docs/context/convex/functions.json'
 });
+
+function firstConfiguredPath(...values) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return toPosix(value.trim());
+    }
+  }
+  return '';
+}
+
+function resolveConfiguredPaths(raw, mode) {
+  const paths = { ...CANONICAL_PATHS };
+  if (!raw || typeof raw !== 'object') return paths;
+
+  if (mode === 'convex') {
+    const configuredSchema = firstConfiguredPath(
+      raw?.db?.source?.path,
+      raw?.paths?.convexSchema
+    );
+    if (configuredSchema) {
+      paths.convexSchema = configuredSchema;
+    }
+  }
+
+  return paths;
+}
+
+function collectConfiguredPathErrors(repoRoot, paths, mode) {
+  const errors = [];
+  if (mode === 'convex') {
+    const schemaPath = resolvePath(repoRoot, paths?.convexSchema || CANONICAL_PATHS.convexSchema);
+    if (!schemaPath || !isPathWithinRepo(repoRoot, schemaPath)) {
+      errors.push(`Configured Convex schema path resolves outside repo root: ${paths?.convexSchema || CANONICAL_PATHS.convexSchema}`);
+    }
+  }
+  return errors;
+}
 
 function collectUnsupportedPathWarnings(raw, mode) {
   if (!raw || typeof raw !== 'object') return [];
@@ -158,14 +202,12 @@ function collectUnsupportedPathWarnings(raw, mode) {
   compare('paths.prismaSchema', raw?.paths?.prismaSchema, CANONICAL_PATHS.prismaSchema);
   compare('paths.dbSchemaTables', raw?.paths?.dbSchemaTables, CANONICAL_PATHS.dbMirror);
   compare('paths.dbContextContract', raw?.paths?.dbContextContract, CANONICAL_PATHS.contextContract);
-  compare('paths.convexSchema', raw?.paths?.convexSchema, CANONICAL_PATHS.convexSchema);
   compare('paths.convexFunctionsContract', raw?.paths?.convexFunctionsContract, CANONICAL_PATHS.convexFunctions);
   compare('db.contracts.dbSchema', raw?.db?.contracts?.dbSchema, CANONICAL_PATHS.contextContract);
   compare('db.contracts.convexFunctions', raw?.db?.contracts?.convexFunctions, CANONICAL_PATHS.convexFunctions);
 
   if (mode === 'repo-prisma') compare('db.source.path', raw?.db?.source?.path, CANONICAL_PATHS.prismaSchema);
   if (mode === 'database') compare('db.source.path', raw?.db?.source?.path, CANONICAL_PATHS.dbMirror);
-  if (mode === 'convex') compare('db.source.path', raw?.db?.source?.path, CANONICAL_PATHS.convexSchema);
 
   return warnings;
 }
@@ -182,12 +224,14 @@ function loadDbSsotConfig(repoRoot) {
       : ssot && typeof ssot === 'object' && typeof ssot.mode === 'string'
         ? ssot.mode.trim()
         : '';
+  const paths = resolveConfiguredPaths(raw, mode);
   return {
     path: configPath,
     config: raw,
     mode,
-    paths: { ...CANONICAL_PATHS },
-    warnings: collectUnsupportedPathWarnings(raw, mode)
+    paths,
+    warnings: collectUnsupportedPathWarnings(raw, mode),
+    errors: collectConfiguredPathErrors(repoRoot, paths, mode)
   };
 }
 
@@ -375,6 +419,7 @@ function cmdStatus(repoRoot, format) {
       convexSchema: exists(convexSchemaPath),
       convexFunctions: exists(convexFunctionsPath)
     },
+    errors: cfg.errors || [],
     warnings: cfg.warnings || []
   };
 
@@ -395,6 +440,9 @@ function cmdStatus(repoRoot, format) {
   console.log(`    - Context contract:${status.paths.contextContract} (${status.exists.contextContract ? 'present' : 'missing'})`);
   console.log(`    - Convex schema:   ${status.paths.convexSchema} (${status.exists.convexSchema ? 'present' : 'missing'})`);
   console.log(`    - Convex functions:${status.paths.convexFunctions} (${status.exists.convexFunctions ? 'present' : 'missing'})`);
+  if (status.errors.length > 0) {
+    for (const error of status.errors) console.error(`[error] ${error}`);
+  }
   if (status.warnings.length > 0) {
     for (const warning of status.warnings) console.warn(`[warn] ${warning}`);
   }
@@ -404,6 +452,9 @@ function cmdSyncToContext(repoRoot, outPath, format) {
   const resolved = resolveMode(repoRoot);
   const cfg = loadDbSsotConfig(repoRoot);
   const paths = cfg.paths || { ...CANONICAL_PATHS };
+  if (cfg.errors && cfg.errors.length > 0) {
+    die(`[error] Invalid DB SSOT config.\n${cfg.errors.map((error) => `- ${error}`).join('\n')}`);
+  }
   if (outPath) {
     const requestedOut = resolvePath(repoRoot, outPath);
     const requestedRel = toPosix(path.relative(repoRoot, requestedOut));
@@ -421,14 +472,18 @@ function cmdSyncToContext(repoRoot, outPath, format) {
   } else if (resolved.mode === 'database') {
     built = buildContractFromDbMirror({ repoRoot, mode: 'database' });
   } else if (resolved.mode === 'convex') {
+    const schemaPath = resolvePath(repoRoot, paths.convexSchema);
     const fnOut = resolvePath(repoRoot, CANONICAL_PATHS.convexFunctions);
     delegatedConvex = {
+      schema: toPosix(path.relative(repoRoot, schemaPath)),
       fnOut: toPosix(path.relative(repoRoot, fnOut))
     };
     runConvexCtl(repoRoot, [
       'sync-to-context',
       '--repo-root',
       repoRoot,
+      '--schema-path',
+      schemaPath,
       '--db-out',
       outputPath,
       '--fn-out',
@@ -479,6 +534,7 @@ function cmdSyncToContext(repoRoot, outPath, format) {
   console.log(`  - Mode: ${resolved.mode}`);
   console.log(`  - Out:  ${result.out}`);
   if (result.convexFunctions) {
+    console.log(`  - Convex schema: ${delegatedConvex.schema}`);
     console.log(`  - Convex functions: ${result.convexFunctions}`);
   }
   if (result.warnings && result.warnings.length > 0) {

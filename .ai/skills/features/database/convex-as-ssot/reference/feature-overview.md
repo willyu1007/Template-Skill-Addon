@@ -12,12 +12,12 @@ In Convex mode:
 - `docs/context/convex/functions.json` is the generated function contract
 - public contract refresh flows route through `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
 - low-level `ctl-convex` refresh subcommands are internal-only and should not be used as manual workflow commands
-- Convex v1 assumes a root-level `convex/` directory and root `package.json`
+- Stage C bootstraps the default repo-root scaffold unless `db.source.path` points at a nested Convex schema, in which case init follows that configured path
 
 ## Key invariants
 
 - Convex mode is mutually exclusive with `repo-prisma` and `database`.
-- Persistence changes originate in `convex/schema.ts`.
+- Persistence changes originate in the configured Convex schema source (default: `convex/schema.ts`).
 - LLM-facing contracts are generated, not hand-maintained.
 - Managed contract paths are fixed to the canonical defaults in v1.
 - The workflow remains compatible with the repository's feature model: templates + controller scripts + verification.

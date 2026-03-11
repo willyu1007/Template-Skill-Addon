@@ -17,14 +17,6 @@ Typical end-to-end flow:
 3. Sync the mirror into LLM context (docs/context):
    - `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
 
-## Directory structure
-
-- `db/schema/tables.json` - **current-state** mirror snapshot (generated)
-- `db/handbook/` - desired-state proposals, risk notes, rollout and verification plans
-- `db/migrations/` - optional SQL files for human execution/tracking (not authoritative)
-- `db/config/db-environments.json` - environment metadata (NO secrets)
-- `db/samples/` - sample/seed artifacts (optional)
-
 ## Allowed AI actions
 
 - Read and reference the mirror (`db/schema/tables.json`).

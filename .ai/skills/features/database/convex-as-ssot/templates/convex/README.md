@@ -4,7 +4,7 @@ This directory contains the Convex schema and backend functions.
 
 ## First-time local setup
 
-If the repository already has a root `package.json`, init should inject the `convex` dependency and helper scripts automatically.
+If the Convex project already has a nearby `package.json`, init should inject the `convex` dependency and helper scripts automatically.
 
 If it does not, install Convex manually:
 
@@ -23,7 +23,7 @@ The first interactive `npx convex dev` run creates:
 
 - Treat `schema.ts` as the persistence SSOT.
 - Keep backend logic under `convex/**/*.ts`.
-- Convex v1 assumes this repository uses a root-level `convex/` directory and root `package.json`.
+- The default scaffold lives under `convex/`, but init/sync/verify follow the configured schema source path when `docs/project/db-ssot.json` sets `db.source.path`.
 - Refresh context contracts after schema or function-signature changes:
 
 ```bash

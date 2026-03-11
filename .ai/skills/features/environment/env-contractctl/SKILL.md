@@ -159,7 +159,7 @@ python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contra
 - [ ] Validation passes (no missing required keys)
 - [ ] `env/.env.example` regenerated
 - [ ] `docs/context/env/contract.json` regenerated
-- [ ] Central test suite passes: `node .ai/tests/run.mjs --suite environment`
+- [ ] Public central test suite passes: `node .ai/tests/run.mjs --suite environment`
 
 ## Boundaries
 

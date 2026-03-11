@@ -7,36 +7,40 @@ import path from 'path';
 
 import { runCommand } from '../../lib/exec.mjs';
 
-const DB_SSOT_CONFIG = {
-  version: 1,
-  updatedAt: '2026-03-11T00:00:00.000Z',
-  mode: 'convex',
-  policy: {
-    managedPaths: 'fixed-defaults-v1',
-  },
-  paths: {
-    prismaSchema: 'prisma/schema.prisma',
-    dbSchemaTables: 'db/schema/tables.json',
-    dbContextContract: 'docs/context/db/schema.json',
-    convexSchema: 'convex/schema.ts',
-    convexFunctionsContract: 'docs/context/convex/functions.json',
-  },
-  db: {
-    ssot: 'convex',
-    kind: 'convex',
-    source: {
-      kind: 'convex-schema',
-      path: 'convex/schema.ts',
+function buildDbSsotConfig(convexSourcePath) {
+  const schemaPath = String(convexSourcePath || 'convex/schema.ts').trim() || 'convex/schema.ts';
+  const convexDir = path.posix.dirname(schemaPath);
+  return {
+    version: 1,
+    updatedAt: '2026-03-11T00:00:00.000Z',
+    mode: 'convex',
+    policy: {
+      managedPaths: 'fixed-defaults-v1',
     },
-    contracts: {
-      dbSchema: 'docs/context/db/schema.json',
-      convexFunctions: 'docs/context/convex/functions.json',
+    paths: {
+      prismaSchema: 'prisma/schema.prisma',
+      dbSchemaTables: 'db/schema/tables.json',
+      dbContextContract: 'docs/context/db/schema.json',
+      convexSchema: schemaPath,
+      convexFunctionsContract: 'docs/context/convex/functions.json',
     },
-    generated: {
-      typesDir: 'convex/_generated',
+    db: {
+      ssot: 'convex',
+      kind: 'convex',
+      source: {
+        kind: 'convex-schema',
+        path: schemaPath,
+      },
+      contracts: {
+        dbSchema: 'docs/context/db/schema.json',
+        convexFunctions: 'docs/context/convex/functions.json',
+      },
+      generated: {
+        typesDir: path.posix.join(convexDir, '_generated'),
+      },
     },
-  },
-};
+  };
+}
 
 const CONVEX_SCHEMA = `import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
@@ -116,6 +120,10 @@ function writeText(filePath, text) {
   fs.writeFileSync(filePath, text, 'utf8');
 }
 
+function resolveRepoRelativePath(rootDir, relPath) {
+  return path.join(rootDir, ...String(relPath || '').split('/'));
+}
+
 function ensureAiSymlink(rootDir, repoRoot) {
   const linkPath = path.join(rootDir, '.ai');
   if (fs.existsSync(linkPath)) return;
@@ -164,19 +172,42 @@ export function expectOk(result, label) {
   }
 }
 
-export function materializeConvexFixture(ctx, name, { syncContext = true } = {}) {
+export function materializeConvexFixture(ctx, name, options = {}) {
+  const {
+    syncContext = true,
+    convexSourcePath = 'convex/schema.ts',
+    schemaText = CONVEX_SCHEMA,
+    rootPackageJson = {
+      name,
+      private: true,
+      version: '0.0.0',
+    },
+    packageJsonPath = 'package.json',
+    packageJson = null,
+    sourceFiles = null,
+    extraFiles = [],
+  } = options;
   const testDir = createTestDir(ctx, name);
   const rootDir = path.join(testDir, 'fixture');
   fs.mkdirSync(rootDir, { recursive: true });
   ensureAiSymlink(rootDir, ctx.repoRoot);
 
   const scripts = scriptPaths(ctx.repoRoot);
+  const schemaRelPath = String(convexSourcePath || 'convex/schema.ts').trim() || 'convex/schema.ts';
+  const convexDirRelPath = path.posix.dirname(schemaRelPath);
+  const generatedDirRelPath = path.posix.join(convexDirRelPath, '_generated');
+  const normalizedSourceFiles = Array.isArray(sourceFiles) && sourceFiles.length > 0
+    ? sourceFiles
+    : [{ path: path.posix.join(convexDirRelPath, 'messages.ts'), text: CONVEX_MESSAGES }];
 
-  writeJson(path.join(rootDir, 'package.json'), {
-    name,
-    private: true,
-    version: '0.0.0',
-  });
+  writeJson(path.join(rootDir, 'package.json'), rootPackageJson);
+  if (packageJsonPath !== 'package.json') {
+    writeJson(resolveRepoRelativePath(rootDir, packageJsonPath), packageJson || {
+      name: `${name}-app`,
+      private: true,
+      version: '0.0.0',
+    });
+  }
 
   const initContext = runNodeScript({
     script: scripts.contextCtl,
@@ -187,7 +218,7 @@ export function materializeConvexFixture(ctx, name, { syncContext = true } = {})
   });
   expectOk(initContext, `${name} context init`);
 
-  writeJson(path.join(rootDir, 'docs', 'project', 'db-ssot.json'), DB_SSOT_CONFIG);
+  writeJson(path.join(rootDir, 'docs', 'project', 'db-ssot.json'), buildDbSsotConfig(schemaRelPath));
 
   const initConvex = runNodeScript({
     script: scripts.convexCtl,
@@ -198,9 +229,14 @@ export function materializeConvexFixture(ctx, name, { syncContext = true } = {})
   });
   expectOk(initConvex, `${name} convex init`);
 
-  writeText(path.join(rootDir, 'convex', 'schema.ts'), CONVEX_SCHEMA);
-  writeText(path.join(rootDir, 'convex', 'messages.ts'), CONVEX_MESSAGES);
-  writeText(path.join(rootDir, 'convex', '_generated', 'server.d.ts'), '// test placeholder\n');
+  writeText(resolveRepoRelativePath(rootDir, schemaRelPath), schemaText);
+  for (const file of normalizedSourceFiles) {
+    writeText(resolveRepoRelativePath(rootDir, file.path), file.text);
+  }
+  for (const file of extraFiles) {
+    writeText(resolveRepoRelativePath(rootDir, file.path), file.text);
+  }
+  writeText(resolveRepoRelativePath(rootDir, path.posix.join(generatedDirRelPath, 'server.d.ts')), '// test placeholder\n');
 
   if (syncContext) {
     const sync = runNodeScript({
@@ -219,11 +255,14 @@ export function materializeConvexFixture(ctx, name, { syncContext = true } = {})
     rootDir,
     scripts,
     paths: {
-      schema: path.join(rootDir, 'convex', 'schema.ts'),
-      messages: path.join(rootDir, 'convex', 'messages.ts'),
-      generatedDir: path.join(rootDir, 'convex', '_generated'),
+      schema: resolveRepoRelativePath(rootDir, schemaRelPath),
+      messages: resolveRepoRelativePath(rootDir, normalizedSourceFiles[0].path),
+      convexDir: resolveRepoRelativePath(rootDir, convexDirRelPath),
+      generatedDir: resolveRepoRelativePath(rootDir, generatedDirRelPath),
       dbContract: path.join(rootDir, 'docs', 'context', 'db', 'schema.json'),
       functionsContract: path.join(rootDir, 'docs', 'context', 'convex', 'functions.json'),
+      dbSsotConfig: path.join(rootDir, 'docs', 'project', 'db-ssot.json'),
+      packageJson: resolveRepoRelativePath(rootDir, packageJsonPath),
       registry: path.join(rootDir, 'docs', 'context', 'registry.json'),
     },
   };

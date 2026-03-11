@@ -12,34 +12,34 @@ Recommended changes:
 - `db.kind`: add `convex`
 - validation: `features.database=true` still required when `db.ssot=convex`
 - validation: `features.contextAwareness=true` is also required when `db.ssot=convex`
-- validation: `repo.layout=single` is required when `db.ssot=convex`
+- validation: monorepo layouts are allowed; Stage C follows the configured Convex schema path when `db.source.path` is provided
 
 ## 2. Stage C materialization
 
 When `db.ssot=convex`, Stage C should:
 
-1. copy `.ai/skills/features/database/convex-as-ssot/templates/` into the repo root
+1. write `docs/project/db-ssot.json` so the configured Convex schema path is available to the controller
 2. run:
 
 ```bash
 node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs init --repo-root .
 ```
 
-3. write `docs/project/db-ssot.json`, update the root AGENTS DB-SSOT block, and refresh contracts through the public entrypoint:
+3. update the root AGENTS DB-SSOT block, and refresh contracts through the public entrypoint:
 
 ```bash
 node .ai/scripts/ctl-db-ssot.mjs sync-to-context --repo-root .
 ```
 
-4. optionally verify after contract refresh (non-strict bootstrap verify):
+4. verify after contract refresh (strict bootstrap verify):
 
 ```bash
-node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root .
+node .ai/skills/features/database/convex-as-ssot/scripts/ctl-convex.mjs verify --repo-root . --strict
 ```
 
 ## 3. `docs/project/db-ssot.json`
 
-In Convex mode, the generated config should point at `convex/schema.ts` and the function contract.
+In Convex mode, the generated config should point at the active Convex schema source (default `convex/schema.ts`) and the function contract.
 
 Example shape:
 

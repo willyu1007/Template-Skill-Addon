@@ -296,7 +296,8 @@ node init/_tools/skills/initialize-project-from-requirements/scripts/init-pipeli
 
 The template repository ships:
 
-- Central feature-pack tests under `.ai/tests/` (not per-skill `tests/` folders)
+- Central public feature-pack tests under `.ai/tests/suites/` (not per-skill `tests/` folders)
+- Maintainer-only template regressions under `.ai/tests/maintainer/`
 - Feature controller scripts under `.ai/skills/features/**/scripts/` (plus cross-cutting controllers under `.ai/scripts/`)
 
 Initialization does **not** auto-delete these. If the user explicitly does not need the corresponding feature packs, you MAY remove the related paths (after confirmation), for example:
@@ -308,7 +309,8 @@ Initialization does **not** auto-delete these. If the user explicitly does not n
 - Packaging tooling: `.ai/skills/features/packaging/scripts/ctl-packaging.mjs`
 - Release tooling: `.ai/skills/features/release/scripts/ctl-release.mjs`
 - Observability tooling: `.ai/skills/features/observability/scripts/ctl-observability.mjs`
-- Feature-pack test suites: `.ai/tests/suites/database/`, `.ai/tests/suites/environment/`, `.ai/tests/suites/ui/`
+- Public feature-pack test suites: `.ai/tests/suites/database/`, `.ai/tests/suites/environment/`, `.ai/tests/suites/ui/`
+- Maintainer-only template regressions: `.ai/tests/maintainer/environment/`, `.ai/tests/maintainer/ui/`
 
 After pruning, re-run wrapper sync:
 

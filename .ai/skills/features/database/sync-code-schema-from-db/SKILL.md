@@ -120,7 +120,7 @@ Record output in `03-context-refresh-log.md`.
 - [ ] `ctl-db import-prisma` updated `db/schema/tables.json`
 - [ ] `ctl-db-ssot sync-to-context` updated `docs/context/db/schema.json`
 - [ ] Domain/repository mapping updated (no Prisma types in business layer)
-- [ ] Central test suite passes: `node .ai/tests/run.mjs --suite database`
+- [ ] Public central test suite passes: `node .ai/tests/run.mjs --suite database`
 
 ## Boundaries
 

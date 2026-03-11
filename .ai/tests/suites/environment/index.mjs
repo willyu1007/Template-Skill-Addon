@@ -1,6 +1,6 @@
 /**
  * index.mjs
- * Environment test suite
+ * Environment public test suite
  */
 import * as system from './system.mjs';
 

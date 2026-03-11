@@ -154,7 +154,7 @@ Record evidence in `04-post-verify.md`.
 - [ ] Post-verify evidence captured
 - [ ] Domain/repository mapping updated (no Prisma types in business layer)
 - [ ] `docs/context/db/schema.json` refreshed via `ctl-db-ssot`
-- [ ] Central test suite passes: `node .ai/tests/run.mjs --suite database`
+- [ ] Public central test suite passes: `node .ai/tests/run.mjs --suite database`
 
 ## Boundaries
 

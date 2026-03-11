@@ -163,6 +163,74 @@ function stripTrailingComma(value) {
   return String(value || "").trim().replace(/,+\s*$/, "");
 }
 
+function isIdentifier(value) {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(String(value || "").trim());
+}
+
+function extractExpressionFromIndex(text, startIndex) {
+  let i = skipWhitespace(text, startIndex);
+  const start = i;
+  let depthParen = 0;
+  let depthBrace = 0;
+  let depthBracket = 0;
+  let quote = null;
+
+  for (; i < text.length; i += 1) {
+    const ch = text[i];
+    const prev = i > 0 ? text[i - 1] : "";
+
+    if (quote) {
+      if (ch === quote && prev !== "\\") quote = null;
+      continue;
+    }
+
+    if (ch === "'" || ch === '"' || ch === "`") {
+      quote = ch;
+      continue;
+    }
+
+    if (ch === "(") depthParen += 1;
+    else if (ch === ")") depthParen -= 1;
+    else if (ch === "{") depthBrace += 1;
+    else if (ch === "}") depthBrace -= 1;
+    else if (ch === "[") depthBracket += 1;
+    else if (ch === "]") depthBracket -= 1;
+    else if ((ch === ";" || ch === "\n") && depthParen === 0 && depthBrace === 0 && depthBracket === 0) {
+      break;
+    }
+  }
+
+  return stripTrailingComma(text.slice(start, i));
+}
+
+function findVariableInitializer(text, identifier) {
+  if (!isIdentifier(identifier)) return null;
+  const pattern = new RegExp(`\\b(?:const|let|var)\\s+${identifier}\\s*=\\s*`, "g");
+  const match = pattern.exec(text);
+  if (!match) return null;
+  return extractExpressionFromIndex(text, match.index + match[0].length);
+}
+
+function resolveReferencedExpression(text, expr, seen = new Set()) {
+  let current = stripTrailingComma(expr);
+  while (isIdentifier(current) && !seen.has(current)) {
+    seen.add(current);
+    const initializer = findVariableInitializer(text, current);
+    if (!initializer) break;
+    current = stripTrailingComma(initializer);
+  }
+  return current;
+}
+
+function resolveObjectLiteral(text, expr, seen = new Set()) {
+  const resolved = resolveReferencedExpression(text, expr, seen);
+  const trimmed = resolved.trim();
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+    return trimmed;
+  }
+  return null;
+}
+
 function parseObjectLiteralEntries(text) {
   const trimmed = text.trim();
   if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) return [];
@@ -171,14 +239,43 @@ function parseObjectLiteralEntries(text) {
   const entries = splitTopLevel(inner, ",");
   return entries
     .map((entry) => {
-      const colon = findTopLevelColon(entry);
-      if (colon === -1) return null;
-      const rawKey = entry.slice(0, colon).trim();
-      const rawValue = entry.slice(colon + 1).trim();
+      const rawEntry = entry.trim();
+      if (!rawEntry) return null;
+      const spreadMatch = rawEntry.match(/^\.\.\.\s*([A-Za-z_$][A-Za-z0-9_$]*)$/);
+      if (spreadMatch) {
+        return { key: null, rawValue: spreadMatch[1], spreadFrom: spreadMatch[1] };
+      }
+      const colon = findTopLevelColon(rawEntry);
+      if (colon === -1) {
+        if (isIdentifier(rawEntry)) {
+          return { key: rawEntry, rawValue: rawEntry, shorthand: true };
+        }
+        return null;
+      }
+      const rawKey = rawEntry.slice(0, colon).trim();
+      const rawValue = rawEntry.slice(colon + 1).trim();
       const key = unquote(rawKey);
       return { key, rawValue };
     })
     .filter(Boolean);
+}
+
+function expandObjectLiteralEntries(text, objectLiteral, seen = new Set()) {
+  const expanded = [];
+  for (const entry of parseObjectLiteralEntries(objectLiteral)) {
+    if (entry.spreadFrom) {
+      if (seen.has(entry.spreadFrom)) continue;
+      const nextSeen = new Set(seen);
+      nextSeen.add(entry.spreadFrom);
+      const spreadObject = resolveObjectLiteral(text, entry.spreadFrom, nextSeen);
+      if (spreadObject) {
+        expanded.push(...expandObjectLiteralEntries(text, spreadObject, nextSeen));
+      }
+      continue;
+    }
+    expanded.push(entry);
+  }
+  return expanded;
 }
 
 function inferPrimitiveType(expr) {
@@ -382,10 +479,12 @@ function parseIndexConfig(raw) {
   return { raw: trimmed };
 }
 
-function parseTableValue(tableName, value) {
+function parseTableValue(schemaText, tableName, value) {
   const defineTableArgs = extractFirstCall(value, "defineTable") || "";
-  const fieldsObject = extractFirstObjectInsideCall(defineTableArgs);
-  const fieldEntries = parseObjectLiteralEntries(fieldsObject);
+  const [shapeArgRaw] = splitTopLevel(defineTableArgs, ",");
+  const resolvedShape = resolveObjectLiteral(schemaText, shapeArgRaw || "");
+  const fieldsObject = resolvedShape || extractFirstObjectInsideCall(defineTableArgs);
+  const fieldEntries = expandObjectLiteralEntries(schemaText, fieldsObject);
   const columns = [];
   const relations = [];
 
@@ -506,15 +605,19 @@ export function parseConvexSchema(schemaText, { sourcePath = "convex/schema.ts" 
     };
   }
 
+  const [tablesArgRaw] = splitTopLevel(schemaCallArgs, ",");
+  const resolvedTablesObject = resolveObjectLiteral(schemaText, tablesArgRaw || "");
   const openBrace = schemaCallArgs.indexOf("{");
   const closeBrace = openBrace === -1 ? -1 : findMatching(schemaCallArgs, openBrace, "{", "}");
-  const schemaObject = openBrace === -1 || closeBrace === -1 ? "{}" : schemaCallArgs.slice(openBrace, closeBrace + 1);
-  const entries = parseObjectLiteralEntries(schemaObject);
+  const fallbackSchemaObject = openBrace === -1 || closeBrace === -1 ? "{}" : schemaCallArgs.slice(openBrace, closeBrace + 1);
+  const schemaObject = resolvedTablesObject || fallbackSchemaObject;
+  const entries = expandObjectLiteralEntries(schemaText, schemaObject);
 
   const tables = [];
   for (const entry of entries) {
-    if (entry.rawValue.includes("defineTable(")) {
-      tables.push(parseTableValue(entry.key, entry.rawValue));
+    const tableExpression = resolveReferencedExpression(schemaText, entry.rawValue);
+    if (tableExpression.includes("defineTable(")) {
+      tables.push(parseTableValue(schemaText, entry.key, tableExpression));
     }
   }
 
@@ -547,7 +650,7 @@ function detectRuntime(fileText) {
 
 function summarizeValidatorObject(rawObjectText) {
   const trimmed = rawObjectText.trim();
-  const entries = parseObjectLiteralEntries(trimmed);
+  const entries = expandObjectLiteralEntries(trimmed, trimmed);
   return {
     raw: trimmed,
     fields: entries.map((entry) => ({
@@ -624,19 +727,113 @@ function extractObjectProperty(text, propertyName) {
   return text.slice(start).trim();
 }
 
+const SUPPORTED_CONSTRUCTORS = new Set([
+  "query",
+  "mutation",
+  "action",
+  "httpAction",
+  "internalQuery",
+  "internalMutation",
+  "internalAction",
+]);
+
+function buildConstructorAliases(fileText) {
+  const aliases = new Map();
+  const constAliasPairs = [];
+
+  const importPattern = /import\s*\{([^}]+)\}\s*from\s*["']([^"']+)["']/g;
+  let importMatch;
+  while ((importMatch = importPattern.exec(fileText))) {
+    const source = importMatch[2];
+    if (!isConvexConstructorImportSource(source)) continue;
+    const specs = splitTopLevel(importMatch[1], ",");
+    for (const spec of specs) {
+      const trimmed = spec.trim();
+      const aliasMatch = trimmed.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s+as\s+([A-Za-z_$][A-Za-z0-9_$]*)$/);
+      if (aliasMatch && SUPPORTED_CONSTRUCTORS.has(aliasMatch[1])) {
+        aliases.set(aliasMatch[2], aliasMatch[1]);
+        continue;
+      }
+      if (SUPPORTED_CONSTRUCTORS.has(trimmed)) {
+        aliases.set(trimmed, trimmed);
+      }
+    }
+  }
+
+  const constAliasPattern = /\bconst\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*;/g;
+  let constAliasMatch;
+  while ((constAliasMatch = constAliasPattern.exec(fileText))) {
+    constAliasPairs.push([constAliasMatch[1], constAliasMatch[2]]);
+  }
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [aliasName, targetName] of constAliasPairs) {
+      const resolvedTarget = resolveConstructorAlias(aliases, targetName);
+      if (!SUPPORTED_CONSTRUCTORS.has(resolvedTarget)) continue;
+      if (aliases.get(aliasName) === resolvedTarget) continue;
+      aliases.set(aliasName, resolvedTarget);
+      changed = true;
+    }
+  }
+
+  return aliases;
+}
+
+function isConvexConstructorImportSource(source) {
+  const normalized = String(source || "").trim();
+  if (!normalized) return false;
+  return normalized === "convex/server" || normalized.endsWith("/_generated/server") || normalized === "./_generated/server";
+}
+
+function resolveConstructorAlias(aliases, name) {
+  let current = name;
+  const seen = new Set();
+  while (aliases.has(current) && !seen.has(current)) {
+    seen.add(current);
+    current = aliases.get(current);
+  }
+  return current;
+}
+
+function inferConstructorMetadata(callee, aliases) {
+  const rawConstructor = String(callee || "").trim();
+  const resolvedConstructor = resolveConstructorAlias(aliases, rawConstructor);
+  const candidate = SUPPORTED_CONSTRUCTORS.has(resolvedConstructor) ? resolvedConstructor : rawConstructor;
+
+  const directKind = SUPPORTED_CONSTRUCTORS.has(candidate)
+    ? candidate.replace(/^internal/, "").replace(/^./, (c) => c.toLowerCase())
+    : null;
+  if (directKind) {
+    return {
+      constructor: rawConstructor,
+      resolvedConstructor: candidate,
+      visibility: candidate.startsWith("internal") ? "internal" : "public",
+      kind: directKind,
+    };
+  }
+
+  return null;
+}
+
 function findExportedFunctions(fileText) {
-  const pattern = /export\s+const\s+([A-Za-z0-9_]+)\s*=\s*(query|mutation|action|httpAction|internalQuery|internalMutation|internalAction)\s*\(/g;
+  const pattern = /export\s+const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/g;
   const matches = [];
+  const aliases = buildConstructorAliases(fileText);
   let match;
   while ((match = pattern.exec(fileText))) {
     const exportName = match[1];
-    const constructor = match[2];
+    const callee = match[2];
+    const constructorInfo = inferConstructorMetadata(callee, aliases);
+    if (!constructorInfo) continue;
     const openParen = pattern.lastIndex - 1;
     const closeParen = findMatching(fileText, openParen, "(", ")");
     if (closeParen === -1) continue;
     matches.push({
       exportName,
-      constructor,
+      callee,
+      ...constructorInfo,
       body: fileText.slice(openParen + 1, closeParen),
     });
     pattern.lastIndex = closeParen + 1;
@@ -688,10 +885,8 @@ export function extractConvexFunctions({ repoRoot, convexDir = path.join(repoRoo
     const modulePath = toPosixPath(path.relative(convexDir, file)).replace(/\.(tsx?|jsx?)$/, "");
 
     for (const fn of findExportedFunctions(fileText)) {
-      const visibility = fn.constructor.startsWith("internal") ? "internal" : "public";
-      const kind = fn.constructor
-        .replace(/^internal/, "")
-        .replace(/^./, (c) => c.toLowerCase());
+      const visibility = fn.visibility;
+      const kind = fn.kind;
 
       const argsRaw = extractObjectProperty(fn.body, "args");
       const returnsRaw = extractObjectProperty(fn.body, "returns");
@@ -703,6 +898,7 @@ export function extractConvexFunctions({ repoRoot, convexDir = path.join(repoRoo
         exportName: fn.exportName,
         kind,
         constructor: fn.constructor,
+        ...(fn.resolvedConstructor && fn.resolvedConstructor !== fn.constructor ? { resolvedConstructor: fn.resolvedConstructor } : {}),
         visibility,
         file: relativeFile,
         modulePath,
@@ -728,7 +924,7 @@ export function extractConvexFunctions({ repoRoot, convexDir = path.join(repoRoo
     updatedAt: new Date().toISOString(),
     source: {
       kind: "convex-functions",
-      path: "convex/",
+      path: `${toPosixPath(path.relative(repoRoot, convexDir))}/`,
     },
     functions,
   };

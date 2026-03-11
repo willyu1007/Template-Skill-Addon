@@ -1059,8 +1059,19 @@ function validateBlueprint(blueprint) {
     if (!convexLanguages.has(repoLanguage)) {
       errors.push('db.ssot=convex is only supported when repo.language is "typescript", "javascript", or "react-native".');
     }
-    if (String(repo.layout || '').toLowerCase() !== 'single') {
-      errors.push('db.ssot=convex currently supports only repo.layout="single" (root-level convex/ plus root package.json).');
+    if (db.source != null && (typeof db.source !== 'object' || Array.isArray(db.source))) {
+      errors.push('db.source must be an object when db.ssot="convex".');
+    }
+    const configuredConvexSourcePath = configuredConvexSourcePathFromDbConfig(db);
+    if (db.source && db.source.path != null) {
+      if (typeof db.source.path !== 'string' || !String(db.source.path).trim()) {
+        errors.push('db.source.path must be a non-empty string when provided for db.ssot="convex".');
+      } else if (!isSafeRepoRelativePath(db.source.path)) {
+        errors.push('db.source.path for db.ssot="convex" must stay within the repo root (for example: "convex/schema.ts" or "apps/api/convex/schema.ts").');
+      }
+    }
+    if (!isSafeRepoRelativePath(configuredConvexSourcePath)) {
+      errors.push('Resolved Convex schema source path must stay within the repo root.');
     }
     if (db.kind !== 'convex') {
       errors.push('db.ssot=convex requires db.kind="convex".');
@@ -2015,6 +2026,34 @@ function dbSsotMode(blueprint) {
   return String(db.ssot || 'none');
 }
 
+function toPosixRelativePath(value) {
+  return String(value || '').replace(/\\/g, '/');
+}
+
+function normalizeRepoRelativePath(value) {
+  const raw = toPosixRelativePath(value).trim();
+  if (!raw) return '';
+  return path.posix.normalize(raw);
+}
+
+function isSafeRepoRelativePath(value) {
+  const normalized = normalizeRepoRelativePath(value);
+  if (!normalized) return false;
+  if (path.posix.isAbsolute(normalized)) return false;
+  return normalized !== '..' && !normalized.startsWith('../');
+}
+
+function configuredConvexSourcePathFromDbConfig(db) {
+  if (!db || typeof db !== 'object') return 'convex/schema.ts';
+  const source = db.source && typeof db.source === 'object' ? db.source : {};
+  const configured = typeof source.path === 'string' ? normalizeRepoRelativePath(source.path) : '';
+  return configured || 'convex/schema.ts';
+}
+
+function configuredConvexGeneratedTypesDir(sourcePath) {
+  return path.posix.join(path.posix.dirname(sourcePath || 'convex/schema.ts'), '_generated');
+}
+
 function dbSsotExclusionsForMode(mode) {
   const m = String(mode || 'none');
   if (m === 'repo-prisma') return ['sync-code-schema-from-db', 'convex-as-ssot', 'convex-best-practices'];
@@ -2029,6 +2068,8 @@ function writeDbSsotConfig(repoRoot, blueprint, apply) {
   const outPath = path.join(repoRoot, 'docs', 'project', 'db-ssot.json');
   const db = blueprint && blueprint.db && typeof blueprint.db === 'object' ? blueprint.db : {};
   const kind = String(db.kind || (mode === 'convex' ? 'convex' : 'other'));
+  const convexSourcePath = configuredConvexSourcePathFromDbConfig(db);
+  const convexGeneratedTypesDir = configuredConvexGeneratedTypesDir(convexSourcePath);
 
   let source;
   if (mode === 'repo-prisma') {
@@ -2036,7 +2077,7 @@ function writeDbSsotConfig(repoRoot, blueprint, apply) {
   } else if (mode === 'database') {
     source = { kind: 'db-mirror', path: 'db/schema/tables.json' };
   } else if (mode === 'convex') {
-    source = { kind: 'convex-schema', path: 'convex/schema.ts' };
+    source = { kind: 'convex-schema', path: convexSourcePath };
   } else {
     source = { kind: 'none', path: '' };
   }
@@ -2052,7 +2093,7 @@ function writeDbSsotConfig(repoRoot, blueprint, apply) {
       prismaSchema: 'prisma/schema.prisma',
       dbSchemaTables: 'db/schema/tables.json',
       dbContextContract: 'docs/context/db/schema.json',
-      convexSchema: 'convex/schema.ts',
+      convexSchema: mode === 'convex' ? convexSourcePath : 'convex/schema.ts',
       convexFunctionsContract: 'docs/context/convex/functions.json'
     },
     db: {
@@ -2064,7 +2105,7 @@ function writeDbSsotConfig(repoRoot, blueprint, apply) {
         convexFunctions: mode === 'convex' ? 'docs/context/convex/functions.json' : null
       },
       generated: {
-        typesDir: mode === 'convex' ? 'convex/_generated' : null
+        typesDir: mode === 'convex' ? convexGeneratedTypesDir : null
       }
     }
   };
@@ -2089,9 +2130,11 @@ function ensureDbSsotConfig(repoRoot, blueprint, apply) {
   return writeDbSsotConfig(repoRoot, blueprint, apply);
 }
 
-function renderDbSsotAgentsBlock(mode, contextAwarenessEnabled) {
+function renderDbSsotAgentsBlock(mode, contextAwarenessEnabled, options = {}) {
   const m = String(mode || 'none');
   const hasContext = !!contextAwarenessEnabled;
+  const convexSourcePath = options.convexSourcePath || 'convex/schema.ts';
+  const convexFunctionsGlob = `${path.posix.dirname(convexSourcePath)}/**/*.ts`;
 
   // Progressive disclosure: minimal routing first, details as nested bullets.
   const header = `## Database SSOT and schema synchronization
@@ -2149,7 +2192,7 @@ function renderDbSsotAgentsBlock(mode, contextAwarenessEnabled) {
   if (m === 'convex') {
     return (
       header +
-      `**Mode: convex** (SSOT = \`convex/schema.ts\`; function surface = \`convex/**/*.ts\`)
+      `**Mode: convex** (SSOT = \`${convexSourcePath}\`; function surface = \`${convexFunctionsGlob}\`)
 
 ` +
       common.join('\n') +
@@ -2160,8 +2203,8 @@ function renderDbSsotAgentsBlock(mode, contextAwarenessEnabled) {
 - Human-friendly DB queries and change drafting still route through \`db-human-interface\`.
 
 Rules:
-- Treat \`convex/schema.ts\` as the persistence SSOT.
-- Convex v1 expects a root-level \`convex/\` directory and root \`package.json\`.
+- Treat \`${convexSourcePath}\` as the persistence SSOT.
+- Stage C bootstraps \`convex/\` by default, or the configured nested path when \`db.source.path\` is provided in the blueprint.
 - Treat \`docs/context/db/schema.json\` and \`docs/context/convex/functions.json\` as generated artifacts.
 - Database workflows in this repo require \`features.contextAwareness=true\`.
 - Refresh contracts via \`node .ai/scripts/ctl-db-ssot.mjs sync-to-context\`.
@@ -2196,7 +2239,15 @@ function updateRootAgentsDbSsotBlock(repoRoot, blueprint, apply) {
   }
 
   const mode = dbSsotMode(blueprint);
-  const block = renderDbSsotAgentsBlock(mode, isContextAwarenessEnabled(blueprint)).trimEnd();
+  const block = renderDbSsotAgentsBlock(
+    mode,
+    isContextAwarenessEnabled(blueprint),
+    {
+      convexSourcePath: configuredConvexSourcePathFromDbConfig(
+        blueprint && blueprint.db && typeof blueprint.db === 'object' ? blueprint.db : {}
+      )
+    }
+  ).trimEnd();
   const next = upsertManagedBlock(raw, start, end, block);
   if (next === raw) {
     return { op: 'edit', path: agentsPath, mode: 'skipped', reason: 'unchanged', note: `db.ssot=${mode}` };
@@ -2262,6 +2313,7 @@ function verifyDatabaseFeatureAfterContext(repoRoot, blueprint, apply) {
   const mode = dbSsotMode(blueprint);
   const result = { op: 'verify-db-feature', mode: apply ? 'skipped' : 'dry-run', actions: [], warnings: [], errors: [] };
   let scriptPath = null;
+  let verifyArgs = ['verify', '--repo-root', repoRoot];
 
   if (mode === 'database') {
     scriptPath = path.join(
@@ -2285,6 +2337,7 @@ function verifyDatabaseFeatureAfterContext(repoRoot, blueprint, apply) {
       'scripts',
       'ctl-convex.mjs'
     );
+    verifyArgs.push('--strict');
   } else {
     result.reason = `no post-context verify for db.ssot=${mode}`;
     return result;
@@ -2296,7 +2349,7 @@ function verifyDatabaseFeatureAfterContext(repoRoot, blueprint, apply) {
     return result;
   }
 
-  const verifyRes = runNodeScriptWithRepoRootFallback(repoRoot, scriptPath, ['verify', '--repo-root', repoRoot], apply);
+  const verifyRes = runNodeScriptWithRepoRootFallback(repoRoot, scriptPath, verifyArgs, apply);
   result.actions.push(verifyRes);
   result.mode = verifyRes.mode === 'failed' ? 'failed' : (apply ? 'applied' : 'dry-run');
   return result;
@@ -2568,20 +2621,15 @@ function ensureDatabaseFeature(repoRoot, blueprint, apply, options = {}) {
       return result;
     }
 
-    const copyRes = copyDirIfMissing(templatesDir, repoRoot, apply, force);
-    if (!copyRes.ok) {
-      result.errors.push(copyRes.error || 'Failed to copy Convex templates.');
-      return result;
-    }
-
     result.actions.push({
       op: force ? 'reinstall-feature' : 'install-feature',
       featureId: 'database-convex',
       from: templatesDir,
       to: repoRoot,
-      mode: apply ? 'applied' : 'dry-run'
+      mode: apply ? 'applied' : 'dry-run',
+      note: 'delegated to ctl-convex init so schema files land at the configured Convex source path'
     });
-    result.actions.push(...copyRes.actions);
+    result.actions.push(writeDbSsotConfig(repoRoot, blueprint, apply));
 
     const ctlPath = path.join(
       repoRoot,

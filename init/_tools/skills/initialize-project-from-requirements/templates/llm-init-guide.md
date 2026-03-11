@@ -70,7 +70,7 @@ All paths above are relative to `init/_work/stage-a-docs/`.
 - **SSOT mode (MUST choose)**: `none` / `repo-prisma` / `database` / `convex`
 - If the project uses `convex/schema.ts` and Convex `query` / `mutation` / `action`, choose `convex`.
 - If `db.ssot != none`, enable both `features.database` and `features.contextAwareness`.
-- `db.ssot=convex` currently only supports `repo.layout=single` with root-level `convex/` and root `package.json`.
+- `db.ssot=convex` bootstraps a repo-root `convex/` scaffold by default; nested Convex projects can be repointed later via `docs/project/db-ssot.json`.
 - Consistency, migration strategy, backup?
 - Write to: `non-functional-requirements.md` + `db.*`
 

@@ -28,7 +28,6 @@ export function run(ctx) {
   const approvalsDir = path.join(repoDir, 'ui', 'approvals');
   fs.mkdirSync(approvalsDir, { recursive: true });
 
-  // Minimal UI SSOT files required by approval-status fingerprint flow.
   writeJson(path.join(repoDir, 'ui', 'tokens', 'base.json'), { meta: { version: 1 } });
   writeJson(path.join(repoDir, 'ui', 'contract', 'contract.json'), { meta: { version: 1 }, roles: {} });
 
@@ -51,8 +50,6 @@ export function run(ctx) {
     fingerprint: 'new-fingerprint',
   });
 
-  // Force mtime ordering to reflect real creation chronology:
-  // old baseline earlier, manual approval later.
   fs.utimesSync(oldPath, new Date('2026-02-07T00:00:00.000Z'), new Date('2026-02-07T00:00:00.000Z'));
   fs.utimesSync(newPath, new Date('2026-02-07T00:00:00.000Z'), new Date('2026-02-07T00:00:01.000Z'));
 
@@ -97,4 +94,3 @@ export function run(ctx) {
   ctx.log(`[${name}] PASS`);
   return { name, status: 'PASS' };
 }
-

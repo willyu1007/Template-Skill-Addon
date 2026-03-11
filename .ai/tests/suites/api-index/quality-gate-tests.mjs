@@ -1,6 +1,6 @@
 /**
  * quality-gate-tests.mjs
- * Tests for ctl-openapi-quality.mjs and glossary verify in ctl-context.mjs:
+ * Tests for ctl-openapi-quality.mjs:
  *   1) Valid OpenAPI with all required fields passes
  *   2) Missing operationId detected
  *   3) Duplicate operationId detected
@@ -8,28 +8,12 @@
  *   5) Missing security scheme ref detected
  *   6) Empty paths exits 0
  *   7) File not found exits 0 with skip message
- *   8) Glossary verify: valid empty glossary passes
- *   9) Glossary verify: term missing definition fails
- *  10) Glossary verify: missing "version" field fails strict
- *  11) Glossary verify: missing "terms" field fails strict
- *  12) Glossary verify: version != 1 fails strict (const constraint)
- *  13) Glossary verify: extra root property fails strict (additionalProperties)
- *  14) Glossary verify: extra item property fails strict (additionalProperties)
- *  15) Glossary verify: aliases with non-string items fails (items.type)
- *  16) Glossary verify: updatedAt with wrong type fails (type: string)
- *  17) Glossary verify: corrupt schema file fails hard
- *  18) Glossary verify: --strict works without Ajv (built-in fallback, catches errors)
  */
 import fs from 'fs';
 import path from 'path';
 import { runCommand } from '../../lib/exec.mjs';
 
 export const name = 'quality-gate-tests';
-
-function schemaTemplatePath(ctx) {
-  return path.join(ctx.repoRoot, '.ai', 'skills', 'features', 'context-awareness',
-    'templates', 'docs', 'context', 'glossary.schema.json');
-}
 
 function makeFixtureDir(ctx, sub) {
   const d = path.join(ctx.evidenceDir, name, sub);
@@ -40,10 +24,6 @@ function makeFixtureDir(ctx, sub) {
 
 function qualityPath(ctx) {
   return path.join(ctx.repoRoot, '.ai', 'scripts', 'ctl-openapi-quality.mjs');
-}
-
-function contextPath(ctx) {
-  return path.join(ctx.repoRoot, '.ai', 'skills', 'features', 'context-awareness', 'scripts', 'ctl-context.mjs');
 }
 
 function writeYaml(apiDir, yaml) {
@@ -238,150 +218,6 @@ components:
     fs.mkdirSync(rootDir, { recursive: true });
     const r = runQuality(ctx, rootDir, 'nofile');
     return r.code === 0 && (r.stdout + r.stderr).includes('skip');
-  });
-
-  function makeGlossaryFixture(ctx, sub, glossaryData) {
-    const rootDir = path.join(ctx.evidenceDir, name, sub);
-    const contextDir = path.join(rootDir, 'docs', 'context');
-    fs.mkdirSync(path.join(contextDir, 'api'), { recursive: true });
-    fs.mkdirSync(path.join(contextDir, 'config'), { recursive: true });
-    fs.writeFileSync(path.join(contextDir, 'glossary.json'),
-      JSON.stringify(glossaryData, null, 2), 'utf8');
-    const schemaSrc = schemaTemplatePath(ctx);
-    if (fs.existsSync(schemaSrc)) {
-      fs.copyFileSync(schemaSrc, path.join(contextDir, 'glossary.schema.json'));
-    }
-    fs.writeFileSync(path.join(contextDir, 'registry.json'), JSON.stringify({
-      version: 1, updatedAt: '2025-01-01T00:00:00.000Z', artifacts: [
-        { id: 'glossary', type: 'json', path: 'docs/context/glossary.json', mode: 'contract' }
-      ]
-    }, null, 2), 'utf8');
-    fs.writeFileSync(path.join(contextDir, 'INDEX.md'), '# Index\n', 'utf8');
-    fs.writeFileSync(path.join(contextDir, 'config', 'environment-registry.json'), JSON.stringify({
-      version: 1, environments: []
-    }, null, 2), 'utf8');
-    return rootDir;
-  }
-
-  function runGlossaryVerify(ctx, rootDir, label, strict = true) {
-    const args = [contextPath(ctx), 'verify', '--repo-root', rootDir];
-    if (strict) args.push('--strict');
-    return runCommand({
-      cmd: 'node', args,
-      evidenceDir: path.join(ctx.evidenceDir, name),
-      label,
-    });
-  }
-
-  // 8) Glossary verify: valid empty glossary
-  check('glossary-verify-valid-empty', () => {
-    const rootDir = makeGlossaryFixture(ctx, 'glossary-valid', {
-      version: 1, updatedAt: '2025-01-01T00:00:00.000Z', terms: []
-    });
-    const r = runGlossaryVerify(ctx, rootDir, 'glossary-valid', false);
-    return r.code === 0;
-  });
-
-  // 9) Glossary verify: term missing definition fails (non-strict fallback)
-  check('glossary-verify-invalid', () => {
-    const rootDir = makeGlossaryFixture(ctx, 'glossary-invalid', {
-      version: 1, updatedAt: '2025-01-01T00:00:00.000Z', terms: [{ term: 'foo' }]
-    });
-    const r = runGlossaryVerify(ctx, rootDir, 'glossary-invalid', false);
-    return r.code !== 0 && (r.stdout + r.stderr).includes('definition');
-  });
-
-  // 10) Glossary verify: missing "version" field fails
-  check('glossary-missing-version', () => {
-    const rootDir = makeGlossaryFixture(ctx, 'glossary-no-version', { terms: [] });
-    const r = runGlossaryVerify(ctx, rootDir, 'glossary-no-version', false);
-    return r.code !== 0 && (r.stdout + r.stderr).includes('version');
-  });
-
-  // 11) Glossary verify: missing "terms" field fails
-  check('glossary-missing-terms', () => {
-    const rootDir = makeGlossaryFixture(ctx, 'glossary-no-terms', { version: 1 });
-    const r = runGlossaryVerify(ctx, rootDir, 'glossary-no-terms', false);
-    return r.code !== 0 && (r.stdout + r.stderr).includes('terms');
-  });
-
-  // 12) Glossary verify: version != 1 fails (const constraint from schema)
-  check('glossary-wrong-version', () => {
-    const rootDir = makeGlossaryFixture(ctx, 'glossary-wrong-ver', {
-      version: 2, updatedAt: '2025-01-01T00:00:00.000Z', terms: []
-    });
-    const r = runGlossaryVerify(ctx, rootDir, 'glossary-wrong-ver', false);
-    return r.code !== 0 && (r.stdout + r.stderr).includes('must be 1');
-  });
-
-  // 13) Glossary verify: extra root property fails (additionalProperties: false)
-  check('glossary-extra-root-prop', () => {
-    const rootDir = makeGlossaryFixture(ctx, 'glossary-extra-root', {
-      version: 1, updatedAt: '2025-01-01T00:00:00.000Z', terms: [], extra_field: true
-    });
-    const r = runGlossaryVerify(ctx, rootDir, 'glossary-extra-root', false);
-    return r.code !== 0 && (r.stdout + r.stderr).includes('extra_field');
-  });
-
-  // 14) Glossary verify: extra item property fails (additionalProperties: false)
-  check('glossary-extra-item-prop', () => {
-    const rootDir = makeGlossaryFixture(ctx, 'glossary-extra-item', {
-      version: 1, updatedAt: '2025-01-01T00:00:00.000Z',
-      terms: [{ term: 'foo', definition: 'bar', custom: 123 }]
-    });
-    const r = runGlossaryVerify(ctx, rootDir, 'glossary-extra-item', false);
-    return r.code !== 0 && (r.stdout + r.stderr).includes('custom');
-  });
-
-  // 15) Glossary verify: aliases with non-string items fails (items.type)
-  check('glossary-aliases-item-type', () => {
-    const rootDir = makeGlossaryFixture(ctx, 'glossary-aliases-type', {
-      version: 1, updatedAt: '2025-01-01T00:00:00.000Z',
-      terms: [{ term: 'foo', definition: 'bar', aliases: [123] }]
-    });
-    const r = runGlossaryVerify(ctx, rootDir, 'glossary-aliases-type', false);
-    return r.code !== 0 && (r.stdout + r.stderr).includes('string');
-  });
-
-  // 16) Glossary verify: updatedAt with wrong type fails (type: string)
-  check('glossary-updatedAt-wrong-type', () => {
-    const rootDir = makeGlossaryFixture(ctx, 'glossary-updatedAt-type', {
-      version: 1, updatedAt: 123, terms: []
-    });
-    const r = runGlossaryVerify(ctx, rootDir, 'glossary-updatedAt-type', false);
-    return r.code !== 0 && (r.stdout + r.stderr).includes('string');
-  });
-
-  // 17) Glossary verify: corrupt schema file fails hard (not silent degrade)
-  check('glossary-corrupt-schema', () => {
-    const rootDir = path.join(ctx.evidenceDir, name, 'glossary-corrupt-schema');
-    const contextDir = path.join(rootDir, 'docs', 'context');
-    fs.mkdirSync(path.join(contextDir, 'api'), { recursive: true });
-    fs.mkdirSync(path.join(contextDir, 'config'), { recursive: true });
-    fs.writeFileSync(path.join(contextDir, 'glossary.json'), JSON.stringify({
-      version: 1, terms: []
-    }, null, 2), 'utf8');
-    fs.writeFileSync(path.join(contextDir, 'glossary.schema.json'), 'NOT VALID JSON{{{', 'utf8');
-    fs.writeFileSync(path.join(contextDir, 'registry.json'), JSON.stringify({
-      version: 1, updatedAt: '2025-01-01T00:00:00.000Z', artifacts: [
-        { id: 'glossary', type: 'json', path: 'docs/context/glossary.json', mode: 'contract' }
-      ]
-    }, null, 2), 'utf8');
-    fs.writeFileSync(path.join(contextDir, 'INDEX.md'), '# Index\n', 'utf8');
-    fs.writeFileSync(path.join(contextDir, 'config', 'environment-registry.json'), JSON.stringify({
-      version: 1, environments: []
-    }, null, 2), 'utf8');
-    const r = runGlossaryVerify(ctx, rootDir, 'glossary-corrupt-schema', false);
-    return r.code !== 0 && (r.stdout + r.stderr).includes('failed to parse');
-  });
-
-  // 18) Glossary verify: --strict works with built-in fallback and catches errors
-  check('glossary-strict-fallback-catches-errors', () => {
-    const rootDir = makeGlossaryFixture(ctx, 'glossary-strict-fallback', {
-      version: 2, updatedAt: '2025-01-01T00:00:00.000Z', terms: []
-    });
-    const r = runGlossaryVerify(ctx, rootDir, 'glossary-strict-fallback', true);
-    return r.code !== 0 && (r.stdout + r.stderr).includes('must be 1');
   });
 
   ctx.log(`[${name}] results: ${checks.map(c => `${c.label}=${c.ok ? 'PASS' : 'FAIL'}`).join(', ')}`);

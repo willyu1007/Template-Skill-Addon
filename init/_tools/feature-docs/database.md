@@ -14,7 +14,7 @@
 - `features.database` must be `true`
 - `features.contextAwareness` must be `true` whenever `db.ssot != none`
 - `db.ssot=convex` requires `repo.language` to be `typescript`, `javascript`, or `react-native`
-- `db.ssot=convex` currently requires `repo.layout=single` and a root-level `convex/` directory + root `package.json`
+- `db.ssot=convex` bootstraps `convex/` by default, or the configured `db.source.path` location when provided; init/sync/verify all follow the same resolved path
 - Managed DB contracts use fixed canonical paths in v1 (`docs/context/db/schema.json` and, for Convex, `docs/context/convex/functions.json`)
 
 ## How to enable
@@ -74,9 +74,8 @@ node .ai/skills/features/database/sync-code-schema-from-db/scripts/ctl-db.mjs in
 
 3) If `db.ssot=convex`:
 
-- Copies templates from:
-  - `.ai/skills/features/database/convex-as-ssot/templates/`
-- Assumes the target repo uses a root-level `convex/` directory and root `package.json`
+- Uses the Convex feature templates through `ctl-convex.mjs`
+- Bootstraps `convex/` by default, or the configured `db.source.path` location when provided
 - Runs:
 
 ```bash
@@ -94,6 +93,7 @@ node .ai/scripts/ctl-db-ssot.mjs sync-to-context --repo-root .
 ```
 
 - Optional verification (when Stage C is run with `--verify-features`) happens **after** contract refresh.
+- In Convex mode, that post-refresh verification is strict.
 
 ## Key outputs
 
