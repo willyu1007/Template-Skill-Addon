@@ -1,0 +1,28 @@
+<!--
+  Decision card  technical choices, trade-offs, alternatives.
+  Only include alternatives that already exist in the plan; never invent
+  alternatives for symmetry. Repeat the <li> items as needed.
+-->
+<section
+  class="plan-component plan-decision-card"
+  data-view-id="{{view_id}}"
+  data-component="decision-card"
+  data-semantic-node-id="{{semantic_node_id}}"
+>
+  <h2>{{title}}</h2>
+  <p class="decision-chosen"><strong data-i18n="decision">Decision:</strong> {{decision_summary}}</p>
+  <div class="decision-grid">
+    <div>
+      <h3 data-i18n="tradeOffs">Trade-offs</h3>
+      <ul>
+        <li>{{trade_off}}</li>
+      </ul>
+    </div>
+    <div>
+      <h3 data-i18n="alternatives">Alternatives considered</h3>
+      <ul>
+        <li>{{alternative}}</li>
+      </ul>
+    </div>
+  </div>
+</section>

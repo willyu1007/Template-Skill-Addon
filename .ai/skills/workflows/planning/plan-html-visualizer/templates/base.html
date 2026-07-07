@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<!--
+  plan-html-visualizer — page shell template.
+
+  Assembly instructions for the coding agent:
+  1. Replace every {{variable}} placeholder.
+  2. Fill the four JSON blocks (schemas: reference/artifact-format.md).
+  3. Insert assembled component fragments (components/*.html) into <main id="plan-content">.
+     #plan-content is a 6-column grid: sections span the full row by default;
+     use span-two-thirds / span-half / span-third classes to share rows, and
+     data-priority="secondary" for views that should start collapsed.
+     Start with the overview band: mindmap (span-two-thirds) + summary (span-third).
+  4. Replace the script markers at the end of <body> with the full contents of
+     scripts/i18n.js (first), scripts/navigation.js, scripts/interaction.js,
+     scripts/graph-support.js (only if a mindmap or flow-graph view is used),
+     scripts/mindmap.js (only if a mindmap view is used), scripts/flow-graph.js
+     (only if a flow-graph view is used), scripts/feedback.js. Remove unused
+     markers. Scripts are classic scripts and self-initialize; do not add
+     module syntax.
+  5. Set {{lang}} from `artifact_language` in SKILL.md (zh-CN default | en).
+     Fixed UI chrome is localized at runtime by scripts/i18n.js based on this value;
+     generated content must be written in the same language.
+-->
+<html lang="{{lang}}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{plan_title}}</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --surface: #ffffff;
+      --border: #e3e6ea;
+      --text: #1f2430;
+      --text-muted: #5b6472;
+      --accent: #2456c8;
+      --accent-soft: #eef2fc;
+      --ok: #1e7d4f;
+      --warn: #b3660a;
+      --danger: #b3362a;
+      --radius: 8px;
+      --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    code { font-family: var(--mono); font-size: 0.9em; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+    h1, h2, h3, h4 { line-height: 1.3; margin: 0 0 0.5em; }
+    p { margin: 0 0 0.75em; }
+    ul, ol { margin: 0 0 0.75em; padding-left: 1.4em; }
+    button {
+      font: inherit;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 12px;
+      cursor: pointer;
+    }
+    button:hover { border-color: var(--accent); color: var(--accent); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 224px minmax(0, 1fr);
+      gap: 28px;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 28px 24px 96px;
+    }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      #plan-nav { position: static; }
+    }
+
+    .page-header { grid-column: 1 / -1; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+    .page-kicker {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .page-header h1 { font-size: 26px; margin: 4px 0 6px; }
+    .page-meta { color: var(--text-muted); font-size: 13px; margin: 0 0 12px; }
+    .page-meta code { background: none; padding: 0; }
+
+    /* Navigation sidebar */
+    #plan-nav {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+      font-size: 13.5px;
+    }
+    .nav-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 0 0 6px;
+    }
+    #plan-nav-list { list-style: none; margin: 0 0 14px; padding: 0; }
+    #plan-nav-list li { margin: 0; }
+    #plan-nav-list a {
+      display: block;
+      padding: 5px 10px;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-left: 2px solid var(--border);
+    }
+    #plan-nav-list a:hover { color: var(--accent); }
+    #plan-nav-list a[aria-current="true"] {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    /* Primary sections bold; secondary keep lower visual weight */
+    #plan-nav-list li:not(.nav-secondary) a {
+      color: var(--text);
+      font-weight: 600;
+    }
+    #plan-nav-list .nav-secondary a {
+      font-size: 12.5px;
+      color: #8b93a2;
+    }
+    #plan-nav-list li:not(.nav-secondary) a:hover,
+    #plan-nav-list .nav-secondary a:hover,
+    #plan-nav-list .nav-secondary a[aria-current="true"] { color: var(--accent); }
+    .nav-actions { display: flex; gap: 8px; }
+    .nav-actions button { font-size: 12.5px; padding: 4px 10px; }
+
+    /* Content grid: sections span the full row unless a span-* class says otherwise */
+    #plan-content {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 20px;
+      align-items: start;
+    }
+    #plan-content > * { grid-column: 1 / -1; }
+    #plan-content > .span-two-thirds { grid-column: span 4; }
+    #plan-content > .span-half { grid-column: span 3; }
+    #plan-content > .span-third { grid-column: span 2; }
+    @media (max-width: 980px) {
+      #plan-content > .span-two-thirds,
+      #plan-content > .span-half,
+      #plan-content > .span-third { grid-column: 1 / -1; }
+    }
+    .plan-component {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+    }
+    .plan-component > h2 { font-size: 18px; }
+    .component-lead { color: var(--text-muted); }
+
+    /* Secondary sections: collapsed by default. Clicking the heading of a
+       collapsed section expands it; collapsing uses the injected arrow button
+       (.section-toggle), so heading clicks on expanded sections select the
+       section for feedback without toggling it. */
+    section[data-priority="secondary"].collapsed > h2,
+    section[data-priority="secondary"].collapsed > header h2 { cursor: pointer; }
+    .section-toggle {
+      border: none;
+      background: none;
+      padding: 0 4px;
+      margin-left: 6px;
+      color: var(--text-muted);
+      font-size: 0.75em;
+      vertical-align: middle;
+    }
+    .section-toggle::before { content: "▾"; }
+    section.collapsed .section-toggle::before { content: "▸"; }
+    .section-toggle:hover { border: none; color: var(--accent); }
+    section[data-priority="secondary"].collapsed > :not(h2):not(header) { display: none; }
+    section[data-priority="secondary"].collapsed > h2,
+    section[data-priority="secondary"].collapsed > header { margin-bottom: 0; }
+
+    /* Selection affordance */
+    [data-semantic-node-id] { scroll-margin-top: 24px; }
+    #plan-content [data-semantic-node-id]:hover { outline: 1px dashed #b9c3d4; outline-offset: 3px; }
+    #plan-content .is-selected,
+    #plan-content .is-selected:hover { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    /* Collapsible details */
+    details.plan-details { margin-top: 8px; border-top: 1px dashed var(--border); padding-top: 8px; }
+    details.plan-details > summary {
+      cursor: pointer;
+      color: var(--accent);
+      font-size: 13.5px;
+      user-select: none;
+    }
+    details.plan-details > .details-body { padding: 8px 0 0; }
+    .details-body pre {
+      background: #f0f2f6;
+      border-radius: 6px;
+      padding: 10px 12px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+
+    /* Summary card */
+    .summary-lead { font-size: 15.5px; }
+    .summary-highlights li { margin-bottom: 4px; }
+
+    /* Zoom toolbar (added by scripts/graph-support.js above graph canvases) */
+    .zoom-bar { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 8px; }
+    .zoom-bar button { font-size: 12px; padding: 2px 9px; color: var(--text-muted); }
+    .zoom-bar button:hover { color: var(--accent); }
+    .zoom-bar .zoom-percent { min-width: 52px; font-variant-numeric: tabular-nums; }
+
+    /* Mindmap (rendered by scripts/mindmap.js) */
+    .mindmap-canvas { overflow: auto; }
+    .mindmap-svg { display: block; }
+    .mindmap-edge { fill: none; stroke: #c3cbd8; stroke-width: 1.5; }
+    .mindmap-node rect { fill: var(--surface); stroke: #9aa7ba; }
+    .mindmap-node text { font-size: 12.5px; fill: var(--text); }
+    .mindmap-node.type-root rect { fill: var(--accent); stroke: var(--accent); }
+    .mindmap-node.type-root text { fill: #fff; font-weight: 600; }
+    .mindmap-node.type-goal rect,
+    .mindmap-node.type-phase rect { stroke: var(--accent); fill: var(--accent-soft); }
+    .mindmap-node.type-risk rect { stroke: var(--danger); fill: #fdf1f0; }
+    .mindmap-node.type-decision rect { stroke: var(--warn); fill: #fdf6ec; }
+    .mindmap-node.type-verification rect { stroke: var(--ok); fill: #eef8f2; }
+    .mindmap-node.is-clickable { cursor: pointer; }
+    .mindmap-node.is-clickable:hover rect { stroke-width: 2; }
+    .mindmap-toggle { cursor: pointer; }
+    .mindmap-toggle circle { fill: var(--surface); stroke: #9aa7ba; }
+    .mindmap-toggle text { font-size: 12px; fill: var(--text-muted); }
+    .mindmap-toggle:hover circle { stroke: var(--accent); }
+
+    /* Flow graph (rendered by scripts/flow-graph.js) */
+    .flow-canvas { overflow: auto; }
+    .flow-svg { display: block; }
+    .flow-edge { fill: none; stroke: #9aa7ba; stroke-width: 1.5; }
+    .flow-arrowhead { fill: #9aa7ba; }
+    .flow-edge-label { font-size: 11.5px; fill: var(--text-muted); }
+    .flow-node rect, .flow-node polygon { fill: var(--surface); stroke: #9aa7ba; }
+    .flow-node text { font-size: 12.5px; fill: var(--text); }
+    .flow-node.type-start rect, .flow-node.type-end rect { fill: var(--accent-soft); stroke: var(--accent); }
+    .flow-node.type-step rect { stroke: var(--accent); }
+    .flow-node.type-decision polygon { fill: #fdf6ec; stroke: var(--warn); }
+    .flow-node.is-clickable { cursor: pointer; }
+    .flow-node.is-clickable:hover rect,
+    .flow-node.is-clickable:hover polygon { stroke-width: 2; }
+
+    /* Parallel tracks */
+    .parallel-stage {
+      display: grid;
+      grid-template-columns: repeat(var(--track-count, 2), minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 700px) { .parallel-stage { grid-template-columns: 1fr; } }
+    .parallel-track {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px 12px;
+    }
+    .track-label {
+      margin: 0 0 4px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .track-step { padding: 8px 0 2px; border-top: 1px dashed var(--border); }
+    .track-step > h4 { font-size: 13.5px; margin-bottom: 2px; }
+    .track-step > p { margin: 0; font-size: 13px; color: var(--text-muted); }
+    .sync-point {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 12px 0;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .sync-point::before, .sync-point::after {
+      content: "";
+      flex: 1;
+      border-top: 2px dashed var(--accent);
+      opacity: 0.45;
+    }
+
+    /* Timeline */
+    .timeline-items { list-style: none; margin: 0; padding: 0; }
+    .timeline-item {
+      position: relative;
+      padding: 0 0 18px 26px;
+      border-left: 2px solid var(--border);
+      margin-left: 8px;
+    }
+    .timeline-item:last-child { padding-bottom: 4px; }
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -7px;
+      top: 5px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 3px solid var(--accent);
+    }
+    .timeline-item > h3 { font-size: 15.5px; margin-bottom: 4px; }
+
+    /* Architecture graph */
+    .arch-layers { display: grid; gap: 12px; margin-bottom: 12px; }
+    .arch-layer {
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px 12px;
+    }
+    .arch-layer-label {
+      margin: 0 0 8px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .arch-nodes { display: flex; flex-wrap: wrap; gap: 10px; }
+    .arch-node {
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 13.5px;
+      font-weight: 500;
+    }
+    .arch-edges { list-style: none; margin: 0; padding: 0; font-size: 13.5px; color: var(--text-muted); }
+    .arch-edges li { padding: 3px 0; }
+    .arch-edges .arch-edge-note { font-style: normal; color: var(--text-muted); }
+    .arch-edges strong { color: var(--text); font-weight: 500; }
+
+    /* Comparison */
+    .comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 700px) { .comparison-grid { grid-template-columns: 1fr; } }
+    .comparison-col { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+    .comparison-col > h3 { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .comparison-before > h3 { color: var(--danger); }
+    .comparison-after > h3 { color: var(--ok); }
+
+    /* Decision card */
+    .decision-chosen { padding: 10px 14px; background: var(--accent-soft); border-radius: 6px; }
+    .decision-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 700px) { .decision-grid { grid-template-columns: 1fr; } }
+    .decision-grid h3 { font-size: 13px; color: var(--text-muted); }
+
+    /* Risk card */
+    .risk-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .risk-header h2 { margin: 0; }
+    .risk-level {
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      padding: 2px 10px;
+    }
+    .risk-level-high { color: #fff; background: var(--danger); }
+    .risk-level-medium { color: #fff; background: var(--warn); }
+    .risk-level-low { color: #fff; background: var(--ok); }
+    .risk-mitigation { color: var(--text-muted); }
+
+    /* Impact map */
+    .impact-groups { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    .impact-group { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; }
+    .impact-group > h3 { font-size: 14.5px; margin-bottom: 6px; }
+    .impact-files { list-style: none; margin: 0; padding: 0; font-size: 13.5px; }
+    .impact-files li { padding: 2px 0; }
+
+    /* Feedback panel */
+    #feedback-panel {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      width: 320px;
+      max-width: calc(100vw - 40px);
+      z-index: 10;
+      font-size: 13.5px;
+    }
+    #feedback-toggle {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(30, 45, 90, 0.25);
+    }
+    #feedback-toggle:hover { color: #fff; }
+    #feedback-body {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 28px rgba(30, 45, 90, 0.18);
+      padding: 14px;
+      margin-bottom: 10px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .feedback-hint { color: var(--text-muted); font-size: 12.5px; }
+    .feedback-target {
+      font-size: 12.5px;
+      background: var(--accent-soft);
+      border-radius: 6px;
+      padding: 6px 10px;
+      word-break: break-word;
+    }
+    .feedback-target code { background: none; padding: 0; }
+    #feedback-text {
+      width: 100%;
+      font: inherit;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      resize: vertical;
+      margin-bottom: 8px;
+    }
+    .feedback-actions { display: flex; gap: 8px; margin-bottom: 8px; }
+    #feedback-pending { list-style: none; margin: 0 0 8px; padding: 0; }
+    #feedback-pending li {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+    }
+    #feedback-pending code { font-size: 11.5px; }
+    #feedback-pending p { margin: 4px 0 6px; }
+    #feedback-pending button { font-size: 12px; padding: 2px 8px; }
+    .feedback-status { color: var(--ok); font-size: 12.5px; min-height: 1.2em; margin: 0; }
+  </style>
+</head>
+<body>
+  <!-- Embedded models — fill per reference/artifact-format.md -->
+  <script type="application/json" id="plan-artifact-metadata">{{artifact_metadata_json}}</script>
+  <script type="application/json" id="plan-semantic-context">{{semantic_context_json}}</script>
+  <script type="application/json" id="plan-presentation-model">{{presentation_model_json}}</script>
+  <script type="application/json" id="plan-pending-feedback">{ "entries": [] }</script>
+
+  <div class="layout">
+    <header class="page-header">
+      <p class="page-kicker">{{plan_kicker}}</p>
+      <h1>{{plan_title}}</h1>
+      <p class="page-meta"><code>{{artifact_id}}</code> · v{{version}} · updated {{updated_at}}</p>
+    </header>
+
+    <nav id="plan-nav" aria-label="Plan sections">
+      <p class="nav-title" data-i18n="sections">Sections</p>
+      <ol id="plan-nav-list" data-generated-container></ol>
+      <div class="nav-actions">
+        <button type="button" id="expand-all" data-i18n="expandAll">Expand all</button>
+        <button type="button" id="collapse-all" data-i18n="collapseAll">Collapse all</button>
+      </div>
+    </nav>
+
+    <main id="plan-content">
+      {{plan_content}}
+    </main>
+  </div>
+
+  <aside id="feedback-panel" aria-label="Feedback">
+    <div id="feedback-body" hidden>
+      <p class="feedback-hint" data-i18n="feedbackHint">Click a section in the plan to target it, then describe your feedback in your own words.</p>
+      <p id="feedback-target" class="feedback-target" data-i18n="noSelection">No section selected yet.</p>
+      <textarea id="feedback-text" rows="4" data-i18n-placeholder="feedbackPlaceholder" placeholder="Type feedback for the selected section..."></textarea>
+      <div class="feedback-actions">
+        <button type="button" id="feedback-add" disabled data-i18n="addFeedback">Add feedback</button>
+      </div>
+      <ol id="feedback-pending" data-generated-container></ol>
+      <div class="feedback-actions">
+        <button type="button" id="feedback-save" data-i18n="saveToFile">Save into file</button>
+        <button type="button" id="feedback-copy" data-i18n="copyJson">Copy as JSON</button>
+      </div>
+      <p id="feedback-status" class="feedback-status" data-generated-container></p>
+    </div>
+    <button type="button" id="feedback-toggle"><span data-i18n="feedbackLabel">Feedback</span> (<span id="feedback-count">0</span>)</button>
+  </aside>
+
+  <script>
+/* {{script_i18n}} — replace this line with the full contents of scripts/i18n.js */
+  </script>
+  <script>
+/* {{script_navigation}} — replace this line with the full contents of scripts/navigation.js */
+  </script>
+  <script>
+/* {{script_interaction}} — replace this line with the full contents of scripts/interaction.js */
+  </script>
+  <script>
+/* {{script_graph_support}} — if a mindmap or flow-graph view is used, replace with the full contents of scripts/graph-support.js; otherwise remove this script block */
+  </script>
+  <script>
+/* {{script_mindmap}} — if a mindmap view is used, replace with the full contents of scripts/mindmap.js; otherwise remove this script block */
+  </script>
+  <script>
+/* {{script_flow_graph}} — if a flow-graph view is used, replace with the full contents of scripts/flow-graph.js; otherwise remove this script block */
+  </script>
+  <script>
+/* {{script_feedback}} — replace this line with the full contents of scripts/feedback.js */
+  </script>
+</body>
+</html>

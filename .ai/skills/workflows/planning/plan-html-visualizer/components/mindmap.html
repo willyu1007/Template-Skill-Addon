@@ -1,0 +1,11 @@
+<!--
+  Mindmap overview component.
+  Part of the overview band (span-two-thirds, priority primary).
+  The canvas is auto-rendered by scripts/mindmap.js from the embedded
+  plan-semantic-context model — do NOT hand-write nodes here.
+  Placeholders: {{view_id}}, {{semantic_node_id}} (usually the goal node), {{title}}.
+-->
+<section class="plan-component plan-mindmap span-two-thirds" id="{{view_id}}" data-view-id="{{view_id}}" data-component="mindmap" data-priority="primary" data-semantic-node-id="{{semantic_node_id}}">
+  <h2>{{title}}</h2>
+  <div class="mindmap-canvas" data-generated-container></div>
+</section>

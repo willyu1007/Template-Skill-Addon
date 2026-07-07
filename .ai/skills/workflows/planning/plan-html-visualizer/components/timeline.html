@@ -1,0 +1,24 @@
+<!--
+  Timeline  ordered phases, migration sequences, dependent steps.
+  Repeat the <li class="timeline-item"> per phase; each phase is individually
+  selectable via its own data-semantic-node-id. Keep deep detail inside the
+  collapsed <details> block.
+-->
+<section
+  class="plan-component plan-timeline"
+  data-view-id="{{view_id}}"
+  data-component="timeline"
+  data-semantic-node-id="{{semantic_node_id}}"
+>
+  <h2>{{title}}</h2>
+  <ol class="timeline-items">
+    <li class="timeline-item" data-semantic-node-id="{{item_node_id}}">
+      <h3>{{item_title}}</h3>
+      <p>{{item_summary}}</p>
+      <details class="plan-details">
+        <summary data-i18n="details">Details</summary>
+        <div class="details-body">{{item_details_html}}</div>
+      </details>
+    </li>
+  </ol>
+</section>

@@ -1,0 +1,25 @@
+<!--
+  Architecture graph — component relationships, dependencies, data flow, boundaries.
+  Group nodes into layers (repeat .arch-layer / .arch-node); list directed
+  relationships as edges (repeat the edge <li>). Every node must correspond to
+  a semantic context node.
+-->
+<section
+  class="plan-component plan-architecture-graph"
+  data-view-id="{{view_id}}"
+  data-component="architecture-graph"
+  data-semantic-node-id="{{semantic_node_id}}"
+>
+  <h2>{{title}}</h2>
+  <div class="arch-layers">
+    <div class="arch-layer">
+      <p class="arch-layer-label">{{layer_label}}</p>
+      <div class="arch-nodes">
+        <div class="arch-node" data-semantic-node-id="{{node_id}}">{{node_label}}</div>
+      </div>
+    </div>
+  </div>
+  <ul class="arch-edges">
+    <li><strong>{{from_label}}</strong> &rarr; <strong>{{to_label}}</strong> <span class="arch-edge-note">— {{edge_note}}</span></li>
+  </ul>
+</section>

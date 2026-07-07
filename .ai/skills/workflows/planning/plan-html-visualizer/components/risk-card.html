@@ -1,0 +1,18 @@
+<!--
+  Risk card  implementation, migration, compatibility, operational risks.
+  {{severity}} is one of: high | medium | low (drives the badge color).
+  Use one card per significant risk.
+-->
+<section
+  class="plan-component plan-risk-card"
+  data-view-id="{{view_id}}"
+  data-component="risk-card"
+  data-semantic-node-id="{{semantic_node_id}}"
+>
+  <header class="risk-header">
+    <h2>{{title}}</h2>
+    <span class="risk-level risk-level-{{severity}}">{{severity_label}}</span>
+  </header>
+  <p>{{risk_summary}}</p>
+  <p class="risk-mitigation"><strong data-i18n="mitigation">Mitigation:</strong> {{mitigation}}</p>
+</section>

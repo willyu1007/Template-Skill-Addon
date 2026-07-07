@@ -1,0 +1,21 @@
+<!--
+  Impact map — affected files, modules, dependencies, cross-cutting changes.
+  Group by module (repeat .impact-group); list affected paths per group
+  (repeat the file <li>). Each group is individually selectable.
+-->
+<section
+  class="plan-component plan-impact-map"
+  data-view-id="{{view_id}}"
+  data-component="impact-map"
+  data-semantic-node-id="{{semantic_node_id}}"
+>
+  <h2>{{title}}</h2>
+  <ul class="impact-groups">
+    <li class="impact-group" data-semantic-node-id="{{group_node_id}}">
+      <h3>{{module_name}}</h3>
+      <ul class="impact-files">
+        <li><code>{{file_path}}</code> — {{change_note}}</li>
+      </ul>
+    </li>
+  </ul>
+</section>

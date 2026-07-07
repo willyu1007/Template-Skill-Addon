@@ -1,0 +1,14 @@
+<!--
+  Flow graph component: branching / conditional workflows with decision points.
+  The canvas is rendered by scripts/flow-graph.js from the embedded flow spec.
+  The spec MUST be acyclic; express loops as a terminal step with text.
+  Placeholders: {{view_id}}, {{semantic_node_id}}, {{priority}}, {{span_class}},
+  {{title}}, {{flow_spec_json}} (see reference/artifact-format.md, "Flow spec").
+-->
+<section class="plan-component plan-flow-graph {{span_class}}" id="{{view_id}}" data-view-id="{{view_id}}" data-component="flow-graph" data-priority="{{priority}}" data-semantic-node-id="{{semantic_node_id}}">
+  <h2>{{title}}</h2>
+  <script type="application/json" class="flow-spec">
+{{flow_spec_json}}
+  </script>
+  <div class="flow-canvas" data-generated-container></div>
+</section>

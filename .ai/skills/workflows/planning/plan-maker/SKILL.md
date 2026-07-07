@@ -38,6 +38,7 @@ Avoid the skill when:
   - Generated when user requests "align thinking first" or provides existing requirements document
 - Host plan-mode artifact(s) (optional, read-only input)
   - May exist in the host runtime (Cursor/Codex/other planning surfaces); treat as seed input only and do not overwrite from plan-maker.
+- Optional interactive presentation: when the user wants to review the roadmap as an interactive HTML artifact, hand it to the `plan-html-visualizer` skill (`.ai/skills/workflows/planning/plan-html-visualizer/`).
 
 ## Plan-mode interoperability
 - Runtime signal contract:

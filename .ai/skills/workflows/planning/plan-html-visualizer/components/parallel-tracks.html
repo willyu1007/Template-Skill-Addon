@@ -1,0 +1,25 @@
+<!--
+  Parallel tracks component: concurrent workstreams with sync points.
+  Pure CSS (no script). A stage is a grid of tracks running side by side;
+  a sync point is a full-width marker between stages. Repeat .parallel-stage /
+  .sync-point blocks as needed; set --track-count per stage.
+  Placeholders: {{view_id}}, {{semantic_node_id}}, {{priority}}, {{span_class}}, {{title}},
+  per track: {{track_node_id}}, {{track_label}}, per step: {{step_node_id}}, {{step_title}}, {{step_detail}},
+  per sync point: {{sync_node_id}}, {{sync_label}}.
+-->
+<section class="plan-component plan-parallel-tracks {{span_class}}" id="{{view_id}}" data-view-id="{{view_id}}" data-component="parallel-tracks" data-priority="{{priority}}" data-semantic-node-id="{{semantic_node_id}}">
+  <h2>{{title}}</h2>
+  <div class="parallel-stage" style="--track-count: 2">
+    <div class="parallel-track" data-semantic-node-id="{{track_node_id}}">
+      <p class="track-label">{{track_label}}</p>
+      <div class="track-step" data-semantic-node-id="{{step_node_id}}">
+        <h4>{{step_title}}</h4>
+        <p>{{step_detail}}</p>
+      </div>
+      <!-- more .track-step -->
+    </div>
+    <!-- more .parallel-track -->
+  </div>
+  <p class="sync-point" data-semantic-node-id="{{sync_node_id}}">{{sync_label}}</p>
+  <!-- more .parallel-stage / .sync-point pairs -->
+</section>

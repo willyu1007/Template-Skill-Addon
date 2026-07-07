@@ -1,0 +1,23 @@
+<!--
+  Before / after comparison  refactoring, migration, behavior replacement.
+  Fill both columns with parallel structure (lists or short paragraphs).
+  The "before" state must already be described in the plan.
+-->
+<section
+  class="plan-component plan-comparison"
+  data-view-id="{{view_id}}"
+  data-component="comparison"
+  data-semantic-node-id="{{semantic_node_id}}"
+>
+  <h2>{{title}}</h2>
+  <div class="comparison-grid">
+    <div class="comparison-col comparison-before" data-semantic-node-id="{{before_node_id}}">
+      <h3 data-i18n="before">Before</h3>
+      {{before_html}}
+    </div>
+    <div class="comparison-col comparison-after" data-semantic-node-id="{{after_node_id}}">
+      <h3 data-i18n="after">After</h3>
+      {{after_html}}
+    </div>
+  </div>
+</section>
