@@ -19,7 +19,11 @@ Template repository. Users clone the repository to start new AI-friendly project
 ## Global Rules
 
 - Follow progressive disclosure: read only the file you are routed to
-- On context reset for ongoing work, read `dev-docs/active/<task-name>/00-overview.md` first
+- When continuing existing work after a new session or context reset, or when the user asks to
+  continue/resume an existing task, run
+  `node .ai/scripts/ctl-project-governance.mjs resume --json` before reading implementation files.
+  Follow the recovery protocol in `dev-docs/AGENTS.md`.
+- Do not treat an unrelated request as task continuation solely because an active task exists.
 
 ## Coding Standards (RECOMMEND)
 

@@ -31,7 +31,16 @@ Optional: append sync-detected events to changelog (append-only):
 node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog
 ```
 
-5) Reconstruct a task's real progress from commits (read-only; use after a context reset):
+5) Recover an active task after a new session or context reset (read-only):
+```bash
+node .ai/scripts/ctl-project-governance.mjs resume --json
+```
+
+The packet combines task intent, recent linked commits, branch identity, worktree state, warnings,
+and bounded progressive-read suggestions. Caller-controlled limits are capped; inspect
+`truncated_fields` and open the original source when a truncated field affects the next decision.
+For lower-level inspection:
+
 ```bash
 node .ai/scripts/ctl-project-governance.mjs current-task --format id
 node .ai/scripts/ctl-project-governance.mjs commits --task T-001

@@ -7,7 +7,7 @@ Persistent task documentation for context preservation across sessions.
 | Condition | Action |
 |-----------|--------|
 | Complex task (multi-module, multi-session, >2 hours) | Create task bundle |
-| Context reset on ongoing work | Read `00-overview.md` first |
+| New session or context reset on ongoing work | Run `ctl-project-governance.mjs resume --json` |
 | Task paused or handed off | Update docs via `update-dev-docs-for-handoff` |
 | Task completed and verified | Archive via `update-dev-docs-for-handoff` with status=done |
 
@@ -77,26 +77,34 @@ mid-phase: `git-commit-conventions`.
 
 ## AI Instructions
 
-### On Context Reset
+### On New Session or Context Reset
 
-1. Read `dev-docs/active/<task-slug>/00-overview.md`
-2. Read `01-plan.md`
-3. Reconcile the documented status against the commit timeline (MUST, do not skip):
-   `node .ai/scripts/ctl-project-governance.mjs commits --task <T-###>`
-   - The task ID is `task_id` in the bundle's `.ai-task.yaml`; or run
-     `node .ai/scripts/ctl-project-governance.mjs current-task --format id`.
-   - Output is oldest -> newest. Read the last entry's `subject`, and `git show --stat <sha>`
-     when the subject is not specific enough, to establish what actually landed. A `Phase`
-     trailer, when present, is a hint that shortcuts the reading, not the record itself.
-   - An **empty timeline means UNKNOWN, never zero progress**: commits made without a `Task:`
-     trailer are invisible. Follow the command's warnings and check `git log` before concluding
-     anything, and never rewrite `00-overview.md` on the strength of an empty timeline.
-   - If the command warns about uncommitted changes, the previous session may have ended dirty:
-     inspect `git status` and `git diff` before writing any new code.
-   - Where the timeline and `00-overview.md` genuinely disagree, the commits win and the doc
-     gets fixed.
-4. Read `05-pitfalls.md` (scan the `do-not-repeat` summary first)
-5. Consult other files as needed
+When continuing an existing task, run this before reading implementation files:
+
+```bash
+node .ai/scripts/ctl-project-governance.mjs resume --json
+```
+
+The command resolves tasks in this order: explicit `--task T-###`, a task ID in the current
+branch, a single `in-progress` task, then a single `blocked` task. If resolution is ambiguous,
+use the user's requested task or pass an explicit ID; never guess.
+
+Use the returned packet progressively:
+
+1. Read `task`, `overview`, recent `timeline.commits`, `worktree`, and `truncated_fields`.
+2. If a decision-critical field was truncated, read its source dev-doc or commit before acting.
+3. If the worktree is dirty, run the returned `suggested_commands` for `git status` and
+   `git diff` before writing code.
+4. Read only the returned `suggested_reads` needed for the current decision.
+5. Run `git show --stat <sha>` only when a recent commit subject is not specific enough.
+6. Treat `Phase` as a hint, never as authoritative task state.
+
+An empty timeline means UNKNOWN, never zero progress: commits without a `Task:` trailer are
+invisible. Follow packet warnings and inspect Git history before changing documented progress.
+Where linked commits and `00-overview.md` genuinely disagree about landed work, commits win and
+the document gets corrected.
+
+Do not run the recovery protocol for an unrelated request solely because an active task exists.
 
 ### During Work
 
