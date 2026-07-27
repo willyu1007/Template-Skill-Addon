@@ -36,12 +36,17 @@ Do not use `project-status-reporter` for requests that ask to create/update task
 4. Optional (recommended for accuracy when hub exists): run
    - `node .ai/scripts/ctl-project-governance.mjs lint --check`
    - If lint reports errors, include a remediation command (`node .ai/scripts/ctl-project-governance.mjs sync --apply`) in the output but do not execute the write.
-5. Generate output using the reference template.
+5. When reporting on an `in-progress` or `blocked` task, cross-check the documented status against
+   `node .ai/scripts/ctl-project-governance.mjs commits --task <T-###>`; report the disagreement
+   rather than silently picking one side.
+6. Generate output using the reference template.
 
 ## Verification
 - Output includes at least one actionable command
 - Status counts match query results
 - Do not guess task details; read `00-overview.md` if needed
+- Progress claimed for an active task is backed by its commit timeline, or the gap is stated
+  (an empty timeline is reported as unknown, never as zero progress)
 - For semantic output, quote only documented feature briefs; if missing, report `unknown` instead of inferring
 
 ## Boundaries

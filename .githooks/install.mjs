@@ -141,7 +141,7 @@ function main() {
   }
 
   // Make hooks executable
-  const hookFiles = ['pre-commit', 'commit-msg', 'pre-push', 'post-merge'];
+  const hookFiles = ['pre-commit', 'prepare-commit-msg', 'commit-msg', 'pre-push', 'post-merge'];
   for (const hook of hookFiles) {
     const hookPath = path.join(hooksDir, hook);
     if (fs.existsSync(hookPath)) {

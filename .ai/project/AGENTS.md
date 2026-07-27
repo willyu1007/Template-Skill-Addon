@@ -31,14 +31,26 @@ Optional: append sync-detected events to changelog (append-only):
 node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog
 ```
 
-5) (Optional) Install Git hooks for automatic sync on commit:
+5) Reconstruct a task's real progress from commits (read-only; use after a context reset):
+```bash
+node .ai/scripts/ctl-project-governance.mjs current-task --format id
+node .ai/scripts/ctl-project-governance.mjs commits --task T-001
+```
+
+6) (Optional) Install Git hooks for automatic sync and commit/task linking:
 ```bash
 node .githooks/install.mjs
 ```
 
 Installed hooks:
 - `pre-commit`: Auto-runs governance `sync` when `dev-docs/` files are staged
-- `commit-msg`: Validates conventional commit format
+- `prepare-commit-msg`: Injects `Task:`/`Docs:` trailers when exactly one task is `in-progress`
+- `commit-msg`: Validates conventional commit format and the `Task: T-###` trailer
+
+The trailer check warns by default. To block instead: `git config hooks.requireTaskTrailer true`.
+To skip the trailer hooks once:
+- sh/bash: `SKIP_TASK_TRAILER=1 git commit -m "..."`
+- PowerShell: `$env:SKIP_TASK_TRAILER="1"; git commit -m "..."; Remove-Item Env:SKIP_TASK_TRAILER`
 
 To check status or uninstall:
 ```bash

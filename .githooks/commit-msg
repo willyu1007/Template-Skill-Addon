@@ -7,6 +7,12 @@
 #
 # Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
 #
+# Also checks the `Task: T-###` trailer that links a commit to a dev-docs task.
+# The check warns by default. To block instead:
+#   git config hooks.requireTaskTrailer true
+#
+# Skip once: SKIP_TASK_TRAILER=1 git commit -m "..."
+#
 # Install: node .githooks/install.mjs
 # Uninstall: node .githooks/install.mjs --uninstall
 #
@@ -41,6 +47,69 @@ if ! echo "$COMMIT_MSG" | head -1 | grep -qE "$PATTERN"; then
   echo ""
   echo "Your message: $(head -1 "$COMMIT_MSG_FILE")"
   exit 1
+fi
+
+# --- Task trailer: links the commit to a dev-docs task bundle ---
+
+if [ "$SKIP_TASK_TRAILER" = "1" ]; then
+  exit 0
+fi
+
+STRICT=$(git config --bool --get hooks.requireTaskTrailer 2>/dev/null || echo false)
+
+# In strict mode the commit is rejected, so the fix is to re-commit. In warn mode the
+# commit has already been accepted, so the fix is to amend it.
+if [ "$STRICT" = "true" ]; then
+  FIX_HINT="Re-commit with the trailer: git commit -m \"<subject>\" -m \"Task: T-###\""
+else
+  FIX_HINT="Link the accepted commit: git commit --amend  (append a 'Task: T-###' trailer)"
+fi
+
+# report <message> [hint...]
+report() {
+  MSG="$1"
+  shift
+
+  if [ "$STRICT" = "true" ]; then
+    echo "[hook] $MSG"
+  else
+    echo "[hook] warning: $MSG"
+  fi
+
+  for hint in "$@"; do
+    echo "       $hint"
+  done
+
+  if [ "$STRICT" = "true" ]; then
+    echo "       (Set 'git config hooks.requireTaskTrailer false' to downgrade this to a warning.)"
+    exit 1
+  fi
+}
+
+# Parse real trailers only (not arbitrary "Task:" lines in the body).
+TASK_VALUE=$(git interpret-trailers --parse <"$COMMIT_MSG_FILE" | grep -E '^Task:' | head -1 | sed 's/^Task:[[:space:]]*//' | tr -d '[:space:]')
+
+if [ -z "$TASK_VALUE" ]; then
+  # Only report when there is an active task worth linking to. Repositories
+  # without dev-docs task bundles are unaffected.
+  if command -v node >/dev/null 2>&1 && [ -f .ai/scripts/ctl-project-governance.mjs ]; then
+    node .ai/scripts/ctl-project-governance.mjs current-task --format id >/dev/null 2>&1
+    RC=$?
+    if [ "$RC" -eq 0 ] || [ "$RC" -eq 2 ]; then
+      # The usual cause is a trailer written outside the final paragraph, which git
+      # does not parse as a trailer at all -- so name that before the fix command.
+      report "Missing 'Task: T-###' trailer while an active dev-docs task exists." \
+        "If you did write one, it is not in a trailer position: all trailers must sit" \
+        "in the LAST paragraph of the message (with -m, put every trailer into a" \
+        "single final -m argument)." \
+        "$FIX_HINT"
+    fi
+  fi
+  exit 0
+fi
+
+if ! echo "$TASK_VALUE" | grep -qE '^T-[0-9]{3}$'; then
+  report "Invalid Task trailer value: '$TASK_VALUE' (expected T-###)." "$FIX_HINT"
 fi
 
 exit 0

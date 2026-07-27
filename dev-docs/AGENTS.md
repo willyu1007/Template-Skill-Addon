@@ -48,6 +48,21 @@ Before making any code/config changes for a task that meets the Decision Gate:
    - record every verification run in `04-verification.md` (commands + outcomes)
 4. Before pausing, handing off, or finishing, run `update-dev-docs-for-handoff`.
 
+## Commit Gate (MUST)
+
+Task docs record the *claimed* progress; commits record the *actual* progress. Recovery works
+only when both exist, so commit at task events. The most common ones (full list in
+`git-commit-conventions`):
+
+- A phase in `01-plan.md` is complete and verified: commit.
+- Before a risky refactor: commit a rollback point.
+- Before pausing, handing off, or compacting context: commit, leaving a clean worktree.
+
+Every such commit MUST carry a `Task: T-###` trailer. If Git hooks are installed
+(`node .githooks/install.mjs`), `prepare-commit-msg` injects it when a single task is
+`in-progress`; otherwise write it by hand. Full rules, trailer fields, and how to end a session
+mid-phase: `git-commit-conventions`.
+
 ## File Purposes
 
 | File | Contains | Update Frequency |
@@ -66,8 +81,22 @@ Before making any code/config changes for a task that meets the Decision Gate:
 
 1. Read `dev-docs/active/<task-slug>/00-overview.md`
 2. Read `01-plan.md`
-3. Read `05-pitfalls.md` (scan the `do-not-repeat` summary first)
-4. Consult other files as needed
+3. Reconcile the documented status against the commit timeline (MUST, do not skip):
+   `node .ai/scripts/ctl-project-governance.mjs commits --task <T-###>`
+   - The task ID is `task_id` in the bundle's `.ai-task.yaml`; or run
+     `node .ai/scripts/ctl-project-governance.mjs current-task --format id`.
+   - Output is oldest -> newest. Read the last entry's `subject`, and `git show --stat <sha>`
+     when the subject is not specific enough, to establish what actually landed. A `Phase`
+     trailer, when present, is a hint that shortcuts the reading, not the record itself.
+   - An **empty timeline means UNKNOWN, never zero progress**: commits made without a `Task:`
+     trailer are invisible. Follow the command's warnings and check `git log` before concluding
+     anything, and never rewrite `00-overview.md` on the strength of an empty timeline.
+   - If the command warns about uncommitted changes, the previous session may have ended dirty:
+     inspect `git status` and `git diff` before writing any new code.
+   - Where the timeline and `00-overview.md` genuinely disagree, the commits win and the doc
+     gets fixed.
+4. Read `05-pitfalls.md` (scan the `do-not-repeat` summary first)
+5. Consult other files as needed
 
 ### During Work
 

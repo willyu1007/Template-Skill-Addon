@@ -8,6 +8,12 @@ Use when user asks what to do next, needs guidance on priorities, or is picking 
 node .ai/scripts/ctl-project-governance.mjs query --json
 ```
 
+For the task being picked up, also read its commit timeline; the documented status can be stale:
+
+```bash
+node .ai/scripts/ctl-project-governance.mjs commits --task T-xxx
+```
+
 ## Priority Rules
 
 | Priority | Condition |
@@ -40,3 +46,8 @@ node .ai/scripts/ctl-project-governance.mjs query --json
 - Always provide at least one actionable command
 - If continuing in-progress task, suggest reading its overview first
 - For blocked tasks, suggest investigation steps
+- Derive what actually landed from the last entry of the `commits` output (its `subject`, plus
+  `git show --stat <sha>` if needed); use the `Phase` trailer only as a hint when present
+- Report an empty timeline as unknown progress, not as zero progress: commits without a `Task:`
+  trailer do not appear. Surface the command's warnings instead of overriding the overview
+- If `commits` warns about uncommitted changes, make inspecting `git status` the first step

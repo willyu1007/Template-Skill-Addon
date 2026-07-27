@@ -54,7 +54,11 @@ If no task bundle exists yet, use `create-dev-docs-plan` first.
 6. Update `05-pitfalls.md`:
    - append resolved failures and dead ends (historical lessons, not current issues)
    - keep the do-not-repeat summary current (fast scan for future contributors)
-7. If status is `done` and verification is complete:
+7. Commit, leaving a clean worktree:
+   - the doc updates and the code they describe belong in the same commit
+   - the commit MUST carry a `Task: T-###` trailer; for trailer fields and unfinished-phase
+     rules, follow `git-commit-conventions`
+8. If status is `done` and verification is complete:
    - propose moving `dev-docs/active/<task-slug>/` to `dev-docs/archive/<task-slug>/`
    - obtain approval before moving
 
@@ -65,6 +69,7 @@ If no task bundle exists yet, use `create-dev-docs-plan` first.
 - [ ] Verification section records commands run and outcomes
 - [ ] `05-pitfalls.md` is updated for any important failures and the summary is current
 - [ ] Handoff docs are sufficient for another contributor to continue
+- [ ] Work is committed with a `Task: T-###` trailer and `git status` is clean
 - [ ] No secrets or credentials in documentation
 - [ ] If archived: task moved to `dev-docs/archive/` after approval
 
@@ -73,6 +78,7 @@ If no task bundle exists yet, use `create-dev-docs-plan` first.
 - MUST NOT delete or overwrite previous decisions without explanation
 - MUST NOT mark tasks as complete without recording verification status
 - MUST NOT delete prior entries from `05-pitfalls.md` (append-only; mark resolved/superseded instead)
+- MUST NOT end a handoff with uncommitted task work; docs alone do not survive a context reset
 - MUST obtain approval before moving/archiving directories
 - SHOULD NOT leave undocumented “tribal knowledge” that blocks the next contributor
 - SHOULD be specific about what works, what is broken, and what to do next
