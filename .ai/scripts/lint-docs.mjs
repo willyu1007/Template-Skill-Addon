@@ -702,7 +702,8 @@ function extractHeadingAnchors(content) {
       const anchorId = headingMatch[1]
         .toLowerCase()
         .trim()
-        .replace(/[^\w\s-]/g, '') // Remove special chars except hyphens
+        // Preserve non-Latin letters so localized headings match their Markdown anchors.
+        .replace(/[^\p{L}\p{M}\p{N}\s_-]/gu, '')
         .replace(/\s+/g, '-'); // Spaces to hyphens
       anchors.add(anchorId);
     }
@@ -825,6 +826,13 @@ function isKebabCase(name) {
   return /^[a-z0-9]+(-[a-z0-9]+)*$/.test(name);
 }
 
+function isDynamicRouteSegment(name) {
+  return (
+    /^\[(?:\.\.\.)?[A-Za-z0-9_-]+\]$/.test(name) ||
+    /^\[\[\.\.\.[A-Za-z0-9_-]+\]\]$/.test(name)
+  );
+}
+
 function checkNamingConventions(rootDir) {
   const issues = [];
   const dirs = findAllDirectories(rootDir);
@@ -853,7 +861,7 @@ function checkNamingConventions(rootDir) {
     }
 
     // Check kebab-case (skip .ai itself and other dot-prefixed)
-    if (!dirName.startsWith('.') && !isKebabCase(dirName)) {
+    if (!dirName.startsWith('.') && !isKebabCase(dirName) && !isDynamicRouteSegment(dirName)) {
       // Check if it contains spaces or special chars
       if (/\s/.test(dirName)) {
         issues.push({

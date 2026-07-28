@@ -1,6 +1,6 @@
 ---
 name: update-dev-docs-for-handoff
-description: Update an existing dev-docs task bundle with progress, decisions, pitfalls, and verification evidence to enable clean handoff, context recovery, or archival; triggers: handoff/update task docs/context reset/archive.
+description: Update an existing dev-docs task bundle with progress, decisions, pitfalls, verification evidence, and worktree state for an explicit handoff or archival.
 ---
 
 # Update Dev Docs for Handoff
@@ -10,10 +10,9 @@ Keep task documentation current so another engineer (or future you) can understa
 
 ## When to use
 Use this skill when:
-- A task is paused and will be resumed later
-- You are handing off work to another contributor
-- You are about to compress context or close a long-running thread
-- A refactor changed the plan and decisions must be recorded
+- The user requests a task pause or handoff
+- A task becomes blocked
+- A refactor changes the plan or architecture
 - A task is completed and ready to archive
 
 If no task bundle exists yet, use `create-dev-docs-plan` first.
@@ -54,10 +53,10 @@ If no task bundle exists yet, use `create-dev-docs-plan` first.
 6. Update `05-pitfalls.md`:
    - append resolved failures and dead ends (historical lessons, not current issues)
    - keep the do-not-repeat summary current (fast scan for future contributors)
-7. Commit, leaving a clean worktree:
-   - the doc updates and the code they describe belong in the same commit
-   - the commit MUST carry a `Task: T-###` trailer; for trailer fields and unfinished-phase
-     rules, follow `git-commit-conventions`
+7. Preserve repository state:
+   - commit verified, revertible work with a `Task: T-###` trailer
+   - if remaining work cannot be committed safely, record the dirty worktree and next action;
+     do not force a commit
 8. If status is `done` and verification is complete:
    - propose moving `dev-docs/active/<task-slug>/` to `dev-docs/archive/<task-slug>/`
    - obtain approval before moving
@@ -69,7 +68,7 @@ If no task bundle exists yet, use `create-dev-docs-plan` first.
 - [ ] Verification section records commands run and outcomes
 - [ ] `05-pitfalls.md` is updated for any important failures and the summary is current
 - [ ] Handoff docs are sufficient for another contributor to continue
-- [ ] Work is committed with a `Task: T-###` trailer and `git status` is clean
+- [ ] Landed work is linked by `Task: T-###`; any remaining worktree changes are reported
 - [ ] No secrets or credentials in documentation
 - [ ] If archived: task moved to `dev-docs/archive/` after approval
 
@@ -78,7 +77,8 @@ If no task bundle exists yet, use `create-dev-docs-plan` first.
 - MUST NOT delete or overwrite previous decisions without explanation
 - MUST NOT mark tasks as complete without recording verification status
 - MUST NOT delete prior entries from `05-pitfalls.md` (append-only; mark resolved/superseded instead)
-- MUST NOT end a handoff with uncommitted task work; docs alone do not survive a context reset
+- MUST NOT describe uncommitted work as landed
+- MUST NOT force broken or unverified work into a commit to obtain a clean worktree
 - MUST obtain approval before moving/archiving directories
 - SHOULD NOT leave undocumented “tribal knowledge” that blocks the next contributor
 - SHOULD be specific about what works, what is broken, and what to do next

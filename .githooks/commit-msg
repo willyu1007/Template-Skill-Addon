@@ -87,22 +87,27 @@ report() {
 }
 
 # Parse real trailers only (not arbitrary "Task:" lines in the body).
-TASK_VALUE=$(git interpret-trailers --parse <"$COMMIT_MSG_FILE" | grep -E '^Task:' | head -1 | sed 's/^Task:[[:space:]]*//' | tr -d '[:space:]')
+TASK_LINES=$(git interpret-trailers --parse <"$COMMIT_MSG_FILE" | grep -E '^Task:')
+TASK_COUNT=$(printf '%s\n' "$TASK_LINES" | grep -c .)
+
+if [ "$TASK_COUNT" -gt 1 ]; then
+  report "Multiple Task trailers found; use exactly one 'Task: T-###' trailer." "$FIX_HINT"
+  exit 0
+fi
+
+TASK_VALUE=$(printf '%s\n' "$TASK_LINES" | head -1 | sed 's/^Task:[[:space:]]*//' | tr -d '[:space:]')
 
 if [ -z "$TASK_VALUE" ]; then
-  # Only report when there is an active task worth linking to. Repositories
-  # without dev-docs task bundles are unaffected.
-  if command -v node >/dev/null 2>&1 && [ -f .ai/scripts/ctl-project-governance.mjs ]; then
-    node .ai/scripts/ctl-project-governance.mjs current-task --format id >/dev/null 2>&1
-    RC=$?
-    if [ "$RC" -eq 0 ] || [ "$RC" -eq 2 ]; then
-      # The usual cause is a trailer written outside the final paragraph, which git
-      # does not parse as a trailer at all -- so name that before the fix command.
-      report "Missing 'Task: T-###' trailer while an active dev-docs task exists." \
-        "If you did write one, it is not in a trailer position: all trailers must sit" \
-        "in the LAST paragraph of the message (with -m, put every trailer into a" \
-        "single final -m argument)." \
-        "$FIX_HINT"
+  BRANCH=$(git branch --show-current 2>/dev/null)
+  BRANCH_TASKS=$(printf '%s\n' "$BRANCH" | grep -oE 'T-[0-9]{3}' | sort -u)
+  BRANCH_TASK_COUNT=$(printf '%s\n' "$BRANCH_TASKS" | grep -c .)
+
+  if [ "$BRANCH_TASK_COUNT" -eq 1 ] &&
+    command -v node >/dev/null 2>&1 &&
+    [ -f .ai/scripts/ctl-project-governance.mjs ]; then
+    BRANCH_TASK_ID=$BRANCH_TASKS
+    if node .ai/scripts/ctl-project-governance.mjs current-task --task "$BRANCH_TASK_ID" --format id >/dev/null 2>&1; then
+      report "Missing 'Task: $BRANCH_TASK_ID' trailer for task branch '$BRANCH'." "$FIX_HINT"
     fi
   fi
   exit 0

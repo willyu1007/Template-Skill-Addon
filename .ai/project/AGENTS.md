@@ -31,15 +31,13 @@ Optional: append sync-detected events to changelog (append-only):
 node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog
 ```
 
-5) Recover an active task after a new session or context reset (read-only):
+5) Resume existing task work (read-only):
 ```bash
 node .ai/scripts/ctl-project-governance.mjs resume --json
 ```
 
-The packet combines task intent, recent linked commits, branch identity, worktree state, warnings,
-and bounded progressive-read suggestions. Caller-controlled limits are capped; inspect
-`truncated_fields` and open the original source when a truncated field affects the next decision.
-For lower-level inspection:
+Pass `--task T-###` when the request identifies a task. The JSON packet contains bounded task,
+commit, branch, and worktree state plus progressive-read suggestions. For lower-level inspection:
 
 ```bash
 node .ai/scripts/ctl-project-governance.mjs current-task --format id
@@ -53,8 +51,8 @@ node .githooks/install.mjs
 
 Installed hooks:
 - `pre-commit`: Auto-runs governance `sync` when `dev-docs/` files are staged
-- `prepare-commit-msg`: Injects `Task:`/`Docs:` trailers when exactly one task is `in-progress`
-- `commit-msg`: Validates conventional commit format and the `Task: T-###` trailer
+- `prepare-commit-msg`: Injects `Task:` when the branch contains one valid task ID
+- `commit-msg`: Validates conventional commit format and any `Task: T-###` trailer
 
 The trailer check warns by default. To block instead: `git config hooks.requireTaskTrailer true`.
 To skip the trailer hooks once:

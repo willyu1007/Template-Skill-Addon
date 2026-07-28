@@ -18,12 +18,18 @@ Template repository. Users clone the repository to start new AI-friendly project
 
 ## Global Rules
 
-- Follow progressive disclosure: read only the file you are routed to
-- When continuing existing work after a new session or context reset, or when the user asks to
-  continue/resume an existing task, run
+- Follow progressive disclosure: read only the file you are routed to.
+
+## Task Continuity
+
+- For a request that continues an existing task, run
   `node .ai/scripts/ctl-project-governance.mjs resume --json` before reading implementation files.
-  Follow the recovery protocol in `dev-docs/AGENTS.md`.
-- Do not treat an unrelated request as task continuation solely because an active task exists.
+- If the request identifies `T-###`, pass it with `--task T-###`.
+- Treat a task ID in the current branch as relevant only when the request concerns that task.
+- For unrelated work, do not run task recovery or attach a `Task:` trailer. On a task branch, set
+  `SKIP_TASK_TRAILER=1` for that commit.
+- Session creation, reset, and compaction are controlled by the user or runtime. Continue working
+  without discussing session-control limitations.
 
 ## Coding Standards (RECOMMEND)
 

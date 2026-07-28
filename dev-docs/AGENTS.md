@@ -7,8 +7,8 @@ Persistent task documentation for context preservation across sessions.
 | Condition | Action |
 |-----------|--------|
 | Complex task (multi-module, multi-session, >2 hours) | Create task bundle |
-| New session or context reset on ongoing work | Run `ctl-project-governance.mjs resume --json` |
-| Task paused or handed off | Update docs via `update-dev-docs-for-handoff` |
+| Existing task continued by user intent or a related task branch | Run `ctl-project-governance.mjs resume --json` |
+| User requests a pause or handoff | Update docs via `update-dev-docs-for-handoff` |
 | Task completed and verified | Archive via `update-dev-docs-for-handoff` with status=done |
 
 ## Decision Gate (MUST)
@@ -46,22 +46,21 @@ Before making any code/config changes for a task that meets the Decision Gate:
    - update `00-overview.md` when status changes
    - append to `03-implementation-notes.md` after each phase
    - record every verification run in `04-verification.md` (commands + outcomes)
-4. Before pausing, handing off, or finishing, run `update-dev-docs-for-handoff`.
+4. Before an explicit pause, handoff, or task completion, run `update-dev-docs-for-handoff`.
 
 ## Commit Gate (MUST)
 
-Task docs record the *claimed* progress; commits record the *actual* progress. Recovery works
-only when both exist, so commit at task events. The most common ones (full list in
-`git-commit-conventions`):
+Task docs describe intent and current state; commits record what landed.
 
-- A phase in `01-plan.md` is complete and verified: commit.
-- Before a risky refactor: commit a rollback point.
-- Before pausing, handing off, or compacting context: commit, leaving a clean worktree.
+- SHOULD commit after completing and verifying a revertible work unit.
+- MAY commit a known-green rollback point before risky changes.
+- MUST add `Task: T-###` when the commit belongs to that task.
+- MUST NOT attach a task to unrelated work.
+- MUST NOT force broken or unverified work into a commit. Preserve and report any remaining
+  worktree changes accurately.
 
-Every such commit MUST carry a `Task: T-###` trailer. If Git hooks are installed
-(`node .githooks/install.mjs`), `prepare-commit-msg` injects it when a single task is
-`in-progress`; otherwise write it by hand. Full rules, trailer fields, and how to end a session
-mid-phase: `git-commit-conventions`.
+When hooks are installed (`node .githooks/install.mjs`), `prepare-commit-msg` injects `Task`
+only from a branch containing one valid task ID. Full commit rules: `git-commit-conventions`.
 
 ## File Purposes
 
@@ -77,34 +76,24 @@ mid-phase: `git-commit-conventions`.
 
 ## AI Instructions
 
-### On New Session or Context Reset
+### Resume Existing Work
 
-When continuing an existing task, run this before reading implementation files:
+For a request that continues an existing task, run this before reading implementation files:
 
 ```bash
 node .ai/scripts/ctl-project-governance.mjs resume --json
 ```
 
-The command resolves tasks in this order: explicit `--task T-###`, a task ID in the current
-branch, a single `in-progress` task, then a single `blocked` task. If resolution is ambiguous,
-use the user's requested task or pass an explicit ID; never guess.
-
-Use the returned packet progressively:
-
-1. Read `task`, `overview`, recent `timeline.commits`, `worktree`, and `truncated_fields`.
-2. If a decision-critical field was truncated, read its source dev-doc or commit before acting.
-3. If the worktree is dirty, run the returned `suggested_commands` for `git status` and
-   `git diff` before writing code.
-4. Read only the returned `suggested_reads` needed for the current decision.
-5. Run `git show --stat <sha>` only when a recent commit subject is not specific enough.
-6. Treat `Phase` as a hint, never as authoritative task state.
-
-An empty timeline means UNKNOWN, never zero progress: commits without a `Task:` trailer are
-invisible. Follow packet warnings and inspect Git history before changing documented progress.
-Where linked commits and `00-overview.md` genuinely disagree about landed work, commits win and
-the document gets corrected.
-
-Do not run the recovery protocol for an unrelated request solely because an active task exists.
+- If the request identifies `T-###`, pass `--task T-###`.
+- Resolution order is explicit task, branch task, single `in-progress`, then single `blocked`.
+- If resolution is ambiguous, do not guess.
+- If `worktree.clean` is false, inspect the returned `suggested_commands` before writing code.
+- Treat an empty `timeline.commits` as unknown progress, not zero progress.
+- Read only the returned `suggested_reads`; inspect source files named in `truncated_fields` when
+  they affect the next decision.
+- Reconcile genuine disagreements about landed work in favor of Git history, then correct the
+  task document.
+- Do not run task recovery for unrelated work.
 
 ### During Work
 

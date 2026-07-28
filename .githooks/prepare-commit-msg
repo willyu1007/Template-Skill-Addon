@@ -2,11 +2,8 @@
 #
 # Git prepare-commit-msg hook: link commits to dev-docs tasks.
 #
-# Injects `Task:` / `Docs:` trailers when the repo has exactly one active task,
-# so the commit -> task link does not depend on the author remembering it.
-#
-# The trailers are what `ctl-project-governance.mjs commits --task T-###` reads
-# back to reconstruct a task's progress after a context reset.
+# Injects `Task:` only when the current branch contains one valid task ID.
+# It never infers commit ownership from the repository's active-task count.
 #
 # Skip once: SKIP_TASK_TRAILER=1 git commit -m "..."
 #
@@ -40,17 +37,21 @@ if git interpret-trailers --parse <"$COMMIT_MSG_FILE" | grep -qE '^Task:[[:space
   exit 0
 fi
 
-# Exit codes: 0 resolved, 2 ambiguous, 3 none, 4 not found.
-# Anything other than 0 means there is nothing safe to inject.
-TRAILERS=$(node .ai/scripts/ctl-project-governance.mjs current-task --format trailers 2>/dev/null)
-if [ $? -ne 0 ] || [ -z "$TRAILERS" ]; then
+# Branch identity is the only safe automatic signal available to a Git hook.
+BRANCH=$(git branch --show-current 2>/dev/null)
+TASK_IDS=$(printf '%s\n' "$BRANCH" | grep -oE 'T-[0-9]{3}' | sort -u)
+TASK_COUNT=$(printf '%s\n' "$TASK_IDS" | grep -c .)
+
+if [ "$TASK_COUNT" -ne 1 ]; then
   exit 0
 fi
 
-echo "$TRAILERS" | while IFS= read -r trailer; do
-  [ -n "$trailer" ] || continue
-  git interpret-trailers --if-exists doNothing --in-place --trailer "$trailer" "$COMMIT_MSG_FILE"
-done
+TASK_ID=$TASK_IDS
+if ! node .ai/scripts/ctl-project-governance.mjs current-task --task "$TASK_ID" --format id >/dev/null 2>&1; then
+  exit 0
+fi
 
-echo "[hook] Linked commit to $(echo "$TRAILERS" | head -1)"
+git interpret-trailers --if-exists doNothing --in-place --trailer "Task: $TASK_ID" "$COMMIT_MSG_FILE"
+
+echo "[hook] Linked commit to Task: $TASK_ID"
 exit 0
