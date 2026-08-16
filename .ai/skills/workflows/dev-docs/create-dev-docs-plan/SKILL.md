@@ -16,18 +16,12 @@ Use the `create-dev-docs-plan` skill when:
 - You want a consistent handoff artifact for later context recovery
 
 ## Quick decision gate (MUST)
-Use the `create-dev-docs-plan` skill when **any** is true:
-- Expected duration is `> 2 hours`, or likely to span multiple sessions
-- You need explicit handoff/context recovery documentation
-- The change is high-risk or cross-cutting (examples: DB/schema migration, auth/security, CI/CD/infra, multi-service/API boundary changes)
+The gate is defined once in `dev-docs/AGENTS.md` ("Decision Gate (MUST)"). Apply the criteria
+there; they are not restated here so the two cannot drift.
 
-Notes:
-- Touching multiple folders (e.g., `src/` + `tests/` + docs) is **not** a sufficient trigger by itself.
-
-Skip the `create-dev-docs-plan` skill when **any** is true:
-- Trivial fix (`< 30 min`)
-- Single-file change (including adjacent tests/docs)
-- Simple refactor with clear scope (even if the change touches multiple folders)
+Summary: create a bundle for work that is long-running, needs handoff/context recovery, or is
+high-risk/cross-cutting. Skip it for trivial fixes, single-file changes, and clearly-scoped
+refactors.
 
 ## Inputs
 - Task name (short, kebab-case recommended)

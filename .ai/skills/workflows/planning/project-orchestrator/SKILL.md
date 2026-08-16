@@ -34,13 +34,11 @@ Avoid using Project Orchestrator for purely local implementation within an alrea
 
 ## Process (high-level)
 
-> **Note**: `--project main` is the default and can be omitted. Replace `main` with the actual project slug for multi-project setups.
-
 1. Ensure the project hub exists.
    - If missing, instruct to run:
-     - `node .ai/scripts/ctl-project-governance.mjs init --project main`
+     - `node .ai/scripts/ctl-project-governance.mjs init`
 2. Load the current project state:
-   - Prefer reading `.ai/project/main/registry.yaml`
+   - Prefer reading `.ai/project/registry.yaml`
    - Run lint for sanity if needed:
      - `node .ai/scripts/ctl-project-governance.mjs lint --check`
 3. Search for related work:
@@ -61,8 +59,8 @@ Avoid using Project Orchestrator for purely local implementation within an alrea
 7. Update project hub semantics (when needed):
    - Update `registry.yaml` to map Milestone/Feature/Requirement <-> Task (complete mapping, avoid long-lived `F-000`)
    - Update semantic sections:
-     - `.ai/project/main/feature-map.md` non-AUTO `Semantic Feature Briefs` (full semantic extraction)
-     - `.ai/project/main/dashboard.md` `Focus` (concise index only; no full semantic body)
+     - `.ai/project/feature-map.md` non-AUTO `Semantic Feature Briefs` (full semantic extraction)
+     - `.ai/project/dashboard.md` `Focus` (concise index only; no full semantic body)
    - Changelog: prefer `node .ai/scripts/ctl-project-governance.mjs sync --apply --changelog` for registration/status events; add manual entries only for non-status events
 8. Regenerate derived views (optional, but recommended after mapping changes):
    - `node .ai/scripts/ctl-project-governance.mjs sync --apply`
@@ -89,7 +87,7 @@ Output MUST include a triage decision and actionable command sequence.
 |----------|--------------|
 | NEW_TASK | 1. Create a dev-docs task bundle under `dev-docs/**/active/<slug>/` 2. Update `feature-map.md` semantic briefs (full) and `dashboard.md` focus (index) 3. `node .ai/scripts/ctl-project-governance.mjs sync --apply` 4. `node .ai/scripts/ctl-project-governance.mjs lint --check` |
 | REUSE_TASK | 1. Read `dev-docs/**/active/<slug>/00-overview.md` 2. Refresh `feature-map.md` semantic brief if feature posture changed 3. (if needed) Update `State:` + `node .ai/scripts/ctl-project-governance.mjs sync --apply` |
-| PROJECT_UPDATE | 1. Edit `.ai/project/main/registry.yaml` 2. Update `feature-map.md` semantic briefs and `dashboard.md` focus index 3. `node .ai/scripts/ctl-project-governance.mjs sync --apply` |
+| PROJECT_UPDATE | 1. Edit `.ai/project/registry.yaml` 2. Update `feature-map.md` semantic briefs and `dashboard.md` focus index 3. `node .ai/scripts/ctl-project-governance.mjs sync --apply` |
 
 ## Verification
 - If you updated project hub files:

@@ -31,7 +31,7 @@ Do not use `project-status-reporter` for requests that ask to create/update task
    - Otherwise default to `main`.
 3. Read the corresponding reference document and use its **Data Source** command(s).
    - For semantic questions, read semantic sections in:
-     - `.ai/project/<project>/feature-map.md` (`Semantic Feature Briefs`)
+     - `.ai/project/feature-map.md` (`Semantic Feature Briefs`)
    - `dashboard.md` is focus index context only, not semantic body source
 4. Optional (recommended for accuracy when hub exists): run
    - `node .ai/scripts/ctl-project-governance.mjs lint --check`

@@ -4,31 +4,31 @@ Entry point for AI agents working with **project-level** governance in the repos
 
 ## Quick start
 
-1) Initialize the project hub (idempotent; creates `.ai/project/main/` from templates):
+1) Initialize the project hub (idempotent; creates `.ai/project/` from templates):
 ```bash
-node .ai/scripts/ctl-project-governance.mjs init --project main
+node .ai/scripts/ctl-project-governance.mjs init
 ```
 
 2) Query tasks (LLM-friendly JSON lines; works even if hub is missing):
 ```bash
-node .ai/scripts/ctl-project-governance.mjs query --project main --text "sync"
-node .ai/scripts/ctl-project-governance.mjs query --project main --status in-progress
-node .ai/scripts/ctl-project-governance.mjs query --project main --id T-001
+node .ai/scripts/ctl-project-governance.mjs query --text "sync"
+node .ai/scripts/ctl-project-governance.mjs query --status in-progress
+node .ai/scripts/ctl-project-governance.mjs query --id T-001
 ```
 
 3) Run lint (CI-friendly; warnings do not fail the job):
 ```bash
-node .ai/scripts/ctl-project-governance.mjs lint --check --project main
+node .ai/scripts/ctl-project-governance.mjs lint --check
 ```
 
 4) Sync/fix drift (manual):
 ```bash
-node .ai/scripts/ctl-project-governance.mjs sync --apply --project main
+node .ai/scripts/ctl-project-governance.mjs sync --apply
 ```
 
 Optional: append sync-detected events to changelog (append-only):
 ```bash
-node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog
+node .ai/scripts/ctl-project-governance.mjs sync --apply --changelog
 ```
 
 5) Resume existing task work (read-only):
@@ -68,7 +68,7 @@ node .githooks/install.mjs --uninstall
 ## Key principles
 - Task execution progress is maintained in `dev-docs/**` (task bundle is the SoT for status).
 - Task identity is anchored by `.ai-task.yaml` (`task_id`).
-- Project semantic mapping lives in `.ai/project/main/registry.yaml`.
+- Project semantic mapping lives in `.ai/project/registry.yaml`.
 - Derived views are not authoritative; regenerate them instead of editing AUTO sections.
 
 ## Migration note

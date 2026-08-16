@@ -125,10 +125,8 @@ Avoid the skill when:
 ### Phase 2 - dev-docs linkage (conditional)
 
 9. **Evaluate dev-docs Decision Gate**:
-   - Check if task meets any of these criteria:
-     - Expected duration > 2 hours, or likely to span multiple sessions
-     - The work will be paused/handed off, or the user explicitly needs context recovery artifacts
-     - The change is high-risk or cross-cutting (e.g., DB/schema migration, auth/security, CI/CD/infra, multi-service/API boundary changes)
+   - Apply the gate as defined in `dev-docs/AGENTS.md` ("Decision Gate (MUST)"). The criteria are
+     not restated here so the two cannot drift.
    - If criteria are met:
      - Inform user: "The task qualifies for a full dev-docs bundle for context preservation."
      - Ask: "Would you like to create the complete documentation bundle now?"

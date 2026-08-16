@@ -184,7 +184,7 @@ function resolveSuiteSteps(suite) {
         {
           label: 'Governance lint',
           cmd: 'node',
-          args: ['.ai/scripts/ctl-project-governance.mjs', 'lint', '--check', '--project', 'main']
+          args: ['.ai/scripts/ctl-project-governance.mjs', 'lint', '--check']
         }
       ];
     case 'api':

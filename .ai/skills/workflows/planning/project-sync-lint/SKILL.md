@@ -19,30 +19,30 @@ All commands are implemented by:
 - `node .ai/scripts/ctl-project-governance.mjs`
 
 ### Init
-Create `.ai/project/<project>/` files from templates (idempotent).
+Create `.ai/project/` files from templates (idempotent).
 
 ```bash
-node .ai/scripts/ctl-project-governance.mjs init --project main
+node .ai/scripts/ctl-project-governance.mjs init
 ```
 
 ### Lint (check-only)
 Scan all configured or discovered `dev-docs` roots and validate the repo against the contract.
 
 ```bash
-node .ai/scripts/ctl-project-governance.mjs lint --check --project main
+node .ai/scripts/ctl-project-governance.mjs lint --check
 ```
 
 ### Sync (dry-run or apply)
 Generate missing task identity meta, upsert registry tasks, and regenerate derived views.
 
 ```bash
-node .ai/scripts/ctl-project-governance.mjs sync --dry-run --project main
-node .ai/scripts/ctl-project-governance.mjs sync --apply --project main
+node .ai/scripts/ctl-project-governance.mjs sync --dry-run
+node .ai/scripts/ctl-project-governance.mjs sync --apply
 ```
 
 Optional: append sync-detected events to the hub changelog (append-only; apply-mode only):
 ```bash
-node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog
+node .ai/scripts/ctl-project-governance.mjs sync --apply --changelog
 ```
 
 ## Semantic Governance Requirements
@@ -58,9 +58,9 @@ node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --change
   - `dev-docs/**/active/<task>/00-overview.md`
   - `dev-docs/**/active/<task>/01-plan.md`
   - `dev-docs/**/active/<task>/03-implementation-notes.md` (if present)
-  - `.ai/project/<project>/registry.yaml`
+  - `.ai/project/registry.yaml`
 - Extracted semantics MUST be recorded in:
-  - `.ai/project/<project>/feature-map.md` non-AUTO section (`Semantic Feature Briefs`)
+  - `.ai/project/feature-map.md` non-AUTO section (`Semantic Feature Briefs`)
 - Dashboard focus MAY be updated as a concise index, but MUST NOT contain full semantic extraction body.
 - Feature briefs SHOULD cover: intent, scope in/out, decision, dependencies, risks, success signal, related tasks, and next checkpoint.
 
@@ -71,28 +71,28 @@ node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --change
 ## Contract highlights (read the full contract)
 - Task progress SoT: task bundle `00-overview.md` `State:`
 - Task identity SoT: `.ai-task.yaml` `task_id`
-- Project semantic SoT: `.ai/project/<project>/registry.yaml`
+- Project semantic SoT: `.ai/project/registry.yaml`
 - Migration: missing `.ai-task.yaml` is a warning, but invalid/duplicate IDs are errors
 
 ## Recommended flow
 1. Run lint:
-   - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+   - `node .ai/scripts/ctl-project-governance.mjs lint --check`
 2. Preview sync updates:
-   - `node .ai/scripts/ctl-project-governance.mjs sync --dry-run --project main --init-if-missing`
+   - `node .ai/scripts/ctl-project-governance.mjs sync --dry-run --init-if-missing`
 3. Review task mappings (especially active tasks):
-   - `node .ai/scripts/ctl-project-governance.mjs query --status in-progress --project main --json`
-   - `node .ai/scripts/ctl-project-governance.mjs query --status blocked --project main --json`
+   - `node .ai/scripts/ctl-project-governance.mjs query --status in-progress --json`
+   - `node .ai/scripts/ctl-project-governance.mjs query --status blocked --json`
 4. Complete semantic extraction and update semantic sections:
-   - `.ai/project/main/feature-map.md`
-   - (optional) update `.ai/project/main/dashboard.md` focus index only
+   - `.ai/project/feature-map.md`
+   - (optional) update `.ai/project/dashboard.md` focus index only
 5. Apply sync when ready:
-   - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+   - `node .ai/scripts/ctl-project-governance.mjs sync --apply`
 
 ## Verification
 - Lint (check-only):
-  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check`
 - Sync preview (no writes):
-  - `node .ai/scripts/ctl-project-governance.mjs sync --dry-run --project main --init-if-missing`
+  - `node .ai/scripts/ctl-project-governance.mjs sync --dry-run --init-if-missing`
 - Manual semantic checks:
   - Every active feature with running work has a `Semantic Feature Brief`.
   - `dashboard.md` `Focus` is concise and references current primary feature/checkpoint.

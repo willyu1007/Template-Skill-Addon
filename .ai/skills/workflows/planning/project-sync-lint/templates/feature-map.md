@@ -1,7 +1,5 @@
 # Feature Map
 
-Project: `{{project_slug}}`
-
 ## Semantic Feature Briefs (LLM-authored)
 - Keep one subsection per active feature (`F-xxx`).
 - This section is the LLM-authored semantic layer and is not overwritten by sync.

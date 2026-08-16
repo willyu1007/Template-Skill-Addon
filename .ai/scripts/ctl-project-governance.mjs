@@ -24,7 +24,6 @@ import { parseSimpleList, parseSimpleMap, parseTopLevelVersion } from './lib/yam
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DEFAULT_PROJECT = 'main';
 const RESUME_DEFAULT_COMMIT_LIMIT = 3;
 const RESUME_MAX_COMMIT_LIMIT = 20;
 const RESUME_DEFAULT_SCAN_LIMIT = 500;
@@ -84,21 +83,18 @@ Usage:
 Commands:
   init
     --repo-root <path>        Repo root (default: auto-detect; fallback: cwd)
-    --project <slug>          Project slug (default: ${DEFAULT_PROJECT})
     --dry-run                 Show what would be created
     --force                   Overwrite existing hub files (dangerous)
-    Initialize the project hub at .ai/project/<project>/ (idempotent by default).
+    Initialize the project hub at .ai/project/ (idempotent by default).
 
   lint
     --repo-root <path>        Repo root (default: auto-detect; fallback: cwd)
-    --project <slug>          Project slug (default: ${DEFAULT_PROJECT})
     --check                   (default) Exit non-zero only on errors (warnings do not fail)
     --strict                  Treat warnings as errors (except "human verification" warnings)
     Validate repo project governance state against the Project Contract.
 
   sync
     --repo-root <path>        Repo root (default: auto-detect; fallback: cwd)
-    --project <slug>          Project slug (default: ${DEFAULT_PROJECT})
     --dry-run                 Print planned changes without writing
     --apply                   Apply changes (writes files)
     --init-if-missing         Create missing hub files from templates before syncing
@@ -107,7 +103,6 @@ Commands:
 
   query
     --repo-root <path>        Repo root (default: auto-detect; fallback: cwd)
-    --project <slug>          Project slug (default: ${DEFAULT_PROJECT})
     --id <T-###>              Filter by a specific task id
     --status <status>         Filter by status (planned|in-progress|blocked|done|archived)
     --text <substring>        Substring match against common task fields
@@ -116,7 +111,6 @@ Commands:
 
   current-task
     --repo-root <path>        Repo root (default: auto-detect; fallback: cwd)
-    --project <slug>          Project slug (default: ${DEFAULT_PROJECT})
     --task <T-###>            Resolve a specific task instead of the active one
     --format <fmt>            trailers (default) | id | json
     Resolve the active task (single in-progress, else single blocked) for hooks/automation.
@@ -125,7 +119,6 @@ Commands:
 
   resume
     --repo-root <path>        Repo root (default: auto-detect; fallback: cwd)
-    --project <slug>          Project slug (default: ${DEFAULT_PROJECT})
     --task <T-###>            Task ID (default: branch task, then the active task)
     --limit <n>               Recent linked commits (default: ${RESUME_DEFAULT_COMMIT_LIMIT}; max: ${RESUME_MAX_COMMIT_LIMIT})
     --scan <n>                History scan limit (default: ${RESUME_DEFAULT_SCAN_LIMIT}; max: ${RESUME_MAX_SCAN_LIMIT})
@@ -136,7 +129,6 @@ Commands:
 
   commits
     --repo-root <path>        Repo root (default: auto-detect; fallback: cwd)
-    --project <slug>          Project slug (default: ${DEFAULT_PROJECT})
     --task <T-###>            Task ID (default: the active task)
     --limit <n>               Keep the most recent <n> commits (default: 20)
     --scan <n>                Commits of history to scan (default: 500)
@@ -146,7 +138,6 @@ Commands:
 
   map
     --repo-root <path>        Repo root (default: auto-detect; fallback: cwd)
-    --project <slug>          Project slug (default: ${DEFAULT_PROJECT})
     --task <T-###>            Task ID to map (required)
     --feature <F-###>         Feature ID to map the task to
     --milestone <M-###>       Milestone ID to map the task to
@@ -156,10 +147,10 @@ Commands:
     Map a task to Feature/Milestone/Requirement in the registry.
 
 Examples:
-  node .ai/scripts/ctl-project-governance.mjs init --project main
-  node .ai/scripts/ctl-project-governance.mjs lint --check --project main
-  node .ai/scripts/ctl-project-governance.mjs sync --dry-run --project main
-  node .ai/scripts/ctl-project-governance.mjs sync --apply --project main
+  node .ai/scripts/ctl-project-governance.mjs init
+  node .ai/scripts/ctl-project-governance.mjs lint --check
+  node .ai/scripts/ctl-project-governance.mjs sync --dry-run
+  node .ai/scripts/ctl-project-governance.mjs sync --apply
   node .ai/scripts/ctl-project-governance.mjs map --task T-001 --feature F-002 --apply
   node .ai/scripts/ctl-project-governance.mjs resume --json
   node .ai/scripts/ctl-project-governance.mjs commits --task T-001
@@ -251,10 +242,8 @@ function findRepoRoot(startDir) {
   }
 }
 
-function templateVars(projectSlug) {
+function templateVars() {
   return {
-    project_slug: projectSlug,
-    project_name: projectSlug === 'main' ? 'Main' : projectSlug,
     today: today(),
   };
 }
@@ -267,12 +256,12 @@ function renderTemplate(raw, vars) {
   return out;
 }
 
-function getHubDir(repoRoot, projectSlug) {
-  return path.join(repoRoot, '.ai', 'project', projectSlug);
+function getHubDir(repoRoot) {
+  return path.join(repoRoot, '.ai', 'project');
 }
 
-function getRegistryPath(repoRoot, projectSlug) {
-  return path.join(getHubDir(repoRoot, projectSlug), 'registry.yaml');
+function getRegistryPath(repoRoot) {
+  return path.join(getHubDir(repoRoot), 'registry.yaml');
 }
 
 function getTemplatesDir(repoRoot) {
@@ -658,7 +647,7 @@ function dumpYamlDoc(doc) {
   }
 
   // Root ordering
-  const rootOrder = ['version', 'project', 'milestones', 'features', 'requirements', 'tasks'];
+  const rootOrder = ['version', 'task_doc_roots', 'milestones', 'features', 'requirements', 'tasks'];
   for (const k of rootOrder) {
     if (!(k in doc)) continue;
     const v = doc[k];
@@ -904,8 +893,8 @@ function discoverDevDocsRoots(repoRoot) {
   return uniq.sort((a, b) => a.localeCompare(b));
 }
 
-function loadRegistry(repoRoot, projectSlug) {
-  const registryPath = getRegistryPath(repoRoot, projectSlug);
+function loadRegistry(repoRoot) {
+  const registryPath = getRegistryPath(repoRoot);
   const raw = readText(registryPath);
   if (!raw) return { path: registryPath, registry: null, error: null };
 
@@ -918,7 +907,7 @@ function loadRegistry(repoRoot, projectSlug) {
 }
 
 function getConfiguredRootsFromRegistry(registry) {
-  const roots = registry?.project?.task_doc_roots;
+  const roots = registry?.task_doc_roots;
   if (!Array.isArray(roots)) return [];
   return roots.map((r) => String(r)).filter(Boolean);
 }
@@ -959,7 +948,6 @@ function parseTaskMeta(metaRaw) {
   return {
     version,
     task_id: map.task_id || map.taskId || '',
-    project: map.project || '',
     slug: map.slug || '',
     status: map.status || '',
     updated: map.updated || '',
@@ -971,7 +959,6 @@ function renderTaskMetaYaml(meta) {
   const lines = [];
   lines.push('version: 1');
   lines.push(`task_id: ${meta.task_id}`);
-  lines.push(`project: ${meta.project}`);
   lines.push(`slug: ${meta.slug}`);
   if (meta.status) lines.push(`status: ${meta.status}`);
   lines.push(`updated: "${meta.updated}"`);
@@ -983,10 +970,10 @@ function renderTaskMetaYaml(meta) {
   return lines.join('\n');
 }
 
-function cmdInit({ repoRoot, projectSlug, dryRun, force }) {
-  const hubDir = getHubDir(repoRoot, projectSlug);
+function cmdInit({ repoRoot, dryRun, force }) {
+  const hubDir = getHubDir(repoRoot);
   const templatesDir = getTemplatesDir(repoRoot);
-  const vars = templateVars(projectSlug);
+  const vars = templateVars();
 
   if (!exists(templatesDir)) {
     die(`[error] Missing templates directory: ${toPosix(path.relative(repoRoot, templatesDir))}`);
@@ -1045,7 +1032,7 @@ function cmdInit({ repoRoot, projectSlug, dryRun, force }) {
   }
 }
 
-function cmdLint({ repoRoot, projectSlug, strict }) {
+function cmdLint({ repoRoot, strict }) {
   const errors = [];
   const warnings = [];
 
@@ -1054,7 +1041,7 @@ function cmdLint({ repoRoot, projectSlug, strict }) {
     errors.push('Missing .ai/project/CONTRACT.md (required).');
   }
 
-  const { registry, error: registryParseError } = loadRegistry(repoRoot, projectSlug);
+  const { registry, error: registryParseError } = loadRegistry(repoRoot);
 
   let devDocsRoots = [];
   if (registryParseError) {
@@ -1063,12 +1050,12 @@ function cmdLint({ repoRoot, projectSlug, strict }) {
 
   if (!registry) {
     warnings.push(
-      `Project hub is not initialized for project "${projectSlug}". Run: node .ai/scripts/ctl-project-governance.mjs init --project ${projectSlug}`
+      'Project hub is not initialized. Run: node .ai/scripts/ctl-project-governance.mjs init'
     );
     devDocsRoots = discoverDevDocsRoots(repoRoot);
   } else {
     // CONTRACT 5.2: Validate required top-level keys
-    const REQUIRED_REGISTRY_KEYS = ['version', 'project', 'milestones', 'features', 'requirements', 'tasks'];
+    const REQUIRED_REGISTRY_KEYS = ['version', 'milestones', 'features', 'requirements', 'tasks'];
     for (const key of REQUIRED_REGISTRY_KEYS) {
       if (!(key in registry) || registry[key] === undefined) {
         errors.push(`Registry missing required top-level key: "${key}" (CONTRACT 5.2).`);
@@ -1201,10 +1188,6 @@ function cmdLint({ repoRoot, projectSlug, strict }) {
       const ids = slugToIds.get(task.slug) || new Set();
       ids.add(meta.task_id);
       slugToIds.set(task.slug, ids);
-    }
-
-    if (meta.project !== projectSlug) {
-      errors.push(`${formatTaskRef(task)}: meta.project="${meta.project}" does not match --project "${projectSlug}".`);
     }
 
     if (meta.slug && meta.slug !== task.slug) {
@@ -1346,11 +1329,11 @@ function formatJsonLines(rows) {
   for (const r of rows) console.log(JSON.stringify(r));
 }
 
-function collectTaskRows({ repoRoot, projectSlug, quiet = false, fromBundles = false }) {
+function collectTaskRows({ repoRoot, quiet = false, fromBundles = false }) {
   // Works even when the hub is not initialized (falls back to scanning dev-docs roots).
   // `fromBundles` skips the registry entirely: the task bundle (00-overview.md State) is
   // the status SoT, while registry.status only refreshes on `sync` and can lag behind.
-  const loaded = fromBundles ? { registry: null, error: null } : loadRegistry(repoRoot, projectSlug);
+  const loaded = fromBundles ? { registry: null, error: null } : loadRegistry(repoRoot);
   const registry = loaded.registry;
   if (!registry && loaded.error && !quiet) {
     // Keep stdout clean (JSONL/JSON), but surface the issue for operators.
@@ -1415,7 +1398,7 @@ function collectTaskRows({ repoRoot, projectSlug, quiet = false, fromBundles = f
   return rows;
 }
 
-function cmdQuery({ repoRoot, projectSlug, id, status, text, json }) {
+function cmdQuery({ repoRoot, id, status, text, json }) {
   // Query is designed for LLM consumption: default is JSONL (one object per line).
   function includesText(value, needle) {
     if (!needle) return true;
@@ -1439,7 +1422,7 @@ function cmdQuery({ repoRoot, projectSlug, id, status, text, json }) {
     return true;
   }
 
-  const rows = collectTaskRows({ repoRoot, projectSlug }).filter(taskMatches);
+  const rows = collectTaskRows({ repoRoot }).filter(taskMatches);
 
   if (json) console.log(JSON.stringify(rows));
   else formatJsonLines(rows);
@@ -1450,10 +1433,10 @@ function cmdQuery({ repoRoot, projectSlug, id, status, text, json }) {
 // active: work is paused, but the task remains the current context.
 const ACTIVE_TASK_STATUS = new Set(['in-progress', 'blocked']);
 
-function resolveTaskContext({ repoRoot, projectSlug, taskId }) {
+function resolveTaskContext({ repoRoot, taskId }) {
   // Always read status from the bundles (SoT), never from the registry cache:
   // a commit typically happens before `sync` has refreshed registry.status.
-  const rows = collectTaskRows({ repoRoot, projectSlug, quiet: true, fromBundles: true }).filter((r) =>
+  const rows = collectTaskRows({ repoRoot, quiet: true, fromBundles: true }).filter((r) =>
     TASK_ID_RE.test(String(r.id || ''))
   );
 
@@ -1476,9 +1459,9 @@ function taskIdsFromBranch(branch) {
   return [...new Set(matches)];
 }
 
-function resolveResumeTaskContext({ repoRoot, projectSlug, taskId, branch }) {
+function resolveResumeTaskContext({ repoRoot, taskId, branch }) {
   if (taskId) {
-    const explicit = resolveTaskContext({ repoRoot, projectSlug, taskId });
+    const explicit = resolveTaskContext({ repoRoot, taskId });
     return { ...explicit, source: 'explicit', branch };
   }
 
@@ -1495,7 +1478,7 @@ function resolveResumeTaskContext({ repoRoot, projectSlug, taskId, branch }) {
   }
 
   if (branchTaskIds.length === 1) {
-    const branchTask = resolveTaskContext({ repoRoot, projectSlug, taskId: branchTaskIds[0] });
+    const branchTask = resolveTaskContext({ repoRoot, taskId: branchTaskIds[0] });
     return {
       ...branchTask,
       reason: branchTask.ok ? undefined : 'branch-task-not-found',
@@ -1505,7 +1488,7 @@ function resolveResumeTaskContext({ repoRoot, projectSlug, taskId, branch }) {
     };
   }
 
-  const active = resolveTaskContext({ repoRoot, projectSlug, taskId: null });
+  const active = resolveTaskContext({ repoRoot, taskId: null });
   return { ...active, source: 'active', branch };
 }
 
@@ -1615,8 +1598,8 @@ function countCommitsTouchingPath(repoRoot, relPath) {
   return Number.isFinite(n) ? n : null;
 }
 
-function cmdCurrentTask({ repoRoot, projectSlug, taskId, format }) {
-  const res = resolveTaskContext({ repoRoot, projectSlug, taskId });
+function cmdCurrentTask({ repoRoot, taskId, format }) {
+  const res = resolveTaskContext({ repoRoot, taskId });
 
   if (!res.ok) {
     if (res.reason === 'not-found') {
@@ -1815,9 +1798,9 @@ function renderResumeText(packet) {
   }
 }
 
-function cmdResume({ repoRoot, projectSlug, taskId, limit, scan, limitClamped, scanClamped, json }) {
+function cmdResume({ repoRoot, taskId, limit, scan, limitClamped, scanClamped, json }) {
   const branch = readCurrentBranch(repoRoot);
-  const resolved = resolveResumeTaskContext({ repoRoot, projectSlug, taskId, branch });
+  const resolved = resolveResumeTaskContext({ repoRoot, taskId, branch });
   if (!resolved.ok) {
     return { exitCode: renderResumeFailure(resolved, json) };
   }
@@ -1945,8 +1928,8 @@ function cmdResume({ repoRoot, projectSlug, taskId, limit, scan, limitClamped, s
   return { exitCode: 0, packet };
 }
 
-function cmdCommits({ repoRoot, projectSlug, taskId, limit, scan, json }) {
-  const res = resolveTaskContext({ repoRoot, projectSlug, taskId });
+function cmdCommits({ repoRoot, taskId, limit, scan, json }) {
+  const res = resolveTaskContext({ repoRoot, taskId });
   if (!res.ok) {
     if (res.reason === 'not-found') console.error(colors.red(`[error] Task not found: ${taskId}`));
     else if (res.reason === 'ambiguous') {
@@ -2032,7 +2015,7 @@ function computeChangelogEntries({ prevById, nextById, todayStr }) {
   return lines;
 }
 
-function appendChangelog({ repoRoot, changelogPath, entries, dryRun, apply, initIfMissing, projectSlug }) {
+function appendChangelog({ repoRoot, changelogPath, entries, dryRun, apply, initIfMissing }) {
   if (!entries || entries.length === 0) return;
 
   let base = readText(changelogPath);
@@ -2040,7 +2023,7 @@ function appendChangelog({ repoRoot, changelogPath, entries, dryRun, apply, init
     const templatesDir = getTemplatesDir(repoRoot);
     const tpl = path.join(templatesDir, 'changelog.md');
     const tplRaw = readText(tpl);
-    if (tplRaw) base = renderTemplate(tplRaw, templateVars(projectSlug));
+    if (tplRaw) base = renderTemplate(tplRaw, templateVars());
   }
 
   if (!base) {
@@ -2061,17 +2044,17 @@ function appendChangelog({ repoRoot, changelogPath, entries, dryRun, apply, init
   return { ok: true, changed };
 }
 
-function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelog }) {
+function cmdSync({ repoRoot, dryRun, apply, initIfMissing, changelog }) {
   const actions = [];
   const errors = [];
   const warnings = [];
 
-  const registryPath = getRegistryPath(repoRoot, projectSlug);
+  const registryPath = getRegistryPath(repoRoot);
   let reg = null;
   let hubMissing = !exists(registryPath);
 
   if (!hubMissing) {
-    const loaded = loadRegistry(repoRoot, projectSlug);
+    const loaded = loadRegistry(repoRoot);
     if (!loaded.registry) {
       errors.push(`Failed to parse registry.yaml: ${loaded.error || '(unknown error)'}`);
       return { ok: false, errors, warnings, actions };
@@ -2080,7 +2063,7 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
   } else {
     if (!initIfMissing) {
       errors.push(
-        `Project hub missing for "${projectSlug}". Run: node .ai/scripts/ctl-project-governance.mjs init --project ${projectSlug}`
+        'Project hub missing. Run: node .ai/scripts/ctl-project-governance.mjs init'
       );
       return { ok: false, errors, warnings, actions };
     }
@@ -2094,14 +2077,14 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
     }
 
     try {
-      reg = parseYamlDoc(renderTemplate(tplRaw, templateVars(projectSlug)));
+      reg = parseYamlDoc(renderTemplate(tplRaw, templateVars()));
     } catch (e) {
       errors.push(`Failed to parse registry template: ${e.message || String(e)}`);
       return { ok: false, errors, warnings, actions };
     }
 
     // Plan/init hub files if missing
-    const hubDir = getHubDir(repoRoot, projectSlug);
+    const hubDir = getHubDir(repoRoot);
     const templateFiles = ['registry.yaml', 'dashboard.md', 'feature-map.md', 'task-index.md', 'changelog.md'];
     if (dryRun || !apply) {
       actions.push({ op: 'mkdir', path: hubDir, note: 'init hub', mode: 'dry-run' });
@@ -2114,9 +2097,9 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
         });
       }
     } else {
-      cmdInit({ repoRoot, projectSlug, dryRun: false, force: false });
+      cmdInit({ repoRoot, dryRun: false, force: false });
       hubMissing = false;
-      const loaded = loadRegistry(repoRoot, projectSlug);
+      const loaded = loadRegistry(repoRoot);
       if (!loaded.registry) {
         errors.push(`Cannot load registry after init: ${toPosix(path.relative(repoRoot, registryPath))}`);
         return { ok: false, errors, warnings, actions };
@@ -2208,7 +2191,6 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
       const id = nextId();
       const meta = {
         task_id: id,
-        project: projectSlug,
         slug: task.slug,
         status: effectiveStatus || 'planned',
         updated: todayStr,
@@ -2231,12 +2213,11 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
       task.taskId = meta.task_id;
 
       const desiredStatus = effectiveStatus || meta.status || 'planned';
-      const shouldUpdate = desiredStatus !== meta.status || meta.slug !== task.slug || meta.project !== projectSlug;
+      const shouldUpdate = desiredStatus !== meta.status || meta.slug !== task.slug;
 
       if (shouldUpdate) {
         const nextMeta = {
           task_id: meta.task_id,
-          project: projectSlug,
           slug: task.slug,
           status: desiredStatus,
           updated: todayStr,
@@ -2302,13 +2283,9 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
     });
   }
   if (!Array.isArray(reg.requirements)) reg.requirements = [];
-  if (!reg.project || typeof reg.project !== 'object') reg.project = {};
-  if (!Array.isArray(reg.project.task_doc_roots) || reg.project.task_doc_roots.length === 0) {
-    reg.project.task_doc_roots = roots.map((r) => toPosix(path.relative(repoRoot, r)));
+  if (!Array.isArray(reg.task_doc_roots) || reg.task_doc_roots.length === 0) {
+    reg.task_doc_roots = roots.map((r) => toPosix(path.relative(repoRoot, r)));
   }
-  if (!reg.project.slug) reg.project.slug = projectSlug;
-  if (!reg.project.id) reg.project.id = 'P-001';
-  if (!reg.project.name) reg.project.name = projectSlug === 'main' ? 'Main' : projectSlug;
 
   // Write registry
   const registryOut = dumpYamlDoc(reg);
@@ -2321,7 +2298,7 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
 
   // Optional: append changelog events (apply-mode only; append-only).
   if (changelog) {
-    const hubDir = getHubDir(repoRoot, projectSlug);
+    const hubDir = getHubDir(repoRoot);
     const changelogPath = path.join(hubDir, 'changelog.md');
     const entries = computeChangelogEntries({ prevById, nextById, todayStr });
     const res = appendChangelog({
@@ -2331,7 +2308,6 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
       dryRun,
       apply,
       initIfMissing,
-      projectSlug,
     });
     if (res?.ok === false) {
       warnings.push(String(res.error || 'Failed to append changelog.'));
@@ -2347,9 +2323,9 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
 
   // Derived views
   const templatesDir = getTemplatesDir(repoRoot);
-  const vars = templateVars(projectSlug);
+  const vars = templateVars();
 
-  const hubDir = getHubDir(repoRoot, projectSlug);
+  const hubDir = getHubDir(repoRoot);
   const dashboardPath = path.join(hubDir, 'dashboard.md');
   const featureMapPath = path.join(hubDir, 'feature-map.md');
   const taskIndexPath = path.join(hubDir, 'task-index.md');
@@ -2495,7 +2471,7 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
   return { ok: okExit, errors, warnings, actions };
 }
 
-function cmdMap({ repoRoot, projectSlug, taskId, featureId, milestoneId, requirementId, dryRun, apply }) {
+function cmdMap({ repoRoot, taskId, featureId, milestoneId, requirementId, dryRun, apply }) {
   const errors = [];
   const actions = [];
 
@@ -2523,7 +2499,7 @@ function cmdMap({ repoRoot, projectSlug, taskId, featureId, milestoneId, require
     return { ok: false, errors, actions };
   }
 
-  const loaded = loadRegistry(repoRoot, projectSlug);
+  const loaded = loadRegistry(repoRoot);
   if (!loaded.registry) {
     errors.push(`Failed to load registry: ${loaded.error || 'registry not found'}`);
     return { ok: false, errors, actions };
@@ -2629,11 +2605,10 @@ function main() {
   const { command, opts } = parseArgs(process.argv);
   const repoRoot =
     opts['repo-root'] ? path.resolve(opts['repo-root']) : findRepoRoot(process.cwd()) || path.resolve(process.cwd());
-  const projectSlug = String(opts.project || DEFAULT_PROJECT).trim() || DEFAULT_PROJECT;
 
   switch (command) {
     case 'init':
-      cmdInit({ repoRoot, projectSlug, dryRun: !!opts['dry-run'], force: !!opts.force });
+      cmdInit({ repoRoot, dryRun: !!opts['dry-run'], force: !!opts.force });
       break;
     case 'lint': {
       const strict = !!opts.strict;
@@ -2642,7 +2617,7 @@ function main() {
       // --strict promotes non-human-verification warnings to errors.
       const _check = opts.check; // consumed to avoid "unknown flag" warnings
       void _check;
-      const { ok: okLint } = cmdLint({ repoRoot, projectSlug, strict });
+      const { ok: okLint } = cmdLint({ repoRoot, strict });
       process.exit(okLint ? 0 : 1);
       break;
     }
@@ -2654,7 +2629,6 @@ function main() {
       }
       const res = cmdSync({
         repoRoot,
-        projectSlug,
         dryRun: dryRun || !apply,
         apply: apply && !dryRun,
         initIfMissing: !!opts['init-if-missing'],
@@ -2670,7 +2644,6 @@ function main() {
       const json = !!opts.json;
       const res = cmdQuery({
         repoRoot,
-        projectSlug,
         id: id || null,
         status: status || null,
         text: text || null,
@@ -2686,7 +2659,7 @@ function main() {
         console.error(colors.red(`[error] Unknown --format: ${format} (expected trailers|id|json)`));
         process.exit(1);
       }
-      const res = cmdCurrentTask({ repoRoot, projectSlug, taskId: taskId || null, format });
+      const res = cmdCurrentTask({ repoRoot, taskId: taskId || null, format });
       process.exit(res.exitCode);
       break;
     }
@@ -2704,7 +2677,6 @@ function main() {
       );
       const res = cmdResume({
         repoRoot,
-        projectSlug,
         taskId: taskId || null,
         limit: limit.value,
         scan: scan.value,
@@ -2721,7 +2693,6 @@ function main() {
       const scan = Number.parseInt(String(opts.scan || '500'), 10);
       const res = cmdCommits({
         repoRoot,
-        projectSlug,
         taskId: taskId || null,
         limit: Number.isFinite(limit) && limit > 0 ? limit : 20,
         scan: Number.isFinite(scan) && scan > 0 ? scan : 500,
@@ -2742,7 +2713,6 @@ function main() {
       }
       const res = cmdMap({
         repoRoot,
-        projectSlug,
         taskId,
         featureId: featureId || null,
         milestoneId: milestoneId || null,

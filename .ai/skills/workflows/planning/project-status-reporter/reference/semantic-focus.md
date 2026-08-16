@@ -6,8 +6,8 @@ Use when the user asks for feature-level semantic summary, decision context, or 
 
 ```bash
 node .ai/scripts/ctl-project-governance.mjs query --json
-cat .ai/project/main/feature-map.md
-cat .ai/project/main/dashboard.md
+cat .ai/project/feature-map.md
+cat .ai/project/dashboard.md
 ```
 
 ## Output Template

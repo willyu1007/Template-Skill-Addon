@@ -13,6 +13,9 @@ Persistent task documentation for context preservation across sessions.
 
 ## Decision Gate (MUST)
 
+The gate below is the **single definition**. `create-dev-docs-plan` and `plan-maker` reference
+the gate and MUST NOT restate the criteria.
+
 Create a dev-docs task bundle under `dev-docs/active/<task-slug>/` only when the task is **complex** and benefits from context preservation.
 
 ### Skip Conditions (fast path)
@@ -112,11 +115,11 @@ node .ai/scripts/ctl-project-governance.mjs resume --json
 
 ### Project Governance Integration
 
-If the repository uses a project hub (`.ai/project/<project>/`), keep the hub in sync with task changes:
+If the repository uses a project hub (`.ai/project/`), keep the hub in sync with task changes:
 
 | Event | Action |
 |-------|--------|
-| Task bundle created | Run `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main` to register the task |
+| Task bundle created | Run `node .ai/scripts/ctl-project-governance.mjs sync --apply` to register the task |
 | Task status changed | Run `sync --apply` to propagate the new status to the registry |
 | Task archived | Run `sync --apply` to update the registry (status becomes `archived`) |
 
@@ -130,10 +133,3 @@ Notes:
 When task status changes to "done" and all verification passes:
 1. Move `dev-docs/active/<task-slug>/` to `dev-docs/archive/<task-slug>/`
 2. This is handled by `update-dev-docs-for-handoff` when status=done
-
-## Skip Conditions
-
-Do NOT create dev docs for:
-- Single-file changes
-- Trivial fixes (<30 min)
-- Simple refactors with clear scope

@@ -4102,7 +4102,7 @@ if (command === 'validate') {
     // Initialize project governance hub (best-effort; idempotent)
     const projectGovernanceCtlPath = path.join(repoRoot, '.ai', 'scripts', 'ctl-project-governance.mjs');
     if (fs.existsSync(projectGovernanceCtlPath)) {
-      const initHubRes = runNodeScriptWithRepoRootFallback(repoRoot, projectGovernanceCtlPath, ['init', '--project', 'main', '--repo-root', repoRoot], true);
+      const initHubRes = runNodeScriptWithRepoRootFallback(repoRoot, projectGovernanceCtlPath, ['init', '--repo-root', repoRoot], true);
       if (initHubRes.mode === 'failed') {
         console.warn('[warn] ctl-project-governance init failed; project hub may not be initialized.');
       }

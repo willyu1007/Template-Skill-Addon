@@ -1,7 +1,5 @@
 # Project Dashboard
 
-Project: `{{project_slug}}`
-
 ## Focus (index)
 - Keep this section concise.
 - Do not place semantic extraction body here; semantic details live in `feature-map.md` `Semantic Feature Briefs`.
